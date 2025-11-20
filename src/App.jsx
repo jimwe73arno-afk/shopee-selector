@@ -29,7 +29,7 @@ import {
 
 // --- 💰 設定區 ---
 
-// API Key 已移至後端，此處留空即可
+// API Key 已移至後端
 const SYSTEM_API_KEY = ""; 
 
 // 🔴 您的綠界「定期定額」付款連結
@@ -51,60 +51,62 @@ const AFFILIATE_CONFIG = {
     }
 };
 
-// --- 系統提示詞 ---
-const SYSTEM_PROMPT_TEXT = `你現在是我的「蝦皮直播首席選品官」。我們經營三個蝦皮直播帳號，核心策略是「掛播時長 + 精準選品結構」。
+// --- 📝 系統提示詞 (人話優化版) ---
+const SYSTEM_PROMPT_TEXT = `你現在是「Brother G 直播團隊」的首席選品顧問。你的語氣要專業、自信，但像個真人夥伴一樣自然，不要像機器人。
 
-【核心排序演算法】
-請依照以下優先級決定商品的上架順序 (Ranking)：
-1. **絕對主力 (Tier 1)**：有「訂單產出」且「點擊數高」的商品。
-2. **流量門面 (Tier 2)**：高單價 3C ($3,000+)，點擊數極高但轉化低。穿插排在 **第 6, 10, 15 格**。
-3. **利潤收割 (Tier 3)**：美妝/保健/eSIM，單價 $200-$900，穩定出單。排在 **第 6-50 格**。
-4. **淘汰區 (Drop)**：點擊數 < 10 且 0 訂單。建議下架。
+【你的任務】
+根據用戶提供的數據（圖片或文字），規劃明天的直播選品策略。
 
-請根據數據進行分析。`;
+【分析原則】
+1. **黃金位 (1-10格)**：只放真正的數據王牌（高轉化）和流量門面（高點擊的3C）。
+2. **利潤區 (11-50格)**：安排利潤穩定的美妝、保健品、eSIM。
+3. **結構區 (51-100格)**：用低價零食或B級品填補，維持豐富度。
+4. **淘汰建議**：對於點擊低且無單的商品，直接建議下架。
 
-const SELECTION_PROMPT = `請根據提供的數據（文字或圖片），幫我規劃「明天直播的選品清單」。
+【回答格式要求 - 非常重要】
+1. **請勿使用 Markdown 表格** (不要出現 |---| 這種符號)。
+2. **請勿使用過多的星號** (不要用 ** )，用自然的文字強調即可。
+3. 請用「條列式」搭配「自然解說」的方式呈現。
+4. 語氣範例：「我建議把 POCO X7 放在第 1 格，因為它今天的數據表現最好...」`;
 
-針對新手賣家，請給出最穩健的 100 格商品建議。
-請嚴格依照以下順序排列輸出，直接給我結果：
+const SELECTION_PROMPT = `請幫我分析這些數據，並給出「明天直播的選品建議」。
 
-**【第 1 - 10 格：黃金成交區】** (請放今天表現最好的 A 級品 + 1 個超強 3C 門面)
-1. [商品名] - [理由：例如 今日訂單王]
-...
+請依照以下段落輸出（請用自然的口語）：
 
-**【第 11 - 30 格：利潤主力區】** (重點放美妝/保健/eSIM，穿插 2-3 個零食引流)
-- 請列出具體商品名稱與建議價格。
+**1. 核心數據洞察**
+(請簡短點評今天表現最好的 1-2 個商品，以及整體流量狀況)
 
-**【第 31 - 100 格：結構填充區】**
-- 簡述這區塊要放哪些類別的 B 級品或新測品，以維持直播間豐富度。
+**2. 前 10 格黃金排品建議**
+(請直接列出建議的商品，並用一句話告訴我為什麼這樣排)
+- 第 1 格：[商品] (理由)
+- 第 2 格：...
 
-**【建議淘汰名單】**
-- 明確指出哪些商品明天不要再上了，浪費格子。`;
+**3. 中後段結構建議**
+(請告訴我 11-100 格大概怎麼擺，例如美妝放哪區、零食放哪區)
 
-// --- API 呼叫函數 (修正版：透過 Netlify Backend) ---
+**4. 建議淘汰名單**
+(請直接列出哪些商品明天不要上了，並說明原因)
+
+請直接給我結果，像在對團隊簡報一樣清晰。`;
+
+// --- API 呼叫函數 ---
 const callGeminiAPI = async (apiKey, input, promptText, isImage = false) => {
-    // 改成調用 Netlify Function (解決 CORS 問題)
     const url = '/.netlify/functions/gemini-proxy';
     
     let payload = {};
 
     if (isImage) {
-        // 圖片模式：準備 base64 陣列
-        // 前端這裡做處理，確保傳送的是乾淨的 Base64 或者是 DataURL，後端都支援
         const imageArray = Array.isArray(input) ? input : [input];
-        // 這裡我們保留完整的 DataURL (data:image/...) 交給後端處理，或者前端切掉都可以
-        // 為了保險，我們依照後端邏輯，直接傳送
         payload = {
             images: imageArray, 
             prompt: promptText,
             systemPrompt: SYSTEM_PROMPT_TEXT
         };
     } else {
-        // 文字模式
         payload = {
             prompt: promptText + `\n\n【用戶提供的商品數據】：\n${input}`,
             systemPrompt: SYSTEM_PROMPT_TEXT,
-            images: [] // 傳空陣列確保格式正確
+            images: [] 
         };
     }
 
@@ -117,7 +119,6 @@ const callGeminiAPI = async (apiKey, input, promptText, isImage = false) => {
 
         if (!response.ok) {
             const errorText = await response.text();
-            // 嘗試解析 JSON 錯誤
             try {
                 const errJson = JSON.parse(errorText);
                 throw new Error(errJson.error || errJson.details || errorText);
@@ -136,7 +137,14 @@ const callGeminiAPI = async (apiKey, input, promptText, isImage = false) => {
     }
 };
 
-// --- 💎 升級彈窗 (訂閱制模式) ---
+// --- 輔助函數：清理文字顯示 ---
+const cleanText = (text) => {
+    if (!text) return '';
+    // 移除 Markdown 的粗體符號 ** 和標題符號 ###，讓閱讀更乾淨
+    return text.replace(/\*\*/g, '').replace(/###/g, '').replace(/\|/g, ' '); 
+};
+
+// --- 💎 升級彈窗 ---
 const UpgradeModal = ({ show, onClose, onUpgrade }) => {
     const [unlockCode, setUnlockCode] = useState('');
     const [error, setError] = useState('');
@@ -152,10 +160,6 @@ const UpgradeModal = ({ show, onClose, onUpgrade }) => {
         const left = (window.screen.width / 2) - (width / 2);
         const top = (window.screen.height / 2) - (height / 2);
         window.open(PAYMENT_LINK, 'ShopeeProPayment', `width=${width},height=${height},top=${top},left=${left},scrollbars=yes`);
-    };
-
-    const handleSubscription = () => {
-        openPaymentWindow();
     };
 
     const handleVerify = () => {
@@ -178,7 +182,6 @@ const UpgradeModal = ({ show, onClose, onUpgrade }) => {
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden relative">
                 <button onClick={onClose} className="absolute top-4 right-4 text-white/80 hover:text-white z-10"><X size={24}/></button>
                 
-                {/* Header */}
                 <div className="bg-[#0096E1] p-8 text-center text-white relative overflow-hidden">
                     <div className="inline-flex p-3 bg-white/20 rounded-full mb-4 backdrop-blur-sm border border-white/30">
                         <Crown size={32} className="text-[#fcc800] fill-[#fcc800]" /> 
@@ -215,7 +218,7 @@ const UpgradeModal = ({ show, onClose, onUpgrade }) => {
                             </div>
 
                             <button 
-                                onClick={handleSubscription}
+                                onClick={openPaymentWindow}
                                 className="w-full py-4 bg-[#0096E1] hover:bg-[#0085c7] text-white rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
                             >
                                 <CreditCard size={20}/> 前往綠界綁定信用卡 (立即開通)
@@ -259,7 +262,7 @@ const UpgradeModal = ({ show, onClose, onUpgrade }) => {
     );
 };
 
-// --- 側邊欄 (手機版優化) ---
+// --- 側邊欄 ---
 const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen, isPro, setShowUpgrade }) => {
     const menuItems = [
         { id: 'dashboard', label: '總覽儀表板', icon: LayoutDashboard },
@@ -272,23 +275,19 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen, isPro, setShowUpg
                 className={`fixed inset-0 z-30 bg-black/50 transition-opacity duration-300 lg:hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} 
                 onClick={() => setIsOpen(false)} 
             />
-            
             <div className={`fixed inset-y-0 left-0 z-40 w-72 bg-white border-r border-gray-200 transform transition-transform duration-300 lg:static lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'} flex flex-col shadow-2xl lg:shadow-none`}>
-                
                 <button 
                     onClick={() => setIsOpen(false)}
                     className="absolute top-4 right-4 p-2 text-white/80 hover:text-white lg:hidden z-50"
                 >
                     <X size={24} />
                 </button>
-
                 <div className="flex items-center justify-center h-20 bg-[#0096E1] shrink-0 relative overflow-hidden">
                     {isPro && <div className="absolute top-0 right-0 bg-[#fcc800] text-black text-[10px] font-bold px-2 py-1 rounded-bl-lg flex items-center gap-1 shadow-sm"><Crown size={10}/> PRO</div>}
                     <span className="text-white text-lg font-bold flex items-center gap-2 tracking-wide">
                         <Store className="w-5 h-5 text-[#fcc800] fill-[#fcc800]" /> BROTHER G
                     </span>
                 </div>
-
                 <nav className="mt-6 px-4 space-y-3 flex-1">
                     {menuItems.map((item) => (
                         <button 
@@ -303,7 +302,6 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen, isPro, setShowUpg
                         </button>
                     ))}
                 </nav>
-                
                 <div className="p-4 border-t border-gray-100 pb-8 lg:pb-4">
                     {!isPro ? (
                         <div className="bg-[#0096E1] rounded-xl p-5 text-white mb-4 shadow-lg relative overflow-hidden group cursor-pointer" onClick={() => { setShowUpgrade(true); setIsOpen(false); }}>
@@ -338,7 +336,6 @@ const Dashboard = ({ isPro, setShowUpgrade }) => (
                 </div>
             </div>
         )}
-
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
                 { title: '本週 GMV', value: '$156,400', change: '+12%', icon: LineChart, color: 'bg-blue-500' },
@@ -396,12 +393,10 @@ const StrategyView = ({ isPro, setShowUpgrade }) => {
     };
 
     const handleAction = async () => {
-        // 圖片模式：鎖住！需升級
         if (inputMode === 'image' && !isPro) {
             setShowUpgrade(true);
             return;
         }
-
         if (inputMode === 'text' && !textInput.trim()) { setError("請貼上商品數據"); return; }
         if (inputMode === 'image' && images.length === 0) { setError("請至少選一張截圖"); return; }
 
@@ -411,11 +406,9 @@ const StrategyView = ({ isPro, setShowUpgrade }) => {
             const input = inputMode === 'text' ? textInput : images;
             const text = await callGeminiAPI(SYSTEM_API_KEY, input, SELECTION_PROMPT, inputMode === 'image');
             setResult(text);
-            
             setTimeout(() => {
                 resultRef.current?.scrollIntoView({ behavior: 'smooth' });
             }, 100);
-            
         } catch (err) {
             setError("分析失敗：" + (err.message || "請檢查網路"));
         } finally {
@@ -510,7 +503,6 @@ const StrategyView = ({ isPro, setShowUpgrade }) => {
                 </div>
             </div>
 
-            {/* 結果顯示區塊 */}
             {result && (
                 <div ref={resultRef} className="bg-white rounded-2xl border border-blue-100 shadow-lg overflow-hidden animate-in fade-in slide-in-from-bottom-4">
                     <div className="bg-blue-50 p-4 border-b border-blue-100 flex justify-between items-center">
@@ -522,7 +514,7 @@ const StrategyView = ({ isPro, setShowUpgrade }) => {
                         </button>
                     </div>
                     <div className="p-6 prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap leading-relaxed">
-                        {result}
+                        {cleanText(result)}
                     </div>
                 </div>
             )}
@@ -530,16 +522,13 @@ const StrategyView = ({ isPro, setShowUpgrade }) => {
     );
 };
 
-// --- 主應用 ---
 export default function App() {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [showUpgrade, setShowUpgrade] = useState(false);
-    // 恢復預設為 false (鎖住圖片功能)
     const [isPro, setIsPro] = useState(false);
 
     useEffect(() => {
-        // 讀取本地訂閱狀態
         const storedPro = localStorage.getItem('shopee_pro_status');
         if (storedPro === 'true') setIsPro(true);
     }, []);
