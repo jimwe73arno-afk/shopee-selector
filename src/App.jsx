@@ -3,7 +3,7 @@ import {
   LayoutDashboard, 
   LineChart, 
   ShoppingBag, 
-  Store,
+  Store, 
   Smartphone, 
   Plane, 
   Sparkles, 
@@ -24,12 +24,18 @@ import {
   CreditCard,
   Trash2,
   Bell,
-  Zap
+  Zap 
 } from 'lucide-react';
 
 // --- 💰 設定區 ---
-// ✅ API Key 已安全地移至伺服器端，不再暴露在前端
+
+// API Key 已移至後端，此處留空即可
+const SYSTEM_API_KEY = ""; 
+
+// 🔴 您的綠界「定期定額」付款連結
 const PAYMENT_LINK = "https://p.ecpay.com.tw/E149ADE"; 
+
+// 開通碼設定
 const VALID_CODES = ['VIP688', 'PRO2025', 'BROTHERG'];
 
 const AFFILIATE_CONFIG = {
@@ -37,207 +43,70 @@ const AFFILIATE_CONFIG = {
         url: "https://collshp.com/brotherg?view=storefront", 
         title: "🔥 BROTHER G 嚴選貨源",
         desc: "高利潤選品清單"
+    },
+    agoda: {
+        url: "https://www.agoda.com/", 
+        title: "✈️ 旅遊分潤計畫",
+        desc: "訂房最高省 15%"
     }
 };
 
-const SYSTEM_PROMPT_TEXT = `
-你是一個專門服務「蝦皮直播賣家」的【選品決策 AI 顧問】。
+// --- 系統提示詞 ---
+const SYSTEM_PROMPT_TEXT = `你現在是我的「蝦皮直播首席選品官」。我們經營三個蝦皮直播帳號，核心策略是「掛播時長 + 精準選品結構」。
 
-使用者的目標：在「直播可上架的有限格子內」，選出最有價值的商品組合，而不是單純把商品塞滿。  
-你的角色：只專注在「看數據、挑商品、排順序」，不要討論直播話術或講什麼台詞。
+【核心排序演算法】
+請依照以下優先級決定商品的上架順序 (Ranking)：
+1. **絕對主力 (Tier 1)**：有「訂單產出」且「點擊數高」的商品。
+2. **流量門面 (Tier 2)**：高單價 3C ($3,000+)，點擊數極高但轉化低。穿插排在 **第 6, 10, 15 格**。
+3. **利潤收割 (Tier 3)**：美妝/保健/eSIM，單價 $200-$900，穩定出單。排在 **第 6-50 格**。
+4. **淘汰區 (Drop)**：點擊數 < 10 且 0 訂單。建議下架。
 
------------------------
-【一、你會拿到的資訊】
-使用者可能會給你：
-- 蝦皮直播／賣場後台匯出的文字資料，或截圖 OCR 出來的內容  
-- 每個商品的大致欄位：商品名稱、類別（如果有）、售價、曝光／點擊、訂單數、銷售額、佣金％（如果看得到）
+請根據數據進行分析。`;
 
-如果資料不完整，你可以用「大約、高／中／低」來描述，不需要精算到一元。
+const SELECTION_PROMPT = `請根據提供的數據（文字或圖片），幫我規劃「明天直播的選品清單」。
 
------------------------
-【二、請從「選品」角度來思考，而不是情緒或感覺】
+針對新手賣家，請給出最穩健的 100 格商品建議。
+請嚴格依照以下順序排列輸出，直接給我結果：
 
-你的核心思考邏輯只有三件事：
+**【第 1 - 10 格：黃金成交區】** (請放今天表現最好的 A 級品 + 1 個超強 3C 門面)
+1. [商品名] - [理由：例如 今日訂單王]
+...
 
-1️⃣ 這個商品有沒有「證據」：  
-- 有沒有點擊？  
-- 有沒有訂單？  
-- 在同價位裡表現算好還是普通？
+**【第 11 - 30 格：利潤主力區】** (重點放美妝/保健/eSIM，穿插 2-3 個零食引流)
+- 請列出具體商品名稱與建議價格。
 
-2️⃣ 這個商品放進直播格子裡，扮演什麼角色：  
-- 拉 GMV？（高單價 3C／家電）  
-- 賺毛利？（美妝、保健、日用品、機能食品等中價位商品）  
-- 吸引點擊和互動？（零食、小物、1 元品）  
+**【第 31 - 100 格：結構填充區】**
+- 簡述這區塊要放哪些類別的 B 級品或新測品，以維持直播間豐富度。
 
-3️⃣ 在「格子有限」的情況下，值不值得佔位置：  
-- 同樣是 1 個格子，有些商品只是數字好看（高 GMV 但低分潤），  
-- 有些商品是真的幫賣家賺錢（穩定出單＋合理毛利），  
-- 你的任務是把後者挑出來，排在前面。
+**【建議淘汰名單】**
+- 明確指出哪些商品明天不要再上了，浪費格子。`;
 
------------------------
-【三、請幫商品做 A/B/C 分級】
-
-不管使用者給你多少商品，請盡量幫他分成三類：
-
-🅰️ A 級主力品（Hero）  
-- 有明確訂單紀錄，點擊與銷售額在同場明顯突出  
-- 價格通常落在中段（約 NT$200–900），或是轉化特別好的品項  
-- 適合成為「每一場都應該優先上架」的固定班底  
-
-🅱️ B 級輔助品  
-- 有一些點擊或偶爾出單，但不是最亮眼那批  
-- 可以當「湊單、搭配、填充品」，或有潛力但還需要再測幾場  
-- 適合排在中段或後段位置，觀察表現再決定去留  
-
-🅲 C 級淘汰品  
-- 幾乎沒有點擊、或長期 0 訂單  
-- 單價極低＋分潤低，只會佔掉名額  
-- 與賣家的主要客群明顯不符  
-- 在直播可上架數量有限時，這些應該優先被換掉
-
-（如果使用者特別說「只是拿來當 1 元引流／活動品」，你可以標註為「特殊用途」，但仍視為低優先級。）
-
------------------------
-【四、直播選品結構的基礎原則】
-
-當使用者問「下一場要怎麼排商品」時，請依照以下通用邏輯思考（可以視情況微調，不必死背數字）：
-
-1️⃣ 黃金前排（前 10 格左右）  
-- 放 A 級主力品 + 少量高話題商品  
-- 比如：今天的訂單王、高轉化美妝／保健品、中價位爆品  
-- 可以穿插 1～2 個高單價 3C / 家電當做「門面」，但要提醒：這些多數只是拉 GMV，不一定賺得最多
-
-2️⃣ 中段主力區（約 11～50 格）  
-- 放穩定出單、毛利也不錯的商品（多為美妝、保健、日用、機能食品、部分旅遊／eSIM 等）  
-- 可以混一些 B 級有潛力品，搭配 A 級一起出現  
-
-3️⃣ 後段填充與測試區  
-- 放新測品、零食小物、引流用商品  
-- 目標是「利用直播掛播時間，幫這些品試水溫」，看之後有沒有機會升級到 B/A 級
-
-4️⃣ 價格帶建議  
-- 大部分格子建議集中在中價位（約 NT$200–900），最容易出手  
-- 高價商品（3C、家電）用來撐場面與點擊，不需要太多  
-- 超低價商品控制比例，避免浪費太多名額
-
------------------------
-【五、回答風格要求】
-
-不管使用者提供什麼資料，請遵守以下輸出習慣：
-
-1. 先用 2～3 句話總結這次數據看到的重點（例如：哪一類商品最有潛力、哪一類一直拖累表現）。  
-2. 明確列出 A/B/C 級商品代表，並用一句話說明「為什麼這樣分」。  
-3. 給出「下一場選品建議」，包含：  
-   - 哪些類型應該多放一些  
-   - 哪些類型應該減少  
-   - 若直播格子有限（例如 100 格），各種類型大概要放多少件  
-4. 盡量用賣家聽得懂的語言，不用專業統計術語。  
-5. 不要講技術實作、不要提程式碼，只專注在「選什麼商品、怎麼排、為什麼」。
-
-你的核心任務只有一個：  
-> 幫蝦皮賣家「用有限的直播格子，換到最大的實際利潤」，  
-> 用數據說話，幫他們決定該留誰、該砍誰、下一場要帶誰上場。`;
-
-const SELECTION_PROMPT = `
-你現在要幫一個蝦皮直播賣家，根據「過去一場或數場的數據」，規劃出【下一場直播的選品清單與排序】。
-使用者會提供：
-- 文字版的商品數據（例如從後台複製出來的表格內容），或
-- 從截圖辨識出的商品名稱、價格、點擊數、訂單數、銷售額等
-請你依照以下步驟思考與回答。
------------------------
-【一、先快速讀懂這場的數據】
-1. 找出本場「表現最好的商品」：
-   - 看訂單數、銷售額、點擊數三者的綜合表現
-   - 不必精算，只要知道大致哪幾個是本場主角
-2. 粗略分類商品角色（可用你自己的判斷）：
-   - 高單價、高話題，用來撐場面與吸引點擊的「門面商品」
-   - 價格在中間、穩定出單、毛利通常較好的「利潤主力商品」
-   - 價格極低或只偶爾出單的「引流／填充商品」
-3. 幫商品做 A/B/C 分級（用於之後排序）：
-   - A 級：有明顯訂單與銷售額，在同類中表現突出
-   - B 級：有點擊或偶爾出單，還在觀察中
-   - C 級：長期點擊很少或沒有訂單，或單價極低＋貢獻有限
------------------------
-【二、請幫使用者排出「下一場直播」的格子結構】
-假設這個直播場最多可以上架 100 格商品（如果使用者有說是 50 格或 500 格，你可以比例放大或縮小），  
-請依照下面的邏輯，規劃具體要放哪些商品、放在第幾格區間：
-🔶 一、【第 1 - 10 格：黃金成交區】
-這一段是直播間的「門面＋主攻區」，請這樣安排：
-- 以 A 級主力商品為主（本場最會賣的那幾個）
-- 穿插 1～2 個「高單價、高話題」的門面商品（可以是 3C、家電等），吸引點擊與討論
-請用以下格式輸出：
-1. [商品名或關鍵字] - [角色：主力 / 門面] - [理由：例如 今日訂單王 / 高點擊＋高話題]
-2. ...
-🔶 二、【第 11 - 30 格：利潤主力區】
-這一段是「穩定賺毛利」的核心區域：
-- 主要放 A 級與表現不錯的 B 級商品
-- 價格多半在中段（例如 NT$200–900 這種較易出手的區間）
-- 可以穿插少量「表現有潛力的新商品」，但比例不要太高
-請用列表輸出：
-- [商品名或關鍵字] - [建議放在 11–30 格的原因]
-🔶 三、【第 31 - 100 格：測試與填充區】
-這一段是「測品 + 填充」的區域：
-- 放 B 級有潛力但數據尚不穩定的商品
-- 放少量 C 級但你認為「有特殊用途」的商品（例如：1 元引流品、活動品）
-- 目標是利用直播掛播時間，幫這些品「驗證市場反應」
-請用小節說明：
-- 這區建議放哪些類型商品（例如：零食、小物、新上架商品等）
-- 若你能從數據中點名幾個適合放在這區的商品，也請列出名稱或關鍵字
------------------------
-【三、請列出「建議淘汰名單」】
-請根據數據，幫使用者明確指出：
-- 哪些商品屬於 C 級，建議下一場先不要上架，理由是什麼？
-  - 例如：多場 0 訂單、點擊極少、價格太低且貢獻有限、與主要客群不符等
-用列表輸出：
-- [商品名或關鍵字] - [淘汰理由]
------------------------
-【四、回答格式要求】
-請直接依照以下結構輸出（不要再重複說明規則）：
-1. 本場選品簡短總結（2～3 句）
-2. 【第 1 - 10 格：黃金成交區】
-   1. ...
-   2. ...
-3. 【第 11 - 30 格：利潤主力區】
-   - ...
-4. 【第 31 - 100 格：測試與填充區】
-   - ...
-5. 【建議淘汰名單】
-   - ...
-重點是：請用你看到的數據，幫賣家做出「具體的排序建議」，  
-讓他可以直接照著這個清單，去配置下一場直播的商品。`;
-
-const callGeminiAPI = async (input, promptText, isImage = false) => {
-    // 使用 Netlify Function 代理，API Key 安全地保存在伺服器端
+// --- API 呼叫函數 (修正版：透過 Netlify Backend) ---
+const callGeminiAPI = async (apiKey, input, promptText, isImage = false) => {
+    // 改成調用 Netlify Function (解決 CORS 問題)
     const url = '/.netlify/functions/gemini-proxy';
     
-    let parts = [{ text: SYSTEM_PROMPT_TEXT + "\n\n" + promptText }];
-    
-    if (isImage) {
-        if (Array.isArray(input)) {
-            input.forEach(imgData => {
-                parts.push({
-                    inline_data: {
-                        mime_type: "image/jpeg", 
-                        data: imgData.split(',')[1]
-                    }
-                });
-            });
-        } else {
-             parts.push({
-                inline_data: {
-                    mime_type: "image/jpeg",
-                    data: input.split(',')[1]
-                }
-            });
-        }
-    } else {
-        parts[0].text += `\n\n【用戶提供的商品數據】：\n${input}`;
-    }
+    let payload = {};
 
-    const payload = { 
-        messages: [{ parts }],
-        model: 'gemini-1.5-flash' // 使用穩定的免費模型
-    };
+    if (isImage) {
+        // 圖片模式：準備 base64 陣列
+        // 前端這裡做處理，確保傳送的是乾淨的 Base64 或者是 DataURL，後端都支援
+        const imageArray = Array.isArray(input) ? input : [input];
+        // 這裡我們保留完整的 DataURL (data:image/...) 交給後端處理，或者前端切掉都可以
+        // 為了保險，我們依照後端邏輯，直接傳送
+        payload = {
+            images: imageArray, 
+            prompt: promptText,
+            systemPrompt: SYSTEM_PROMPT_TEXT
+        };
+    } else {
+        // 文字模式
+        payload = {
+            prompt: promptText + `\n\n【用戶提供的商品數據】：\n${input}`,
+            systemPrompt: SYSTEM_PROMPT_TEXT,
+            images: [] // 傳空陣列確保格式正確
+        };
+    }
 
     try {
         const response = await fetch(url, {
@@ -246,15 +115,28 @@ const callGeminiAPI = async (input, promptText, isImage = false) => {
             body: JSON.stringify(payload)
         });
 
+        if (!response.ok) {
+            const errorText = await response.text();
+            // 嘗試解析 JSON 錯誤
+            try {
+                const errJson = JSON.parse(errorText);
+                throw new Error(errJson.error || errJson.details || errorText);
+            } catch (e) {
+                throw new Error(errorText || `Server error: ${response.status}`);
+            }
+        }
+
         const data = await response.json();
-        if (data.error) throw new Error(data.error.message || data.error);
-        return data.candidates[0].content.parts[0].text;
+        if (data.error) throw new Error(data.error);
+        
+        return data.response;
     } catch (error) {
         console.error("API Error:", error);
         throw error;
     }
 };
 
+// --- 💎 升級彈窗 (訂閱制模式) ---
 const UpgradeModal = ({ show, onClose, onUpgrade }) => {
     const [unlockCode, setUnlockCode] = useState('');
     const [error, setError] = useState('');
@@ -296,6 +178,7 @@ const UpgradeModal = ({ show, onClose, onUpgrade }) => {
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden relative">
                 <button onClick={onClose} className="absolute top-4 right-4 text-white/80 hover:text-white z-10"><X size={24}/></button>
                 
+                {/* Header */}
                 <div className="bg-[#0096E1] p-8 text-center text-white relative overflow-hidden">
                     <div className="inline-flex p-3 bg-white/20 rounded-full mb-4 backdrop-blur-sm border border-white/30">
                         <Crown size={32} className="text-[#fcc800] fill-[#fcc800]" /> 
@@ -376,6 +259,7 @@ const UpgradeModal = ({ show, onClose, onUpgrade }) => {
     );
 };
 
+// --- 側邊欄 (手機版優化) ---
 const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen, isPro, setShowUpgrade }) => {
     const menuItems = [
         { id: 'dashboard', label: '總覽儀表板', icon: LayoutDashboard },
@@ -441,6 +325,7 @@ const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen, isPro, setShowUpg
     );
 };
 
+// --- 儀表板 ---
 const Dashboard = ({ isPro, setShowUpgrade }) => (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
         {!isPro && (
@@ -478,6 +363,7 @@ const Dashboard = ({ isPro, setShowUpgrade }) => (
     </div>
 );
 
+// --- 選品策略視圖 ---
 const StrategyView = ({ isPro, setShowUpgrade }) => {
     const [inputMode, setInputMode] = useState('text'); 
     const [textInput, setTextInput] = useState('');
@@ -510,6 +396,7 @@ const StrategyView = ({ isPro, setShowUpgrade }) => {
     };
 
     const handleAction = async () => {
+        // 圖片模式：鎖住！需升級
         if (inputMode === 'image' && !isPro) {
             setShowUpgrade(true);
             return;
@@ -522,7 +409,7 @@ const StrategyView = ({ isPro, setShowUpgrade }) => {
         setError('');
         try {
             const input = inputMode === 'text' ? textInput : images;
-            const text = await callGeminiAPI(input, SELECTION_PROMPT, inputMode === 'image');
+            const text = await callGeminiAPI(SYSTEM_API_KEY, input, SELECTION_PROMPT, inputMode === 'image');
             setResult(text);
             
             setTimeout(() => {
@@ -623,6 +510,7 @@ const StrategyView = ({ isPro, setShowUpgrade }) => {
                 </div>
             </div>
 
+            {/* 結果顯示區塊 */}
             {result && (
                 <div ref={resultRef} className="bg-white rounded-2xl border border-blue-100 shadow-lg overflow-hidden animate-in fade-in slide-in-from-bottom-4">
                     <div className="bg-blue-50 p-4 border-b border-blue-100 flex justify-between items-center">
@@ -642,13 +530,16 @@ const StrategyView = ({ isPro, setShowUpgrade }) => {
     );
 };
 
+// --- 主應用 ---
 export default function App() {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [showUpgrade, setShowUpgrade] = useState(false);
+    // 恢復預設為 false (鎖住圖片功能)
     const [isPro, setIsPro] = useState(false);
 
     useEffect(() => {
+        // 讀取本地訂閱狀態
         const storedPro = localStorage.getItem('shopee_pro_status');
         if (storedPro === 'true') setIsPro(true);
     }, []);
