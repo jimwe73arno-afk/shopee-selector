@@ -10,16 +10,25 @@ exports.handler = async (event) => {
   };
 
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
-  if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
 
   try {
+    // --- 🔍 X光除錯區 ---
+    console.log("================ NEW REQUEST ================");
+    console.log("收到 Body:", event.body); 
+    // 這是關鍵！去 Netlify Logs 看這一行。
+    // 如果看到 { "contents": ... } 代表前端還是舊的。
+    // 如果看到 { "prompt": ... } 代表前端是新的。
+    // --------------------
+
     const body = JSON.parse(event.body);
     const userPrompt = body.prompt || body.userPrompt || body.text || '';
     const systemPrompt = body.systemPrompt || '';
     const images = body.images || body.image || [];
 
+    // 嚴格檢查並印出 log
     if (!userPrompt && (!images || images.length === 0)) {
-      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing parameters' }) };
+      console.error("❌ 參數檢查失敗: Prompt與Images皆空");
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing parameters (Prompt or Image required)' }) };
     }
 
     const parts = [];
@@ -27,8 +36,9 @@ exports.handler = async (event) => {
     if (userPrompt) parts.push({ text: userPrompt });
     
     if (images && Array.isArray(images)) {
-      images.forEach(imgBase64 => {
-        const cleanBase64 = imgBase64.replace(/^data:image\/\w+;base64,/, "");
+      images.forEach(img => {
+        // 相容處理：無論前端傳完整的 data:url 還是純 base64
+        const cleanBase64 = img.replace(/^data:image\/\w+;base64,/, "");
         parts.push({ inlineData: { mimeType: "image/jpeg", data: cleanBase64 } });
       });
     }
@@ -42,13 +52,19 @@ exports.handler = async (event) => {
       })
     });
 
-    if (!response.ok) throw new Error(`API error: ${response.status}`);
+    if (!response.ok) {
+        const errText = await response.text();
+        console.error("Google API Error:", errText);
+        throw new Error(`Gemini API Refused: ${errText}`);
+    }
 
     const data = await response.json();
     const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response';
 
     return { statusCode: 200, headers, body: JSON.stringify({ response: generatedText }) };
+
   } catch (error) {
-    return { statusCode: 500, headers, body: JSON.stringify({ error: 'Failed', details: error.message }) };
+    console.error("Server Error:", error);
+    return { statusCode: 500, headers, body: JSON.stringify({ error: 'Processing failed', details: error.message }) };
   }
 };
