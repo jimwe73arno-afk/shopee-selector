@@ -1,5 +1,6 @@
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+// 修改點：根據你提供的文件，切換至 gemini-2.5-flash
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 exports.handler = async (event) => {
   const headers = {
@@ -12,23 +13,13 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
 
   try {
-    // --- 🔍 X光除錯區 ---
-    console.log("================ NEW REQUEST ================");
-    console.log("收到 Body:", event.body); 
-    // 這是關鍵！去 Netlify Logs 看這一行。
-    // 如果看到 { "contents": ... } 代表前端還是舊的。
-    // 如果看到 { "prompt": ... } 代表前端是新的。
-    // --------------------
-
     const body = JSON.parse(event.body);
     const userPrompt = body.prompt || body.userPrompt || body.text || '';
     const systemPrompt = body.systemPrompt || '';
     const images = body.images || body.image || [];
 
-    // 嚴格檢查並印出 log
     if (!userPrompt && (!images || images.length === 0)) {
-      console.error("❌ 參數檢查失敗: Prompt與Images皆空");
-      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing parameters (Prompt or Image required)' }) };
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing parameters' }) };
     }
 
     const parts = [];
@@ -37,7 +28,7 @@ exports.handler = async (event) => {
     
     if (images && Array.isArray(images)) {
       images.forEach(img => {
-        // 相容處理：無論前端傳完整的 data:url 還是純 base64
+        // 移除 Base64 前綴，確保乾淨的數據傳給 Google
         const cleanBase64 = img.replace(/^data:image\/\w+;base64,/, "");
         parts.push({ inlineData: { mimeType: "image/jpeg", data: cleanBase64 } });
       });
@@ -55,6 +46,7 @@ exports.handler = async (event) => {
     if (!response.ok) {
         const errText = await response.text();
         console.error("Google API Error:", errText);
+        // 錯誤處理：如果 2.5 還在 Preview，可能會顯示具體的錯誤
         throw new Error(`Gemini API Refused: ${errText}`);
     }
 
