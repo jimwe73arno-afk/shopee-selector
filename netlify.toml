@@ -1,7 +1,10 @@
 [build]
-  command = "npm run build"
-  publish = "build"
   functions = "netlify/functions"
+
+[functions]
+  # 增加 timeout 到 26 秒 (Netlify 最大值)
+  timeout = 26
+  
 [[redirects]]
   from = "/*"
   to = "/index.html"
