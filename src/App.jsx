@@ -30,7 +30,7 @@ import {
 // --- 💰 設定區 ---
 
 // 圖片處理設定
-const MAX_IMAGES = 10;
+const MAX_IMAGES = 5; // 限制最多 5 張圖片，確保分析精準度
 const REQUEST_TIMEOUT_MS = 45000; // 45 秒
 const MAX_IMAGE_DIMENSION = 1600; // px, 最長邊
 const JPEG_QUALITY = 0.8; // 80%
@@ -486,8 +486,9 @@ const StrategyView = ({ isPro, setShowUpgrade }) => {
             return;
         }
         
-        // 🎯 強制限制：最多 10 張圖片
+        // 🎯 強制限制：最多 5 張圖片
         if (rawFiles.length > MAX_IMAGES) {
+            alert('為確保分析精準度，建議一次上傳 2-5 張關鍵截圖');
             setError(`一次最多上傳 ${MAX_IMAGES} 張圖片，請刪減後再試一次。`);
             return;
         }
