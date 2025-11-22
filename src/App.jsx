@@ -473,10 +473,12 @@ const StrategyView = ({ isPro, setShowUpgrade }) => {
     const [textInput, setTextInput] = useState('');
     const [images, setImages] = useState([]); 
     const [loading, setLoading] = useState(false);
+    const [loadingText, setLoadingText] = useState('正在讀取圖片數據...'); // 🎯 動態載入文字
     const [result, setResult] = useState('');
     const [error, setError] = useState('');
     const fileInputRef = useRef(null);
     const resultRef = useRef(null);
+    const loadingTimerRef = useRef(null); // 🎯 用於追蹤載入時間
 
     const handleImageUpload = async (e) => {
         const rawFiles = Array.from(e.target.files || []);
@@ -543,6 +545,30 @@ const StrategyView = ({ isPro, setShowUpgrade }) => {
 
         setLoading(true);
         setError('');
+        setLoadingText('正在讀取圖片數據...'); // 🎯 初始化載入文字
+        
+        // 🎯 清除之前的計時器
+        if (loadingTimerRef.current) {
+            clearInterval(loadingTimerRef.current);
+        }
+        
+        const startTime = Date.now();
+        
+        // 🎯 動態更新載入文字
+        loadingTimerRef.current = setInterval(() => {
+            const elapsed = (Date.now() - startTime) / 1000; // 秒數
+            
+            if (elapsed < 3) {
+                setLoadingText('正在讀取圖片數據...');
+            } else if (elapsed < 8) {
+                setLoadingText('AI 正在分析蝦皮後台數據...');
+            } else if (elapsed < 25) {
+                setLoadingText('正在生成選品策略，請稍候...');
+            } else {
+                setLoadingText('圖片較多，正在進行深度推理...');
+            }
+        }, 500); // 每 500ms 檢查一次
+        
         try {
             const input = inputMode === 'text' ? textInput : images;
             const text = await callGeminiAPI(SYSTEM_API_KEY, input, SELECTION_PROMPT, inputMode === 'image');
@@ -551,9 +577,26 @@ const StrategyView = ({ isPro, setShowUpgrade }) => {
                 resultRef.current?.scrollIntoView({ behavior: 'smooth' });
             }, 100);
         } catch (err) {
-            setError("分析失敗：" + (err.message || "請檢查網路"));
+            // 🎯 優化錯誤處理
+            let errorMsg = "分析失敗";
+            if (err.message && err.message.includes('超時')) {
+                errorMsg = "分析請求超時。建議減少圖片數量（推薦 2-3 張）或嘗試重新上傳。";
+            } else if (err.message && err.message.includes('timeout')) {
+                errorMsg = "分析請求超時。建議減少圖片數量（推薦 2-3 張）或嘗試重新上傳。";
+            } else if (err.message) {
+                errorMsg = "分析失敗：" + err.message;
+            } else {
+                errorMsg = "分析失敗：請檢查網路連線";
+            }
+            setError(errorMsg);
         } finally {
+            // 🎯 清除計時器
+            if (loadingTimerRef.current) {
+                clearInterval(loadingTimerRef.current);
+                loadingTimerRef.current = null;
+            }
             setLoading(false);
+            setLoadingText('正在讀取圖片數據...'); // 重置載入文字
         }
     };
 
@@ -639,7 +682,7 @@ const StrategyView = ({ isPro, setShowUpgrade }) => {
                         className={`w-full mt-6 py-4 rounded-xl font-bold text-white text-lg shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95 ${loading ? 'bg-gray-400' : 'bg-[#0096e1] hover:bg-[#0077b6]'}`}
                     >
                         {loading ? <Loader2 className="animate-spin" /> : <Sparkles size={20} className="fill-white/20"/>} 
-                        {loading ? 'AI 分析選品中...' : '開始智能分析 & 建議'}
+                        {loading ? loadingText : '開始智能分析 & 建議'} {/* 🎯 顯示動態載入文字 */}
                     </button>
                 </div>
             </div>

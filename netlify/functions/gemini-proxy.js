@@ -1,7 +1,6 @@
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
-// 🔥 Timeout 包裝器 - 給 Gemini 3.0 Pro 更多時間
-const withTimeout = (promise, timeoutMs = 40000) => {  // ✅ 改成 40 秒
+const withTimeout = (promise, timeoutMs = 40000) => {
   return Promise.race([
     promise,
     new Promise((_, reject) =>
@@ -10,9 +9,12 @@ const withTimeout = (promise, timeoutMs = 40000) => {  // ✅ 改成 40 秒
   ]);
 };
 
+// 🎯 強制指定模型：圖片用 3.0 Pro，文字用 1.5 Flash
 const getModelUrl = (hasImages) => {
-  // 🔥 統一使用 gemini-1.5-pro（保留最強分析能力）
-  const model = 'gemini-1.5-pro';
+  // ✅ 圖片：gemini-3-pro-preview（最強）
+  // ✅ 文字：gemini-1.5-flash（快速）
+  const model = hasImages ? 'gemini-3-pro-preview' : 'gemini-1.5-flash';
+  console.log(`🤖 強制使用模型: ${model}`);
   return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 };
 
@@ -48,7 +50,6 @@ exports.handler = async (event, context) => {
     const systemPrompt = body.systemPrompt || '';
     const images = body.images || body.image || [];
 
-    // 🎯 後端防禦性檢查
     const MAX_IMAGES = 10;
     
     if (!userPrompt && (!images || images.length === 0)) {
@@ -69,16 +70,14 @@ exports.handler = async (event, context) => {
 
     const hasImages = images && images.length > 0;
     const modelUrl = getModelUrl(hasImages);
-    const modelName = 'gemini-1.5-pro';
-
-    console.log(`📊 🎯 使用 ${modelName} (${images.length}張圖片)`);
+    
+    // ✅ 明確顯示使用的模型
+    const modelName = hasImages ? 'gemini-3-pro-preview' : 'gemini-1.5-flash';
+    console.log(`📊 分析模式: ${hasImages ? '🎯 圖片 (3.0 Pro)' : '⚡ 文字 (1.5 Flash)'}`);
+    console.log(`📷 圖片數量: ${images.length}`);
 
     const parts = [];
-    // 🎯 強化 System Prompt：加入 JSON 輸出和精簡指令
-    const enhancedSystemPrompt = systemPrompt + 
-      "\n\nIMPORTANT: Output pure JSON directly. Focus on key insights only. Be extremely concise to save processing time. Do not use markdown code blocks.";
-    
-    if (enhancedSystemPrompt.trim()) parts.push({ text: enhancedSystemPrompt });
+    if (systemPrompt) parts.push({ text: systemPrompt });
     if (userPrompt) parts.push({ text: userPrompt });
 
     if (hasImages) {
@@ -102,18 +101,16 @@ exports.handler = async (event, context) => {
       });
     }
 
-    // 🔥 強迫精簡：maxOutputTokens 設為 2048
     const generationConfig = {
       temperature: 1.0,
       topK: 40,
       topP: 0.95,
-      maxOutputTokens: 2048,  // ✅ 強迫精簡輸出
+      maxOutputTokens: hasImages ? 8192 : 4096,
     };
 
-    console.log(`🚀 呼叫 API (timeout: 40s)...`);  // ✅ 顯示新的 timeout
+    console.log(`🚀 呼叫 ${modelName} (timeout: 40s)...`);
     const startTime = Date.now();
 
-    // 🔥 使用 40 秒 timeout
     const response = await withTimeout(
       fetch(`${modelUrl}?key=${GEMINI_API_KEY}`, {
         method: 'POST',
@@ -123,7 +120,7 @@ exports.handler = async (event, context) => {
           generationConfig
         })
       }),
-      40000  // ✅ 40 秒
+      40000
     );
 
     const responseTime = Date.now() - startTime;
@@ -132,7 +129,7 @@ exports.handler = async (event, context) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ API error:', errorText);
-      throw new Error(`API error: ${response.status}`);
+      throw new Error(`API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
@@ -156,9 +153,11 @@ exports.handler = async (event, context) => {
     
     let errorMessage = error.message || 'Unknown error';
     if (errorMessage.includes('timeout')) {
-      errorMessage = 'API 處理時間過長（可能圖片太多或太大），請減少圖片數量或稍後再試';
+      errorMessage = 'API 處理時間過長，請減少圖片數量';
     } else if (errorMessage.includes('GEMINI_API_KEY')) {
       errorMessage = '環境變數未配置';
+    } else if (errorMessage.includes('404') || errorMessage.includes('not found')) {
+      errorMessage = '模型不存在，請檢查 API 設定';
     }
     
     return {
