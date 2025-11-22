@@ -169,7 +169,7 @@ const callGeminiAPI = async (apiKey, input, promptText, isImage = false) => {
         
         // 處理超時錯誤
         if (error.name === 'AbortError') {
-            throw new Error(`請求超時（${REQUEST_TIMEOUT_MS / 1000} 秒）。可能是圖片數量過多或太大，建議嘗試減少圖片數量（最多 ${MAX_IMAGES} 張）。`);
+            throw new Error(`處理時間過長（${REQUEST_TIMEOUT_MS / 1000} 秒），可能是圖片太多或太大，請減少圖片數量（最多 ${MAX_IMAGES} 張）後重試`);
         }
         
         throw error;
@@ -188,6 +188,7 @@ async function compressImage(file, maxSize = MAX_IMAGE_DIMENSION, quality = JPEG
     return new Promise((resolve, reject) => {
         const img = new Image();
         const url = URL.createObjectURL(file);
+        const originalSize = file.size;
         
         img.onload = () => {
             // 清理 URL 物件
@@ -212,6 +213,15 @@ async function compressImage(file, maxSize = MAX_IMAGE_DIMENSION, quality = JPEG
                         reject(new Error('圖片壓縮失敗'));
                         return;
                     }
+                    
+                    // 計算壓縮比例
+                    const compressedSize = blob.size;
+                    const ratio = ((1 - compressedSize / originalSize) * 100).toFixed(1);
+                    
+                    console.log(`✅ 壓縮: ${file.name}`);
+                    console.log(`   原始: ${(originalSize / 1024).toFixed(1)} KB`);
+                    console.log(`   壓縮後: ${(compressedSize / 1024).toFixed(1)} KB`);
+                    console.log(`   節省: ${ratio}%`);
                     
                     // 將 Blob 轉為 base64 字符串（用於現有 API）
                     const reader = new FileReader();

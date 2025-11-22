@@ -1,7 +1,7 @@
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
-// 🔥 Timeout 包裝器 - 防止函數超時
-const withTimeout = (promise, timeoutMs = 20000) => {
+// 🔥 Timeout 包裝器 - 給 Gemini 3.0 Pro 更多時間
+const withTimeout = (promise, timeoutMs = 40000) => {  // ✅ 改成 40 秒
   return Promise.race([
     promise,
     new Promise((_, reject) =>
@@ -10,16 +10,12 @@ const withTimeout = (promise, timeoutMs = 20000) => {
   ]);
 };
 
-// 🎯 智能分流：根據是否有圖片選擇最佳模型
 const getModelUrl = (hasImages) => {
-  // 文字分析：快速的 1.5-flash
-  // 圖片分析：最強的 3.0-pro-preview
   const model = hasImages ? 'gemini-3-pro-preview' : 'gemini-1.5-flash';
   return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 };
 
 exports.handler = async (event, context) => {
-  // 設置函數不等待空事件循環
   context.callbackWaitsForEmptyEventLoop = false;
 
   const headers = {
@@ -42,32 +38,27 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // 驗證 API Key
     if (!GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY not configured in environment variables');
+      throw new Error('GEMINI_API_KEY not configured');
     }
 
     const body = JSON.parse(event.body);
-    
-    // 支援多種欄位名稱（保持兼容性）
     const userPrompt = body.prompt || body.userPrompt || body.text || '';
     const systemPrompt = body.systemPrompt || '';
     const images = body.images || body.image || [];
 
-    // 🎯 後端防禦性檢查：圖片數量限制
+    // 🎯 後端防禦性檢查
     const MAX_IMAGES = 10;
-
-    // 檢查是否有任何輸入
+    
     if (!userPrompt && (!images || images.length === 0)) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: '請至少上傳 1 張圖片' })
+        body: JSON.stringify({ error: '請至少上傳 1 張圖片或輸入文字' })
       };
     }
 
-    // 檢查圖片數量（後端防禦）
-    if (images && images.length > MAX_IMAGES) {
+    if (images.length > MAX_IMAGES) {
       return {
         statusCode: 400,
         headers,
@@ -75,105 +66,73 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // 🎯 智能選擇模型
     const hasImages = images && images.length > 0;
     const modelUrl = getModelUrl(hasImages);
-    const modelName = hasImages ? 'gemini-3-pro-preview (最強圖片分析)' : 'gemini-1.5-flash (快速文字分析)';
+    const modelName = hasImages ? 'gemini-3-pro-preview' : 'gemini-1.5-flash';
 
-    console.log(`📊 分析模式: ${hasImages ? '🎯 圖片分析 (3.0 Pro)' : '⚡ 文字分析 (1.5 Flash)'}`);
-    console.log(`📷 圖片數量: ${images.length}`);
-    console.log(`🤖 使用模型: ${modelName}`);
+    console.log(`📊 ${hasImages ? '🎯 圖片 3.0 Pro' : '⚡ 文字 1.5 Flash'} (${images.length}張)`);
 
-    // 組合內容 parts
     const parts = [];
+    if (systemPrompt) parts.push({ text: systemPrompt });
+    if (userPrompt) parts.push({ text: userPrompt });
 
-    // 加入系統提示（如果有）
-    if (systemPrompt) {
-      parts.push({ text: systemPrompt });
-    }
-
-    // 加入用戶提示
-    if (userPrompt) {
-      parts.push({ text: userPrompt });
-    }
-
-    // 🚀 批次處理圖片
     if (hasImages) {
-      const maxImages = 10;
-      const imagesToProcess = images.slice(0, maxImages);
+      const imagesToProcess = images.slice(0, MAX_IMAGES);
       
-      if (images.length > maxImages) {
-        console.log(`⚠️ 圖片數量超過限制 (${images.length} 張)，只處理前 ${maxImages} 張`);
-      }
-
       imagesToProcess.forEach((imgBase64, index) => {
         try {
-          // 清理 Base64 字串
           const cleanBase64 = imgBase64.replace(/^data:image\/\w+;base64,/, '');
-          
-          // 檢測圖片格式
-          let mimeType = 'image/jpeg'; // 預設
-          if (imgBase64.includes('data:image/png')) {
-            mimeType = 'image/png';
-          } else if (imgBase64.includes('data:image/webp')) {
-            mimeType = 'image/webp';
-          }
+          let mimeType = 'image/jpeg';
+          if (imgBase64.includes('data:image/png')) mimeType = 'image/png';
+          else if (imgBase64.includes('data:image/webp')) mimeType = 'image/webp';
 
-          // 🎯 Gemini 3.0 Pro: 使用 media_resolution_high 獲得最高質量
           parts.push({
-            inlineData: {
-              mimeType: mimeType,
-              data: cleanBase64
-            }
+            inlineData: { mimeType, data: cleanBase64 }
           });
 
-          console.log(`✅ 已加入第 ${index + 1} 張圖片 (${mimeType})`);
-        } catch (imgError) {
-          console.error(`❌ 處理第 ${index + 1} 張圖片時出錯:`, imgError.message);
+          console.log(`✅ 圖片 ${index + 1} (${mimeType})`);
+        } catch (err) {
+          console.error(`❌ 圖片 ${index + 1} 錯誤`);
         }
       });
     }
 
-    // 🎯 生成配置
     const generationConfig = {
-      temperature: 1.0,  // Gemini 3.0 建議預設值
+      temperature: 1.0,
       topK: 40,
       topP: 0.95,
       maxOutputTokens: hasImages ? 8192 : 4096,
     };
 
-    console.log(`🚀 開始呼叫 Gemini API (timeout: 20s)...`);
+    console.log(`🚀 呼叫 API (timeout: 40s)...`);  // ✅ 顯示新的 timeout
     const startTime = Date.now();
 
-    // 🔥 使用 timeout 包裝器
+    // 🔥 使用 40 秒 timeout
     const response = await withTimeout(
       fetch(`${modelUrl}?key=${GEMINI_API_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{
-            parts: parts
-          }],
-          generationConfig: generationConfig
+          contents: [{ parts }],
+          generationConfig
         })
       }),
-      20000  // 20 秒超時
+      40000  // ✅ 40 秒
     );
 
-    const endTime = Date.now();
-    const responseTime = endTime - startTime;
-    console.log(`⏱️ API 回應時間: ${responseTime}ms`);
+    const responseTime = Date.now() - startTime;
+    console.log(`⏱️ ${responseTime}ms`);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ Gemini API error:', errorText);
-      throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+      console.error('❌ API error:', errorText);
+      throw new Error(`API error: ${response.status}`);
     }
 
     const data = await response.json();
     const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || '無回應';
 
-    console.log(`✅ 分析完成！回應長度: ${generatedText.length} 字元`);
+    console.log(`✅ 完成 (${generatedText.length} 字元)`);
 
     return {
       statusCode: 200,
@@ -187,14 +146,13 @@ exports.handler = async (event, context) => {
     };
 
   } catch (error) {
-    console.error('❌ Function error:', error);
+    console.error('❌ Error:', error);
     
-    // 詳細錯誤信息
     let errorMessage = error.message || 'Unknown error';
     if (errorMessage.includes('timeout')) {
-      errorMessage = 'API 請求超時，請稍後再試或減少圖片數量';
+      errorMessage = 'API 處理時間過長（可能圖片太多或太大），請減少圖片數量或稍後再試';
     } else if (errorMessage.includes('GEMINI_API_KEY')) {
-      errorMessage = '環境變數未配置，請檢查 Netlify 設定';
+      errorMessage = '環境變數未配置';
     }
     
     return {
