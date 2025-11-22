@@ -2,3 +2,7 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Netlify Pro Timeout 設定（解鎖 Pro 權限）
+[functions."*"]
+  timeout = 26

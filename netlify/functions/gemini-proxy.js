@@ -11,7 +11,8 @@ const withTimeout = (promise, timeoutMs = 40000) => {  // ✅ 改成 40 秒
 };
 
 const getModelUrl = (hasImages) => {
-  const model = hasImages ? 'gemini-3-pro-preview' : 'gemini-1.5-flash';
+  // 🔥 統一使用 gemini-1.5-pro（保留最強分析能力）
+  const model = 'gemini-1.5-pro';
   return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 };
 
@@ -68,12 +69,16 @@ exports.handler = async (event, context) => {
 
     const hasImages = images && images.length > 0;
     const modelUrl = getModelUrl(hasImages);
-    const modelName = hasImages ? 'gemini-3-pro-preview' : 'gemini-1.5-flash';
+    const modelName = 'gemini-1.5-pro';
 
-    console.log(`📊 ${hasImages ? '🎯 圖片 3.0 Pro' : '⚡ 文字 1.5 Flash'} (${images.length}張)`);
+    console.log(`📊 🎯 使用 ${modelName} (${images.length}張圖片)`);
 
     const parts = [];
-    if (systemPrompt) parts.push({ text: systemPrompt });
+    // 🎯 強化 System Prompt：加入 JSON 輸出和精簡指令
+    const enhancedSystemPrompt = systemPrompt + 
+      "\n\nIMPORTANT: Output pure JSON directly. Focus on key insights only. Be extremely concise to save processing time. Do not use markdown code blocks.";
+    
+    if (enhancedSystemPrompt.trim()) parts.push({ text: enhancedSystemPrompt });
     if (userPrompt) parts.push({ text: userPrompt });
 
     if (hasImages) {
@@ -97,11 +102,12 @@ exports.handler = async (event, context) => {
       });
     }
 
+    // 🔥 強迫精簡：maxOutputTokens 設為 2048
     const generationConfig = {
       temperature: 1.0,
       topK: 40,
       topP: 0.95,
-      maxOutputTokens: hasImages ? 8192 : 4096,
+      maxOutputTokens: 2048,  // ✅ 強迫精簡輸出
     };
 
     console.log(`🚀 呼叫 API (timeout: 40s)...`);  // ✅ 顯示新的 timeout
