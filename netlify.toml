@@ -1,11 +1,13 @@
 [build]
-  publish = "."
+  # ✅ 不需要 build - 靜態 HTML 專案
   command = ""
+  # ✅ 根目錄就是網站
+  publish = "."
 
 [functions]
   directory = "netlify/functions"
 
-# ✅ 關鍵：增加 function timeout
+# ✅ 60 秒 timeout 給 3.0 Pro 足夠時間
 [functions."*"]
   timeout = 60
 
