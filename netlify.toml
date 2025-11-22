@@ -1,11 +1,17 @@
-[build]
-  functions = "netlify/functions"
+# Netlify configuration for BrotherG Shopee Selector
 
-[functions]
-  # 增加 timeout 到 26 秒 (Netlify 最大值)
-  timeout = 26
-  
+[build]
+  command = ""
+  publish = "."
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+[functions]
+  node_bundler = "esbuild"
+
+# Correct timeout syntax (optional)
+[functions.timeout]
+  duration = "26s"
