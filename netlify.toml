@@ -1,11 +1,15 @@
 [build]
-  command = ""
+  # ✅ 關鍵修正：網頁檔案在根目錄 "." 不是 "build"
   publish = "."
-  
+  # 不需要編譯過程，留空
+  command = ""
+
 [functions]
+  # 後端函數位置
   directory = "netlify/functions"
-  node_bundler = "esbuild"
-  
+  # 增加 timeout 到 26 秒
+  timeout = 26
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
