@@ -1,17 +1,12 @@
-# Netlify configuration for BrotherG Shopee Selector
-
 [build]
   command = ""
   publish = "."
-
+  
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
-[functions]
-  node_bundler = "esbuild"
-
-# Correct timeout syntax (optional)
-[functions.timeout]
-  duration = "26s"

@@ -96,9 +96,18 @@ const callGeminiAPI = async (apiKey, input, promptText, isImage = false) => {
     let payload = {};
 
     if (isImage) {
+        // 提取壓縮後的 base64 數據（移除 data:image/jpeg;base64, 前綴）
         const imageArray = Array.isArray(input) ? input : [input];
+        const base64Images = imageArray.map(img => {
+            // 如果是 data URL，提取 base64 部分
+            if (typeof img === 'string' && img.startsWith('data:')) {
+                return img.split(',')[1];
+            }
+            return img; // 如果已經是純 base64，直接返回
+        });
+        
         payload = {
-            images: imageArray, 
+            images: base64Images, 
             prompt: promptText,
             systemPrompt: SYSTEM_PROMPT_TEXT
         };
@@ -142,6 +151,52 @@ const cleanText = (text) => {
     if (!text) return '';
     // 移除 Markdown 的粗體符號 ** 和標題符號 ###，讓閱讀更乾淨
     return text.replace(/\*\*/g, '').replace(/###/g, '').replace(/\|/g, ' '); 
+};
+
+// --- 🎯 圖片壓縮函數（降低大小，避免超時） ---
+const compressImage = (file) => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                // 創建 Canvas
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // 🎯 關鍵：限制最大尺寸為 1024px
+                let width = img.width;
+                let height = img.height;
+                const maxSize = 1024;
+                
+                if (width > height && width > maxSize) {
+                    height = (height * maxSize) / width;
+                    width = maxSize;
+                } else if (height > maxSize) {
+                    width = (width * maxSize) / height;
+                    height = maxSize;
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                
+                // 繪製壓縮後的圖片
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // 🎯 關鍵：轉換為 Base64，質量 0.7
+                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                
+                // 移除 data:image/jpeg;base64, 前綴
+                const base64Data = compressedBase64.split(',')[1];
+                
+                resolve(base64Data);
+            };
+            img.onerror = () => reject(new Error('圖片載入失敗'));
+            img.src = e.target.result;
+        };
+        reader.onerror = () => reject(new Error('檔案讀取失敗'));
+        reader.readAsDataURL(file);
+    });
 };
 
 // --- 💎 升級彈窗 ---
@@ -371,20 +426,33 @@ const StrategyView = ({ isPro, setShowUpgrade }) => {
     const fileInputRef = useRef(null);
     const resultRef = useRef(null);
 
-    const handleImageUpload = (e) => {
+    const handleImageUpload = async (e) => {
         const files = Array.from(e.target.files);
-        if (files.length > 0) {
-            Promise.all(files.map(file => {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(file);
-                });
-            })).then(results => {
-                setImages(prev => [...prev, ...results]);
-                setResult(''); 
-            }).catch(err => console.error("讀取圖片失敗", err));
+        if (files.length === 0) return;
+        
+        setLoading(true);
+        setError('');
+        
+        try {
+            // 🎯 關鍵：壓縮所有圖片
+            const compressedImages = await Promise.all(
+                files.map(file => compressImage(file))
+            );
+            
+            // 更新 UI（顯示縮圖）- 添加 data:image/jpeg;base64, 前綴用於顯示
+            const previewImages = compressedImages.map(base64 => 
+                'data:image/jpeg;base64,' + base64
+            );
+            
+            setImages(prev => [...prev, ...previewImages]);
+            setResult(''); 
+            
+            console.log(`✅ 已壓縮 ${files.length} 張圖片`);
+        } catch (err) {
+            console.error("圖片處理失敗", err);
+            setError("圖片處理失敗：" + (err.message || "請重試"));
+        } finally {
+            setLoading(false);
         }
     };
 
