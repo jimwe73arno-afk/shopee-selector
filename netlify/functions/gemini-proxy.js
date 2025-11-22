@@ -1,6 +1,6 @@
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-// 使用 Gemini 2.5 Flash 預覽版 (與你的前端一致)
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
+// 使用 Gemini 3.0 Pro 預覽版 (增強推理能力)
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent';
 
 exports.handler = async (event) => {
   const headers = {
@@ -39,10 +39,11 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         contents: [{ parts: parts }],
         generationConfig: { 
-          temperature: 0.7, 
+          temperature: 1.0,  // Gemini 3.0 Pro 預設值 - 最佳效能
           topK: 40, 
           topP: 0.95, 
-          maxOutputTokens: 8192 
+          maxOutputTokens: 8192,
+          thinking_level: "high"  // 啟用深度推理能力
         }
       })
     });
