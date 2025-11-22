@@ -54,12 +54,24 @@ exports.handler = async (event, context) => {
     const systemPrompt = body.systemPrompt || '';
     const images = body.images || body.image || [];
 
+    // 🎯 後端防禦性檢查：圖片數量限制
+    const MAX_IMAGES = 10;
+
     // 檢查是否有任何輸入
     if (!userPrompt && (!images || images.length === 0)) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: '缺少必要參數 (需要文字提示或圖片)' })
+        body: JSON.stringify({ error: '請至少上傳 1 張圖片' })
+      };
+    }
+
+    // 檢查圖片數量（後端防禦）
+    if (images && images.length > MAX_IMAGES) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: `一次最多上傳 ${MAX_IMAGES} 張圖片` })
       };
     }
 

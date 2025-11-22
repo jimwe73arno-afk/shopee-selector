@@ -29,6 +29,12 @@ import {
 
 // --- 💰 設定區 ---
 
+// 圖片處理設定
+const MAX_IMAGES = 10;
+const REQUEST_TIMEOUT_MS = 45000; // 45 秒
+const MAX_IMAGE_DIMENSION = 1600; // px, 最長邊
+const JPEG_QUALITY = 0.8; // 80%
+
 // API Key 已移至後端
 const SYSTEM_API_KEY = ""; 
 
@@ -128,11 +134,21 @@ const callGeminiAPI = async (apiKey, input, promptText, isImage = false) => {
     }
 
     try {
+        // 🎯 設置 45 秒超時
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+            controller.abort();
+        }, REQUEST_TIMEOUT_MS);
+        
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: controller.signal
         });
+        
+        // 清除超時計時器
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             const errorText = await response.text();
@@ -150,6 +166,12 @@ const callGeminiAPI = async (apiKey, input, promptText, isImage = false) => {
         return data.response;
     } catch (error) {
         console.error("API Error:", error);
+        
+        // 處理超時錯誤
+        if (error.name === 'AbortError') {
+            throw new Error(`請求超時（${REQUEST_TIMEOUT_MS / 1000} 秒）。可能是圖片數量過多或太大，建議嘗試減少圖片數量（最多 ${MAX_IMAGES} 張）。`);
+        }
+        
         throw error;
     }
 };
@@ -161,70 +183,63 @@ const cleanText = (text) => {
     return text.replace(/\*\*/g, '').replace(/###/g, '').replace(/\|/g, ' '); 
 };
 
-// --- 🎯 圖片壓縮函數（避免超時） ---
-const compressImage = (file) => {
+// --- 🎯 圖片壓縮函數（客戶端壓縮，減少成本和延遲） ---
+async function compressImage(file, maxSize = MAX_IMAGE_DIMENSION, quality = JPEG_QUALITY) {
     return new Promise((resolve, reject) => {
-        const reader = new FileReader();
+        const img = new Image();
+        const url = URL.createObjectURL(file);
         
-        reader.onload = (e) => {
-            const img = new Image();
+        img.onload = () => {
+            // 清理 URL 物件
+            URL.revokeObjectURL(url);
             
-            img.onload = () => {
-                // 創建 Canvas 壓縮
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                
-                // 🎯 限制最大尺寸 1024px
-                let width = img.width;
-                let height = img.height;
-                const MAX_SIZE = 1024;
-                
-                if (width > height) {
-                    if (width > MAX_SIZE) {
-                        height = (height * MAX_SIZE) / width;
-                        width = MAX_SIZE;
-                    }
-                } else {
-                    if (height > MAX_SIZE) {
-                        width = (width * MAX_SIZE) / height;
-                        height = MAX_SIZE;
-                    }
-                }
-                
-                canvas.width = width;
-                canvas.height = height;
-                
-                // 繪製圖片
-                ctx.drawImage(img, 0, 0, width, height);
-                
-                // 🎯 轉 JPEG，質量 0.7（平衡質量和大小）
-                canvas.toBlob(
-                    (blob) => {
-                        const reader2 = new FileReader();
-                        reader2.onloadend = () => {
-                            // 移除 data URL 前綴
-                            const base64 = reader2.result.split(',')[1];
-                            resolve({
-                                data: base64,
-                                mimeType: 'image/jpeg'
-                            });
-                        };
-                        reader2.onerror = () => reject(new Error('Blob 讀取失敗'));
-                        reader2.readAsDataURL(blob);
-                    },
-                    'image/jpeg',
-                    0.7  // 質量參數
-                );
-            };
+            const canvas = document.createElement('canvas');
             
-            img.onerror = () => reject(new Error('圖片載入失敗'));
-            img.src = e.target.result;
+            // 計算縮放比例（最長邊限制）
+            const maxSide = Math.max(img.width, img.height);
+            const scale = maxSide > maxSize ? maxSize / maxSide : 1;
+            
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            
+            // 轉換為 JPEG Blob
+            canvas.toBlob(
+                (blob) => {
+                    if (!blob) {
+                        reject(new Error('圖片壓縮失敗'));
+                        return;
+                    }
+                    
+                    // 將 Blob 轉為 base64 字符串（用於現有 API）
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        // 移除 data URL 前綴
+                        const base64 = reader.result.split(',')[1];
+                        resolve({
+                            data: base64,
+                            mimeType: 'image/jpeg'
+                        });
+                    };
+                    reader.onerror = () => reject(new Error('Blob 讀取失敗'));
+                    reader.readAsDataURL(blob);
+                },
+                'image/jpeg',
+                quality
+            );
         };
         
-        reader.onerror = () => reject(new Error('檔案讀取失敗'));
-        reader.readAsDataURL(file);
+        img.onerror = (err) => {
+            URL.revokeObjectURL(url);
+            reject(new Error('圖片載入失敗'));
+        };
+        
+        // 使用 URL.createObjectURL 載入圖片
+        img.src = url;
     });
-};
+}
 
 // --- 💎 升級彈窗 ---
 const UpgradeModal = ({ show, onClose, onUpgrade }) => {
@@ -454,21 +469,30 @@ const StrategyView = ({ isPro, setShowUpgrade }) => {
     const resultRef = useRef(null);
 
     const handleImageUpload = async (e) => {
-        const files = Array.from(e.target.files);
-        if (files.length === 0) return;
+        const rawFiles = Array.from(e.target.files || []);
+        
+        if (rawFiles.length === 0) {
+            setError('請先選擇至少 1 張圖片');
+            return;
+        }
+        
+        // 🎯 強制限制：最多 10 張圖片
+        if (rawFiles.length > MAX_IMAGES) {
+            setError(`一次最多上傳 ${MAX_IMAGES} 張圖片，請刪減後再試一次。`);
+            return;
+        }
         
         setLoading(true);
         setError('');
         
         try {
-            console.log(`開始處理 ${files.length} 張圖片...`);
+            console.log(`開始處理 ${rawFiles.length} 張圖片（最多 ${MAX_IMAGES} 張）...`);
             
+            // 🎯 逐一壓縮圖片（客戶端壓縮，減少成本和延遲）
             const compressedImages = [];
-            
-            // 🎯 逐一壓縮圖片
-            for (let i = 0; i < files.length; i++) {
-                console.log(`壓縮第 ${i + 1}/${files.length} 張圖片...`);
-                const compressed = await compressImage(files[i]);
+            for (let i = 0; i < rawFiles.length; i++) {
+                console.log(`壓縮第 ${i + 1}/${rawFiles.length} 張圖片...`);
+                const compressed = await compressImage(rawFiles[i]);
                 // compressed 是對象 {data, mimeType}，提取 base64 數據
                 compressedImages.push(compressed.data);
             }
@@ -488,7 +512,7 @@ const StrategyView = ({ isPro, setShowUpgrade }) => {
             
         } catch (err) {
             console.error("圖片處理失敗", err);
-            setError("圖片處理失敗：" + (err.message || "請重試"));
+            setError("圖片處理時發生錯誤，請稍後再試或減少圖片數量。錯誤：" + (err.message || "未知錯誤"));
         } finally {
             setLoading(false);
         }
