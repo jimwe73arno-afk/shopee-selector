@@ -6,11 +6,16 @@
   # 不要跑 npm build
   command = ""
   # ✅ 若你的 index.html 在 public/
-  # publish = "public"
+  publish = "public"
   # ✅ 若你的 index.html 在根目錄，就改成 "."
-  publish = "."
-  # Functions 目錄
-  functions = "netlify/functions"
+  # publish = "."
+
+[functions]
+  directory = "netlify/functions"
+  
+# ✅ 60 秒 timeout 給 3.0 Pro 足夠時間
+[functions."*"]
+  timeout = 60
 
 # ✅ 單頁應用程式路由修正
 [[redirects]]
