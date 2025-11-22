@@ -1,24 +1,22 @@
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-// ✅ 修正：使用還活著的模型
-const FAST_IMAGE_MODEL = 'gemini-2.5-flash';        // ✅ 替代已淘汰的 1.5-flash
-const REASONING_MODEL = 'gemini-3-pro-preview';     // ✅ 最強推理模型
+// ✅ 使用 2.5-flash：快速 + 高質量
+const MODEL = 'gemini-2.5-flash';
 
-const withTimeout = (promise, timeoutMs = 40000) => {
+const withTimeout = (promise, timeoutMs = 25000) => {  // ✅ 縮短到 25 秒
   return Promise.race([
     promise,
     new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Request timeout after ' + timeoutMs + 'ms')), timeoutMs)
+      setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
     )
   ]);
 };
 
-// 🎯 通用 Gemini 呼叫函數
-async function callGemini(model, contents, apiKey) {
-  const url = `${GEMINI_ENDPOINT}/${model}:generateContent?key=${apiKey}`;
+async function callGemini(contents) {
+  const url = `${GEMINI_ENDPOINT}/${MODEL}:generateContent?key=${GEMINI_API_KEY}`;
   
-  console.log(`🤖 呼叫模型: ${model}`);
+  console.log(`🤖 呼叫模型: ${MODEL}`);
   
   const response = await fetch(url, {
     method: 'POST',
@@ -38,8 +36,8 @@ async function callGemini(model, contents, apiKey) {
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`❌ ${model} 錯誤:`, errorText);
-    throw new Error(`Gemini error (${model}): ${response.status} - ${errorText}`);
+    console.error(`❌ API 錯誤:`, errorText);
+    throw new Error(`API error: ${response.status}`);
   }
 
   const data = await response.json();
@@ -98,21 +96,26 @@ exports.handler = async (event, context) => {
     }
 
     const hasImages = images && images.length > 0;
-    console.log(`📊 分析模式: ${hasImages ? '🎯 圖片分析' : '⚡ 文字分析'}`);
+    console.log(`📊 分析模式: ${hasImages ? '🎯 圖片' : '⚡ 文字'}`);
     console.log(`📷 圖片數量: ${images.length}`);
 
     const startTime = Date.now();
-    let finalResponse = '';
 
+    // 準備 parts
+    const parts = [];
+    
+    // 組合提示詞
+    let combinedPrompt = '';
+    if (systemPrompt) {
+      combinedPrompt = systemPrompt + '\n\n' + userPrompt;
+    } else {
+      combinedPrompt = userPrompt;
+    }
+    
+    parts.push({ text: combinedPrompt });
+
+    // 加入圖片（如果有）
     if (hasImages) {
-      // ========================================
-      // 🎯 兩段式處理：圖片分析
-      // ========================================
-      
-      console.log(`\n=== 階段 1: ${FAST_IMAGE_MODEL} 讀取圖片 ===`);
-      
-      // 準備圖片 parts
-      const imageParts = [];
       const imagesToProcess = images.slice(0, MAX_IMAGES);
       
       imagesToProcess.forEach((imgBase64, index) => {
@@ -122,7 +125,7 @@ exports.handler = async (event, context) => {
           if (imgBase64.includes('data:image/png')) mimeType = 'image/png';
           else if (imgBase64.includes('data:image/webp')) mimeType = 'image/webp';
 
-          imageParts.push({
+          parts.push({
             inlineData: {
               mimeType: mimeType,
               data: cleanBase64
@@ -134,85 +137,28 @@ exports.handler = async (event, context) => {
           console.error(`❌ 圖片 ${index + 1} 錯誤`);
         }
       });
-
-      // 組合提示詞
-      let combinedPrompt = '';
-      if (systemPrompt) {
-        combinedPrompt = systemPrompt + '\n\n' + userPrompt;
-      } else {
-        combinedPrompt = userPrompt;
-      }
-
-      // 階段 1: 用 2.5-flash 快速讀圖
-      const imageAnalysisPrompt = combinedPrompt + '\n\n請仔細分析這些圖片中的數據，提取所有關鍵信息。';
-      
-      const imageAnalysisText = await withTimeout(
-        callGemini(FAST_IMAGE_MODEL, [
-          {
-            role: "user",
-            parts: [
-              { text: imageAnalysisPrompt },
-              ...imageParts
-            ]
-          }
-        ], GEMINI_API_KEY),
-        40000
-      );
-
-      console.log(`✅ 階段 1 完成 (${imageAnalysisText.length} 字元)`);
-      console.log(`\n=== 階段 2: ${REASONING_MODEL} 深度推理 ===`);
-
-      // 階段 2: 用 3.0-pro 做深度推理
-      const reasoningPrompt = `根據以下圖片分析結果，請以專業的蝦皮選品顧問身份，提供具體的選品策略建議：\n\n${imageAnalysisText}`;
-      
-      finalResponse = await withTimeout(
-        callGemini(REASONING_MODEL, [
-          {
-            role: "user",
-            parts: [{ text: reasoningPrompt }]
-          }
-        ], GEMINI_API_KEY),
-        40000
-      );
-
-      console.log(`✅ 階段 2 完成 (${finalResponse.length} 字元)`);
-
-    } else {
-      // ========================================
-      // ⚡ 純文字處理：直接用 2.5-flash
-      // ========================================
-      
-      console.log(`\n=== 文字分析: ${FAST_IMAGE_MODEL} ===`);
-      
-      let combinedPrompt = '';
-      if (systemPrompt) {
-        combinedPrompt = systemPrompt + '\n\n' + userPrompt;
-      } else {
-        combinedPrompt = userPrompt;
-      }
-
-      finalResponse = await withTimeout(
-        callGemini(FAST_IMAGE_MODEL, [
-          {
-            role: "user",
-            parts: [{ text: combinedPrompt }]
-          }
-        ], GEMINI_API_KEY),
-        40000
-      );
-
-      console.log(`✅ 文字分析完成 (${finalResponse.length} 字元)`);
     }
 
+    // ✅ 單階段處理：快速完成
+    const finalResponse = await withTimeout(
+      callGemini([
+        {
+          role: "user",
+          parts: parts
+        }
+      ]),
+      25000  // ✅ 25 秒內完成，避免 Inactivity Timeout
+    );
+
     const responseTime = Date.now() - startTime;
-    console.log(`⏱️ 總時間: ${responseTime}ms`);
+    console.log(`✅ 完成 (${finalResponse.length} 字元, ${responseTime}ms)`);
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({ 
         response: finalResponse,
-        modelUsed: hasImages ? `${FAST_IMAGE_MODEL} → ${REASONING_MODEL}` : FAST_IMAGE_MODEL,
+        modelUsed: MODEL,
         imageCount: images.length,
         responseTime: `${responseTime}ms`
       })
@@ -223,13 +169,11 @@ exports.handler = async (event, context) => {
     
     let errorMessage = error.message || 'Unknown error';
     if (errorMessage.includes('timeout')) {
-      errorMessage = 'API 處理時間過長，請減少圖片數量';
+      errorMessage = '處理時間過長，請減少圖片數量或稍後再試';
     } else if (errorMessage.includes('GEMINI_API_KEY')) {
       errorMessage = '環境變數未配置';
     } else if (errorMessage.includes('404')) {
-      errorMessage = '模型不存在或已被淘汰';
-    } else if (errorMessage.includes('400')) {
-      errorMessage = 'API 請求格式錯誤';
+      errorMessage = '模型不存在';
     }
     
     return {
