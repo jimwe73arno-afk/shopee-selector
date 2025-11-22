@@ -1,6 +1,7 @@
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-// 使用 Gemini 3.0 Pro 預覽版 (增強推理能力)
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent';
+// Smart model selection based on content type
+// Text-only → gemini-1.5-flash (fast & cheap)
+// With images → gemini-3-pro-preview (high quality)
 
 exports.handler = async (event) => {
   const headers = {
@@ -22,29 +23,59 @@ exports.handler = async (event) => {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing parameters' }) };
     }
     
+    // ============================================
+    // SMART MODEL SELECTION
+    // ============================================
+    
+    // Check if request contains images
+    const hasImages = images && Array.isArray(images) && images.length > 0;
+    
+    // Select model based on content type
+    const modelName = hasImages 
+      ? "gemini-3-pro-preview"      // High quality for images
+      : "gemini-1.5-flash";          // Fast & cheap for text
+    
+    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
+    
+    console.log(`Using model: ${modelName} (hasImages: ${hasImages})`);
+    
+    // ============================================
+    // PREPARE CONTENT
+    // ============================================
+    
     const parts = [];
     if (systemPrompt) parts.push({ text: systemPrompt });
     if (userPrompt) parts.push({ text: userPrompt });
     
-    if (images && Array.isArray(images)) {
+    // Add images if present
+    if (hasImages) {
       images.forEach(img => {
         const cleanBase64 = img.replace(/^data:image\/\w+;base64,/, "");
         parts.push({ inline_data: { mime_type: "image/jpeg", data: cleanBase64 } });
       });
     }
     
+    // ============================================
+    // GENERATION CONFIG
+    // ============================================
+    
+    const generationConfig = { 
+      temperature: 1.0,  // Gemini 3.0 Pro / 1.5 Flash default
+      topK: 40, 
+      topP: 0.95, 
+      maxOutputTokens: 8192
+    };
+    
+    // ============================================
+    // GENERATE CONTENT
+    // ============================================
+    
     const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: parts }],
-        generationConfig: { 
-          temperature: 1.0,  // Gemini 3.0 Pro 預設值 - 最佳效能
-          topK: 40, 
-          topP: 0.95, 
-          maxOutputTokens: 8192
-          // Note: thinkingLevel parameter not yet supported in API
-        }
+        generationConfig: generationConfig
       })
     });
     
@@ -57,10 +88,14 @@ exports.handler = async (event) => {
     const data = await response.json();
     const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response';
     
+    // Return response with model information
     return { 
       statusCode: 200, 
       headers, 
-      body: JSON.stringify({ response: generatedText }) 
+      body: JSON.stringify({ 
+        response: generatedText,
+        modelUsed: modelName  // Tell frontend which model was used
+      }) 
     };
     
   } catch (error) {
