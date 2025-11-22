@@ -91,10 +91,11 @@ exports.handler = async (event, context) => {
           else if (imgBase64.includes('data:image/webp')) mimeType = 'image/webp';
 
           parts.push({
-            inlineData: { mimeType, data: cleanBase64 }
+            inlineData: { mimeType, data: cleanBase64 },
+            mediaResolution: { level: "media_resolution_high" }
           });
 
-          console.log(`✅ 圖片 ${index + 1} (${mimeType})`);
+          console.log(`✅ 圖片 ${index + 1} (${mimeType}, HIGH)`);
         } catch (err) {
           console.error(`❌ 圖片 ${index + 1} 錯誤`);
         }
@@ -107,6 +108,10 @@ exports.handler = async (event, context) => {
       topP: 0.95,
       maxOutputTokens: hasImages ? 8192 : 4096,
     };
+
+    if (hasImages) {
+      generationConfig.thinkingLevel = "high";
+    }
 
     console.log(`🚀 呼叫 ${modelName} (timeout: 40s)...`);
     const startTime = Date.now();
