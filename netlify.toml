@@ -1,28 +1,14 @@
-# ✅ BrotherG 3.0 部署專用設定
-# 適用於：純靜態 HTML + Functions 結構（無 React build）
-# 問題解決：build not exist / Page not found / 404 loop
-
 [build]
-  # 不要跑 npm build
   command = ""
-  # ✅ 若你的 index.html 在 public/
   publish = "public"
-  # ✅ 若你的 index.html 在根目錄，就改成 "."
-  # publish = "."
 
 [functions]
   directory = "netlify/functions"
-  
-# ✅ 60 秒 timeout 給 3.0 Pro 足夠時間
+
 [functions."*"]
   timeout = 60
 
-# ✅ 單頁應用程式路由修正
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
-# ✅ 增加環境變數（你可以改成自己的 key）
-# [build.environment]
-#   GEMINI_API_KEY = "your_gemini_key_here"

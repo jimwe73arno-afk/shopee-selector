@@ -1,5 +1,38 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
-<head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>蝦皮選品AI</title></head>
-<body><div id="root"></div></body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BROTHER G | Gemini 3.0 蝦皮選品分析</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main>
+    <h1>🎯 BROTHER G 蝦皮選品分析</h1>
+    <p class="subtitle">Powered by Gemini 3.0 Pro</p>
+    
+    <div class="upload-section">
+      <label for="imageInput" class="upload-label">
+        📷 上傳蝦皮後台截圖（最多6張）
+      </label>
+      <input id="imageInput" type="file" multiple accept="image/*" />
+      
+      <div id="imagePreview" class="image-preview"></div>
+    </div>
+
+    <div class="prompt-section">
+      <label for="prompt">💬 分析需求（可選）</label>
+      <textarea id="prompt" rows="3" placeholder="例如：幫我分析這些商品的選品策略"></textarea>
+    </div>
+
+    <button id="analyzeBtn" class="analyze-btn">
+      <span id="btnText">🚀 開始智能分析</span>
+      <span id="btnLoading" class="loading" style="display:none;">⏳ 分析中...</span>
+    </button>
+
+    <div id="output" class="output"></div>
+  </main>
+
+  <script src="/ask.js"></script>
+</body>
 </html>
