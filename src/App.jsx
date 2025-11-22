@@ -469,7 +469,8 @@ const StrategyView = ({ isPro, setShowUpgrade }) => {
             for (let i = 0; i < files.length; i++) {
                 console.log(`壓縮第 ${i + 1}/${files.length} 張圖片...`);
                 const compressed = await compressImage(files[i]);
-                compressedImages.push(compressed.data); // 提取 base64 數據
+                // compressed 是對象 {data, mimeType}，提取 base64 數據
+                compressedImages.push(compressed.data);
             }
             
             console.log(`✅ 完成壓縮 ${compressedImages.length} 張圖片`);
