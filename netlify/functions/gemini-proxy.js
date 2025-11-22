@@ -1,9 +1,9 @@
+// ✅ Node.js 18+ 原生支援 fetch，不需要 import
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-// ✅ 使用正確的模型
-const MODEL_IMAGE = 'gemini-3-pro-preview';
-const MODEL_TEXT = 'gemini-2.5-flash';
+// ✅ 正確的模型名稱
+const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
+const MODEL = 'gemini-3-pro-preview';  // 不是 gemini-3.0-pro
 
 exports.handler = async (event, context) => {
   context.callbackWaitsForEmptyEventLoop = false;
@@ -20,70 +20,59 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    if (!GEMINI_API_KEY) {
-      throw new Error('Missing GEMINI_API_KEY');
-    }
-
     const body = JSON.parse(event.body || '{}');
     const images = body.images || [];
-    const prompt = body.prompt || body.userPrompt || '';
+    const prompt = body.prompt || '';
     const systemPrompt = body.systemPrompt || '';
 
-    const MAX_IMAGES = 6;
-    
-    if (!prompt && images.length === 0) {
-      return {
-        statusCode: 400,
+    if (!GEMINI_API_KEY) {
+      return { 
+        statusCode: 500, 
         headers,
-        body: JSON.stringify({ error: '請提供文字或圖片' })
+        body: JSON.stringify({ error: 'Missing GEMINI_API_KEY' })
       };
     }
 
-    if (images.length > MAX_IMAGES) {
-      return {
-        statusCode: 400,
+    if (images.length === 0 && !prompt) {
+      return { 
+        statusCode: 400, 
         headers,
-        body: JSON.stringify({ error: `最多 ${MAX_IMAGES} 張圖片` })
+        body: JSON.stringify({ error: '請提供圖片或文字' })
       };
     }
 
-    const hasImages = images.length > 0;
-    const model = hasImages ? MODEL_IMAGE : MODEL_TEXT;
-    
-    console.log(`🤖 模型: ${model}, 圖片: ${images.length}`);
+    console.log(`🤖 模型: ${MODEL}, 圖片數: ${images.length}`);
 
     // 準備 parts
     const parts = [];
     
-    let combinedPrompt = '';
-    if (systemPrompt) {
-      combinedPrompt = systemPrompt + '\n\n' + prompt;
-    } else {
-      combinedPrompt = prompt;
-    }
-    
+    // 文字提示
+    let combinedPrompt = systemPrompt ? systemPrompt + '\n\n' + prompt : prompt;
     if (combinedPrompt) {
-      parts.push({ text: combinedPrompt });
+      parts.push({ text: combinedPrompt || "請幫我分析這些圖片" });
     }
 
-    // 加入圖片
-    if (hasImages) {
-      images.slice(0, MAX_IMAGES).forEach((imgBase64) => {
-        const cleanBase64 = imgBase64.replace(/^data:image\/\w+;base64,/, '');
-        let mimeType = 'image/jpeg';
-        if (imgBase64.includes('data:image/png')) mimeType = 'image/png';
-        else if (imgBase64.includes('data:image/webp')) mimeType = 'image/webp';
+    // ✅ 正確的圖片格式：inlineData (camelCase)
+    images.forEach((img) => {
+      const cleanBase64 = img.replace(/^data:image\/\w+;base64,/, '');
+      let mimeType = 'image/jpeg';
+      
+      if (img.includes('data:image/png')) {
+        mimeType = 'image/png';
+      } else if (img.includes('data:image/webp')) {
+        mimeType = 'image/webp';
+      }
 
-        parts.push({
-          inlineData: {
-            mimeType: mimeType,
-            data: cleanBase64
-          }
-        });
+      parts.push({
+        inlineData: {  // ✅ camelCase
+          mimeType: mimeType,  // ✅ camelCase
+          data: cleanBase64
+        }
       });
-    }
+    });
 
-    const requestBody = {
+    // ✅ 正確的 payload 結構
+    const payload = {
       contents: [{
         role: "user",
         parts: parts
@@ -97,46 +86,46 @@ exports.handler = async (event, context) => {
     };
 
     const startTime = Date.now();
-    const url = `${GEMINI_ENDPOINT}/${model}:generateContent?key=${GEMINI_API_KEY}`;
+
+    // ✅ 正確的 fetch 語法
+    const url = `${GEMINI_ENDPOINT}/${MODEL}:generateContent?key=${GEMINI_API_KEY}`;
     
-    const response = await fetch(url, {
+    const res = await fetch(url, {  // ✅ 修正語法錯誤
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(payload)
     });
 
     const responseTime = Date.now() - startTime;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ API error:', errorText);
-      throw new Error(`API error: ${response.status}`);
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('❌ Gemini API error:', errorText);
+      throw new Error(`API error: ${res.status}`);
     }
 
-    const data = await response.json();
+    const data = await res.json();
     const result = data.candidates?.[0]?.content?.parts?.[0]?.text || '無回應';
 
-    console.log(`✅ 完成 (${responseTime}ms)`);
+    console.log(`✅ 完成 (${responseTime}ms, ${result.length} 字元)`);
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         result: result,
-        modelUsed: model,
+        modelUsed: MODEL,
         imageCount: images.length,
         responseTime: `${responseTime}ms`
       })
     };
 
-  } catch (error) {
-    console.error('❌ Error:', error);
+  } catch (err) {
+    console.error('❌ Gemini proxy error:', err);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
-        error: error.message || 'Unknown error'
-      })
+      body: JSON.stringify({ error: err.message })
     };
   }
 };
