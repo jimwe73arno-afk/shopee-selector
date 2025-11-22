@@ -42,8 +42,8 @@ exports.handler = async (event) => {
           temperature: 1.0,  // Gemini 3.0 Pro 預設值 - 最佳效能
           topK: 40, 
           topP: 0.95, 
-          maxOutputTokens: 8192,
-          thinking_level: "high"  // 啟用深度推理能力
+          maxOutputTokens: 8192
+          // Note: thinkingLevel parameter not yet supported in API
         }
       })
     });
