@@ -1,8 +1,15 @@
+[build]
+  publish = "."
+  command = ""
+
+[functions]
+  directory = "netlify/functions"
+
+# ✅ 關鍵：增加 function timeout
+[functions."*"]
+  timeout = 60
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
-# Netlify Pro Timeout 設定（解鎖 Pro 權限）
-[functions."*"]
-  timeout = 26

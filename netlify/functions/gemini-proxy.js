@@ -1,51 +1,12 @@
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-// ✅ 使用 2.5-flash：快速 + 高質量
-const MODEL = 'gemini-2.5-flash';
-
-const withTimeout = (promise, timeoutMs = 25000) => {  // ✅ 縮短到 25 秒
-  return Promise.race([
-    promise,
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
-    )
-  ]);
-};
-
-async function callGemini(contents) {
-  const url = `${GEMINI_ENDPOINT}/${MODEL}:generateContent?key=${GEMINI_API_KEY}`;
-  
-  console.log(`🤖 呼叫模型: ${MODEL}`);
-  
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ 
-      contents,
-      generationConfig: {
-        temperature: 0.7,
-        topP: 0.8,
-        topK: 40,
-        maxOutputTokens: 8192
-      }
-    })
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`❌ API 錯誤:`, errorText);
-    throw new Error(`API error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  const parts = data.candidates?.[0]?.content?.parts || [];
-  return parts.map(p => p.text || '').join('');
-}
+// ✅ 使用 3.0 Pro - 最強模型
+const MODEL_IMAGE = 'gemini-3-pro-preview';    // 圖片分析
+const MODEL_TEXT = 'gemini-2.5-flash';          // 文字分析
 
 exports.handler = async (event, context) => {
+  // ✅ 關鍵：設置不等待事件循環
   context.callbackWaitsForEmptyEventLoop = false;
 
   const headers = {
@@ -77,7 +38,7 @@ exports.handler = async (event, context) => {
     const systemPrompt = body.systemPrompt || '';
     const images = body.images || body.image || [];
 
-    const MAX_IMAGES = 10;
+    const MAX_IMAGES = 6;  // ✅ 支援 6 張圖片
     
     if (!userPrompt && (!images || images.length === 0)) {
       return {
@@ -96,10 +57,11 @@ exports.handler = async (event, context) => {
     }
 
     const hasImages = images && images.length > 0;
-    console.log(`📊 分析模式: ${hasImages ? '🎯 圖片' : '⚡ 文字'}`);
+    const model = hasImages ? MODEL_IMAGE : MODEL_TEXT;
+    
+    console.log(`📊 模式: ${hasImages ? '🎯 3.0 Pro 圖片' : '⚡ 2.5 Flash 文字'}`);
     console.log(`📷 圖片數量: ${images.length}`);
-
-    const startTime = Date.now();
+    console.log(`🤖 模型: ${model}`);
 
     // 準備 parts
     const parts = [];
@@ -114,7 +76,7 @@ exports.handler = async (event, context) => {
     
     parts.push({ text: combinedPrompt });
 
-    // 加入圖片（如果有）
+    // 加入圖片
     if (hasImages) {
       const imagesToProcess = images.slice(0, MAX_IMAGES);
       
@@ -139,26 +101,60 @@ exports.handler = async (event, context) => {
       });
     }
 
-    // ✅ 單階段處理：快速完成
-    const finalResponse = await withTimeout(
-      callGemini([
+    // ✅ 關鍵優化：精簡 3.0 Pro 的配置
+    const requestBody = {
+      contents: [
         {
           role: "user",
           parts: parts
         }
-      ]),
-      25000  // ✅ 25 秒內完成，避免 Inactivity Timeout
-    );
+      ],
+      generationConfig: {
+        temperature: 0.7,
+        topP: 0.8,
+        topK: 40,
+        maxOutputTokens: 4096  // ✅ 減少 tokens 加快速度
+      }
+    };
+
+    console.log(`🚀 呼叫 ${model}...`);
+    const startTime = Date.now();
+
+    // ✅ 使用更長的 timeout - 給 3.0 Pro 足夠時間
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 50000);  // 50 秒
+
+    const url = `${GEMINI_ENDPOINT}/${model}:generateContent?key=${GEMINI_API_KEY}`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
 
     const responseTime = Date.now() - startTime;
-    console.log(`✅ 完成 (${finalResponse.length} 字元, ${responseTime}ms)`);
+    console.log(`⏱️ ${responseTime}ms`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ API error:', errorText);
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || '無回應';
+
+    console.log(`✅ 完成 (${generatedText.length} 字元)`);
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({ 
-        response: finalResponse,
-        modelUsed: MODEL,
+        response: generatedText,
+        modelUsed: model,
         imageCount: images.length,
         responseTime: `${responseTime}ms`
       })
@@ -168,8 +164,8 @@ exports.handler = async (event, context) => {
     console.error('❌ Error:', error);
     
     let errorMessage = error.message || 'Unknown error';
-    if (errorMessage.includes('timeout')) {
-      errorMessage = '處理時間過長，請減少圖片數量或稍後再試';
+    if (error.name === 'AbortError') {
+      errorMessage = '處理時間過長，請稍後再試';
     } else if (errorMessage.includes('GEMINI_API_KEY')) {
       errorMessage = '環境變數未配置';
     } else if (errorMessage.includes('404')) {
