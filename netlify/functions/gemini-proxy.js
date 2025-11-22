@@ -9,13 +9,22 @@ const withTimeout = (promise, timeoutMs = 40000) => {
   ]);
 };
 
-// 🎯 強制指定模型：圖片用 3.0 Pro，文字用 1.5 Flash
-const getModelUrl = (hasImages) => {
-  // ✅ 圖片：gemini-3-pro-preview（最強）
-  // ✅ 文字：gemini-1.5-flash（快速）
-  const model = hasImages ? 'gemini-3-pro-preview' : 'gemini-1.5-flash';
-  console.log(`🤖 強制使用模型: ${model}`);
-  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+// 🎯 智能分流：圖片用 3.0 Pro，文字用 1.5 Flash
+const getModelConfig = (hasImages) => {
+  if (hasImages) {
+    return {
+      // ✅ 圖片分析：使用 3.0 Pro
+      model: 'gemini-3-pro-preview',
+      // ✅ 使用 v1beta endpoint（3.0 Pro 必須）
+      endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent'
+    };
+  } else {
+    return {
+      // ✅ 文字分析：使用 1.5 Flash
+      model: 'gemini-1.5-flash',
+      endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent'
+    };
+  }
 };
 
 exports.handler = async (event, context) => {
@@ -69,61 +78,88 @@ exports.handler = async (event, context) => {
     }
 
     const hasImages = images && images.length > 0;
-    const modelUrl = getModelUrl(hasImages);
+    const config = getModelConfig(hasImages);
     
-    // ✅ 明確顯示使用的模型
-    const modelName = hasImages ? 'gemini-3-pro-preview' : 'gemini-1.5-flash';
-    console.log(`📊 分析模式: ${hasImages ? '🎯 圖片 (3.0 Pro)' : '⚡ 文字 (1.5 Flash)'}`);
+    console.log(`📊 模式: ${hasImages ? '🎯 圖片 (3.0 Pro)' : '⚡ 文字 (1.5 Flash)'}`);
     console.log(`📷 圖片數量: ${images.length}`);
+    console.log(`🔗 Endpoint: ${config.endpoint}`);
 
+    // ✅ 3.0 Pro 正確的 parts 結構
     const parts = [];
-    if (systemPrompt) parts.push({ text: systemPrompt });
-    if (userPrompt) parts.push({ text: userPrompt });
+    
+    // 組合提示詞（如果有 systemPrompt 和 userPrompt，合併）
+    let combinedPrompt = '';
+    if (systemPrompt) {
+      combinedPrompt = systemPrompt + '\n\n' + userPrompt;
+    } else {
+      combinedPrompt = userPrompt;
+    }
+    
+    // 先加入文字提示
+    if (combinedPrompt) {
+      parts.push({ text: combinedPrompt });
+    }
 
+    // 再加入圖片（如果有）
     if (hasImages) {
       const imagesToProcess = images.slice(0, MAX_IMAGES);
       
       imagesToProcess.forEach((imgBase64, index) => {
         try {
+          // 清理 Base64 字串
           const cleanBase64 = imgBase64.replace(/^data:image\/\w+;base64,/, '');
+          
+          // 檢測圖片格式
           let mimeType = 'image/jpeg';
-          if (imgBase64.includes('data:image/png')) mimeType = 'image/png';
-          else if (imgBase64.includes('data:image/webp')) mimeType = 'image/webp';
+          if (imgBase64.includes('data:image/png')) {
+            mimeType = 'image/png';
+          } else if (imgBase64.includes('data:image/webp')) {
+            mimeType = 'image/webp';
+          }
 
+          // ✅ 3.0 Pro 正確格式：只有 inlineData，沒有其他欄位
           parts.push({
-            inlineData: { mimeType, data: cleanBase64 },
-            mediaResolution: { level: "media_resolution_high" }
+            inlineData: {
+              mimeType: mimeType,
+              data: cleanBase64
+            }
           });
 
-          console.log(`✅ 圖片 ${index + 1} (${mimeType}, HIGH)`);
+          console.log(`✅ 圖片 ${index + 1} (${mimeType})`);
         } catch (err) {
-          console.error(`❌ 圖片 ${index + 1} 錯誤`);
+          console.error(`❌ 圖片 ${index + 1} 錯誤:`, err.message);
         }
       });
     }
 
-    const generationConfig = {
-      temperature: 1.0,
-      topK: 40,
-      topP: 0.95,
-      maxOutputTokens: hasImages ? 8192 : 4096,
+    // ✅ 3.0 Pro 正確的 payload 結構
+    const requestBody = {
+      contents: [
+        {
+          role: "user",  // ✅ 必須指定 role
+          parts: parts   // ✅ parts 陣列
+        }
+      ],
+      // ✅ 駝峰式：generationConfig（不是 generation_config）
+      generationConfig: {
+        temperature: 0.7,   // ✅ 3.0 Pro 建議 0.7-1.0
+        topP: 0.8,
+        topK: 40,
+        maxOutputTokens: hasImages ? 8192 : 4096
+      }
+      // ❌ 移除 mediaResolution - 3.0 Pro 不支援
+      // ❌ 移除 thinkingLevel - 3.0 Pro 不支援
     };
 
-    if (hasImages) {
-      generationConfig.thinkingLevel = "high";
-    }
-
-    console.log(`🚀 呼叫 ${modelName} (timeout: 40s)...`);
+    console.log(`🚀 呼叫 ${config.model} (timeout: 40s)...`);
     const startTime = Date.now();
 
+    // ✅ 使用正確的 endpoint
     const response = await withTimeout(
-      fetch(`${modelUrl}?key=${GEMINI_API_KEY}`, {
+      fetch(`${config.endpoint}?key=${GEMINI_API_KEY}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts }],
-          generationConfig
-        })
+        body: JSON.stringify(requestBody)
       }),
       40000
     );
@@ -138,6 +174,8 @@ exports.handler = async (event, context) => {
     }
 
     const data = await response.json();
+    
+    // ✅ 解析回應
     const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || '無回應';
 
     console.log(`✅ 完成 (${generatedText.length} 字元)`);
@@ -147,7 +185,7 @@ exports.handler = async (event, context) => {
       headers,
       body: JSON.stringify({ 
         response: generatedText,
-        modelUsed: modelName,
+        modelUsed: config.model,
         imageCount: images.length,
         responseTime: `${responseTime}ms`
       })
@@ -161,8 +199,10 @@ exports.handler = async (event, context) => {
       errorMessage = 'API 處理時間過長，請減少圖片數量';
     } else if (errorMessage.includes('GEMINI_API_KEY')) {
       errorMessage = '環境變數未配置';
-    } else if (errorMessage.includes('404') || errorMessage.includes('not found')) {
-      errorMessage = '模型不存在，請檢查 API 設定';
+    } else if (errorMessage.includes('404')) {
+      errorMessage = '模型不存在';
+    } else if (errorMessage.includes('400')) {
+      errorMessage = 'API 請求格式錯誤';
     }
     
     return {
