@@ -96,15 +96,23 @@ const callGeminiAPI = async (apiKey, input, promptText, isImage = false) => {
     let payload = {};
 
     if (isImage) {
-        // 提取壓縮後的 base64 數據（移除 data:image/jpeg;base64, 前綴）
-        const imageArray = Array.isArray(input) ? input : [input];
-        const base64Images = imageArray.map(img => {
-            // 如果是 data URL，提取 base64 部分
-            if (typeof img === 'string' && img.startsWith('data:')) {
-                return img.split(',')[1];
-            }
-            return img; // 如果已經是純 base64，直接返回
-        });
+        // 使用壓縮後的圖片（如果存在全域變數）
+        let base64Images = [];
+        
+        if (window.uploadedImages && window.uploadedImages.length > 0) {
+            // 使用壓縮後的圖片
+            base64Images = window.uploadedImages;
+        } else {
+            // 回退：從 input 提取（如果是 data URL）
+            const imageArray = Array.isArray(input) ? input : [input];
+            base64Images = imageArray.map(img => {
+                // 如果是 data URL，提取 base64 部分
+                if (typeof img === 'string' && img.startsWith('data:')) {
+                    return img.split(',')[1];
+                }
+                return img; // 如果已經是純 base64，直接返回
+            });
+        }
         
         payload = {
             images: base64Images, 
@@ -153,47 +161,66 @@ const cleanText = (text) => {
     return text.replace(/\*\*/g, '').replace(/###/g, '').replace(/\|/g, ' '); 
 };
 
-// --- 🎯 圖片壓縮函數（降低大小，避免超時） ---
+// --- 🎯 圖片壓縮函數（避免超時） ---
 const compressImage = (file) => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
+        
         reader.onload = (e) => {
             const img = new Image();
+            
             img.onload = () => {
-                // 創建 Canvas
+                // 創建 Canvas 壓縮
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 
-                // 🎯 關鍵：限制最大尺寸為 1024px
+                // 🎯 限制最大尺寸 1024px
                 let width = img.width;
                 let height = img.height;
-                const maxSize = 1024;
+                const MAX_SIZE = 1024;
                 
-                if (width > height && width > maxSize) {
-                    height = (height * maxSize) / width;
-                    width = maxSize;
-                } else if (height > maxSize) {
-                    width = (width * maxSize) / height;
-                    height = maxSize;
+                if (width > height) {
+                    if (width > MAX_SIZE) {
+                        height = (height * MAX_SIZE) / width;
+                        width = MAX_SIZE;
+                    }
+                } else {
+                    if (height > MAX_SIZE) {
+                        width = (width * MAX_SIZE) / height;
+                        height = MAX_SIZE;
+                    }
                 }
                 
                 canvas.width = width;
                 canvas.height = height;
                 
-                // 繪製壓縮後的圖片
+                // 繪製圖片
                 ctx.drawImage(img, 0, 0, width, height);
                 
-                // 🎯 關鍵：轉換為 Base64，質量 0.7
-                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-                
-                // 移除 data:image/jpeg;base64, 前綴
-                const base64Data = compressedBase64.split(',')[1];
-                
-                resolve(base64Data);
+                // 🎯 轉 JPEG，質量 0.7（平衡質量和大小）
+                canvas.toBlob(
+                    (blob) => {
+                        const reader2 = new FileReader();
+                        reader2.onloadend = () => {
+                            // 移除 data URL 前綴
+                            const base64 = reader2.result.split(',')[1];
+                            resolve({
+                                data: base64,
+                                mimeType: 'image/jpeg'
+                            });
+                        };
+                        reader2.onerror = () => reject(new Error('Blob 讀取失敗'));
+                        reader2.readAsDataURL(blob);
+                    },
+                    'image/jpeg',
+                    0.7  // 質量參數
+                );
             };
+            
             img.onerror = () => reject(new Error('圖片載入失敗'));
             img.src = e.target.result;
         };
+        
         reader.onerror = () => reject(new Error('檔案讀取失敗'));
         reader.readAsDataURL(file);
     });
@@ -434,10 +461,18 @@ const StrategyView = ({ isPro, setShowUpgrade }) => {
         setError('');
         
         try {
-            // 🎯 關鍵：壓縮所有圖片
-            const compressedImages = await Promise.all(
-                files.map(file => compressImage(file))
-            );
+            console.log(`開始處理 ${files.length} 張圖片...`);
+            
+            const compressedImages = [];
+            
+            // 🎯 逐一壓縮圖片
+            for (let i = 0; i < files.length; i++) {
+                console.log(`壓縮第 ${i + 1}/${files.length} 張圖片...`);
+                const compressed = await compressImage(files[i]);
+                compressedImages.push(compressed.data); // 提取 base64 數據
+            }
+            
+            console.log(`✅ 完成壓縮 ${compressedImages.length} 張圖片`);
             
             // 更新 UI（顯示縮圖）- 添加 data:image/jpeg;base64, 前綴用於顯示
             const previewImages = compressedImages.map(base64 => 
@@ -447,7 +482,9 @@ const StrategyView = ({ isPro, setShowUpgrade }) => {
             setImages(prev => [...prev, ...previewImages]);
             setResult(''); 
             
-            console.log(`✅ 已壓縮 ${files.length} 張圖片`);
+            // 儲存壓縮後的圖片到全域變數（用於 API 調用）
+            window.uploadedImages = compressedImages;
+            
         } catch (err) {
             console.error("圖片處理失敗", err);
             setError("圖片處理失敗：" + (err.message || "請重試"));

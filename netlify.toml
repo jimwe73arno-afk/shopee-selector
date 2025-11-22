@@ -1,16 +1,19 @@
 [build]
-  # ✅ 關鍵修正：網頁檔案在根目錄 "." 不是 "build"
+  # 關鍵修改：發布根目錄，不要找 build 資料夾
   publish = "."
-  # 不需要編譯過程，留空
+  # 靜態網站不需要編譯
   command = ""
 
 [functions]
   # 後端函數位置
   directory = "netlify/functions"
-  # 增加 timeout 到 26 秒
+  # 使用 esbuild 打包（更快）
+  node_bundler = "esbuild"
+  # 增加超時時間
   timeout = 26
 
 [[redirects]]
+  # SPA 路由支援
   from = "/*"
   to = "/index.html"
   status = 200
