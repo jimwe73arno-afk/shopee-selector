@@ -1,279 +1,244 @@
-/**
- * gemini-proxy.js（分段版）
- * Step1：gemini-1.5-flash 讀圖、整理成文字摘要
- * Step2：gemini-3-pro-preview 依照你的決策提示詞做深度推理
- * 前端只要照舊 POST { prompt, images }，images 為 base64 陣列
- */
-
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-// 共用：簡單從 Gemini 回傳 JSON 抽出文字
-function extractText(resultJson) {
-  if (!resultJson) return "";
-  const c = resultJson.candidates?.[0];
-  if (!c || !c.content?.parts) return "";
-  return c.content.parts.map((p) => p.text || "").join("\n").trim();
+// ✅ 修正：使用還活著的模型
+const FAST_IMAGE_MODEL = 'gemini-2.5-flash';        // ✅ 替代已淘汰的 1.5-flash
+const REASONING_MODEL = 'gemini-3-pro-preview';     // ✅ 最強推理模型
+
+const withTimeout = (promise, timeoutMs = 40000) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Request timeout after ' + timeoutMs + 'ms')), timeoutMs)
+    )
+  ]);
+};
+
+// 🎯 通用 Gemini 呼叫函數
+async function callGemini(model, contents, apiKey) {
+  const url = `${GEMINI_ENDPOINT}/${model}:generateContent?key=${apiKey}`;
+  
+  console.log(`🤖 呼叫模型: ${model}`);
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ 
+      contents,
+      generationConfig: {
+        temperature: 0.7,
+        topP: 0.8,
+        topK: 40,
+        maxOutputTokens: 8192
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`❌ ${model} 錯誤:`, errorText);
+    throw new Error(`Gemini error (${model}): ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  const parts = data.candidates?.[0]?.content?.parts || [];
+  return parts.map(p => p.text || '').join('');
 }
 
 exports.handler = async (event, context) => {
   context.callbackWaitsForEmptyEventLoop = false;
 
-  // CORS & OPTIONS
-  const baseHeaders = {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Content-Type': 'application/json'
   };
-  
-  if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 200, headers: baseHeaders, body: "" };
+
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers, body: '' };
   }
 
-  if (event.httpMethod !== "POST") {
+  if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
-      headers: baseHeaders,
-      body: JSON.stringify({ error: "Method not allowed" })
+      headers,
+      body: JSON.stringify({ error: 'Method not allowed' })
     };
   }
 
   try {
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not set");
+    if (!GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY not configured');
+    }
 
-    const body = JSON.parse(event.body || "{}");
-    const prompt = body.prompt || body.userPrompt || body.text || '';
+    const body = JSON.parse(event.body);
+    const userPrompt = body.prompt || body.userPrompt || body.text || '';
     const systemPrompt = body.systemPrompt || '';
     const images = body.images || body.image || [];
 
-    // 🎯 判斷是否有圖片：有圖片走分段模式，沒有圖片直接用 1.5-flash
-    const hasImages = images && Array.isArray(images) && images.length > 0;
     const MAX_IMAGES = 10;
-
-    if (!prompt && !hasImages) {
+    
+    if (!userPrompt && (!images || images.length === 0)) {
       return {
         statusCode: 400,
-        headers: baseHeaders,
-        body: JSON.stringify({ error: "請至少上傳 1 張圖片或輸入文字" })
+        headers,
+        body: JSON.stringify({ error: '請至少上傳 1 張圖片或輸入文字' })
       };
     }
 
-    if (hasImages && images.length > MAX_IMAGES) {
+    if (images.length > MAX_IMAGES) {
       return {
         statusCode: 400,
-        headers: baseHeaders,
+        headers,
         body: JSON.stringify({ error: `一次最多上傳 ${MAX_IMAGES} 張圖片` })
       };
     }
 
-    // 🎯 如果沒有圖片，直接用 1.5-flash 處理文字
-    if (!hasImages) {
-      console.info("⚡ 模式：純文字（1.5-flash 直接處理）");
+    const hasImages = images && images.length > 0;
+    console.log(`📊 分析模式: ${hasImages ? '🎯 圖片分析' : '⚡ 文字分析'}`);
+    console.log(`📷 圖片數量: ${images.length}`);
+
+    const startTime = Date.now();
+    let finalResponse = '';
+
+    if (hasImages) {
+      // ========================================
+      // 🎯 兩段式處理：圖片分析
+      // ========================================
       
-      const flashEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+      console.log(`\n=== 階段 1: ${FAST_IMAGE_MODEL} 讀取圖片 ===`);
       
-      const combinedPrompt = systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt;
+      // 準備圖片 parts
+      const imageParts = [];
+      const imagesToProcess = images.slice(0, MAX_IMAGES);
       
-      const flashBody = {
-        contents: [
+      imagesToProcess.forEach((imgBase64, index) => {
+        try {
+          const cleanBase64 = imgBase64.replace(/^data:image\/\w+;base64,/, '');
+          let mimeType = 'image/jpeg';
+          if (imgBase64.includes('data:image/png')) mimeType = 'image/png';
+          else if (imgBase64.includes('data:image/webp')) mimeType = 'image/webp';
+
+          imageParts.push({
+            inlineData: {
+              mimeType: mimeType,
+              data: cleanBase64
+            }
+          });
+
+          console.log(`✅ 圖片 ${index + 1} (${mimeType})`);
+        } catch (err) {
+          console.error(`❌ 圖片 ${index + 1} 錯誤`);
+        }
+      });
+
+      // 組合提示詞
+      let combinedPrompt = '';
+      if (systemPrompt) {
+        combinedPrompt = systemPrompt + '\n\n' + userPrompt;
+      } else {
+        combinedPrompt = userPrompt;
+      }
+
+      // 階段 1: 用 2.5-flash 快速讀圖
+      const imageAnalysisPrompt = combinedPrompt + '\n\n請仔細分析這些圖片中的數據，提取所有關鍵信息。';
+      
+      const imageAnalysisText = await withTimeout(
+        callGemini(FAST_IMAGE_MODEL, [
+          {
+            role: "user",
+            parts: [
+              { text: imageAnalysisPrompt },
+              ...imageParts
+            ]
+          }
+        ], GEMINI_API_KEY),
+        40000
+      );
+
+      console.log(`✅ 階段 1 完成 (${imageAnalysisText.length} 字元)`);
+      console.log(`\n=== 階段 2: ${REASONING_MODEL} 深度推理 ===`);
+
+      // 階段 2: 用 3.0-pro 做深度推理
+      const reasoningPrompt = `根據以下圖片分析結果，請以專業的蝦皮選品顧問身份，提供具體的選品策略建議：\n\n${imageAnalysisText}`;
+      
+      finalResponse = await withTimeout(
+        callGemini(REASONING_MODEL, [
+          {
+            role: "user",
+            parts: [{ text: reasoningPrompt }]
+          }
+        ], GEMINI_API_KEY),
+        40000
+      );
+
+      console.log(`✅ 階段 2 完成 (${finalResponse.length} 字元)`);
+
+    } else {
+      // ========================================
+      // ⚡ 純文字處理：直接用 2.5-flash
+      // ========================================
+      
+      console.log(`\n=== 文字分析: ${FAST_IMAGE_MODEL} ===`);
+      
+      let combinedPrompt = '';
+      if (systemPrompt) {
+        combinedPrompt = systemPrompt + '\n\n' + userPrompt;
+      } else {
+        combinedPrompt = userPrompt;
+      }
+
+      finalResponse = await withTimeout(
+        callGemini(FAST_IMAGE_MODEL, [
           {
             role: "user",
             parts: [{ text: combinedPrompt }]
           }
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          topP: 0.8,
-          maxOutputTokens: 4096
-        }
-      };
+        ], GEMINI_API_KEY),
+        40000
+      );
 
-      const flashResp = await fetch(flashEndpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(flashBody)
-      });
-
-      if (!flashResp.ok) {
-        const errText = await flashResp.text();
-        throw new Error(`API error: ${flashResp.status} - ${errText}`);
-      }
-
-      const flashJson = await flashResp.json();
-      const finalText = extractText(flashJson) || "⚠️ 模型沒有產出文字";
-
-      return {
-        statusCode: 200,
-        headers: baseHeaders,
-        body: JSON.stringify({ 
-          response: finalText,
-          modelUsed: "gemini-1.5-flash",
-          mode: "text-only"
-        })
-      };
+      console.log(`✅ 文字分析完成 (${finalResponse.length} 字元)`);
     }
 
-    // 🎯 有圖片：分段處理模式
-    console.info("🧠 模式：分段（1.5 看圖 → 3.0 推理）");
-    console.info("🖼 圖片數量：", images.length);
-
-    // ---------- Step 1：用 1.5-flash 看圖，快速整理摘要 ----------
-    const visionEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-
-    const visionBody = {
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              text: `
-你是一位 Shopee 數據分析師。
-請只根據下面所有截圖，整理出你看到的核心數據點與現象：
-
-- 商品名稱／類目
-- 曝光、點擊、成交（如果畫面有）
-- CTR、轉化率等關鍵指標
-- 任何明顯的異常、亮點或問題
-
-用繁體中文，條列式輸出，不要寫教學或建議，只描述你從畫面「看到什麼」。
-              `.trim(),
-            },
-            ...images.slice(0, MAX_IMAGES).map((raw) => {
-              const cleaned = String(raw).replace(/^data:image\/[a-zA-Z]+;base64,/, "");
-              let mimeType = "image/jpeg";
-              if (String(raw).includes("data:image/png")) mimeType = "image/png";
-              else if (String(raw).includes("data:image/webp")) mimeType = "image/webp";
-              
-              return {
-                inlineData: {
-                  mimeType: mimeType,
-                  data: cleaned,
-                },
-              };
-            }),
-          ],
-        },
-      ],
-      generationConfig: {
-        temperature: 0.3,
-        topP: 0.8,
-        maxOutputTokens: 1024,
-      },
-    };
-
-    console.info("📥 呼叫 gemini-1.5-flash 讀圖...");
-    let controller1 = new AbortController();
-    let timeout1 = setTimeout(() => controller1.abort(), 25000); // 25 秒兜底
-
-    const visionResp = await fetch(visionEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(visionBody),
-      signal: controller1.signal,
-    });
-    clearTimeout(timeout1);
-
-    if (!visionResp.ok) {
-      const errText = await visionResp.text();
-      console.error("❌ 1.5-flash error:", errText);
-      return {
-        statusCode: visionResp.status,
-        headers: baseHeaders,
-        body: JSON.stringify({ error: errText }),
-      };
-    }
-
-    const visionJson = await visionResp.json();
-    const visionText = extractText(visionJson) || "（讀圖結果為空）";
-
-    console.info("✅ 1.5-flash 完成摘要，長度：", visionText.length);
-
-    // ---------- Step 2：把摘要 + 你的決策提示丟給 3.0-pro 做深度推理 ----------
-    const proEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-preview:generateContent?key=${GEMINI_API_KEY}`;
-
-    const finalPrompt = `
-以下是一個 AI 幫你從 Shopee 後台截圖讀出的「純描述」摘要（只描述畫面看到的數據與現象）：
---------------------------------
-${visionText}
---------------------------------
-
-${systemPrompt ? `系統提示：\n${systemPrompt}\n\n` : ''}請你完全依照下面這段「決策提示」來做深度分析與行動建議。決策提示內容如下：
---------------------------------
-${prompt}
---------------------------------
-
-請基於上面的摘要與決策提示，輸出最終的分析與建議。不要再重複原始摘要內容，而是直接進入診斷與行動。
-    `.trim();
-
-    const proBody = {
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: finalPrompt }],
-        },
-      ],
-      generationConfig: {
-        temperature: 0.7,
-        topP: 0.9,
-        maxOutputTokens: 2048,
-      },
-    };
-
-    console.info("🚀 呼叫 gemini-3-pro-preview 深度推理（timeout: 35s）...");
-    let controller2 = new AbortController();
-    let timeout2 = setTimeout(() => controller2.abort(), 35000); // 35 秒兜底
-
-    const proResp = await fetch(proEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(proBody),
-      signal: controller2.signal,
-    });
-    clearTimeout(timeout2);
-
-    if (!proResp.ok) {
-      const errText = await proResp.text();
-      console.error("❌ 3.0-pro error:", errText);
-      return {
-        statusCode: proResp.status,
-        headers: baseHeaders,
-        body: JSON.stringify({ error: errText }),
-      };
-    }
-
-    const proJson = await proResp.json();
-    const finalText = extractText(proJson) || "⚠️ 模型沒有產出文字";
-
-    console.info("🏁 完成，最終文字長度：", finalText.length);
+    const responseTime = Date.now() - startTime;
+    console.log(`⏱️ 總時間: ${responseTime}ms`);
 
     return {
       statusCode: 200,
-      headers: baseHeaders,
+      headers,
       body: JSON.stringify({ 
-        response: finalText,
-        modelUsed: "gemini-3-pro-preview",
-        mode: "two-stage",
-        imageCount: images.length
-      }),
+        response: finalResponse,
+        modelUsed: hasImages ? `${FAST_IMAGE_MODEL} → ${REASONING_MODEL}` : FAST_IMAGE_MODEL,
+        imageCount: images.length,
+        responseTime: `${responseTime}ms`
+      })
     };
-  } catch (err) {
-    console.error("🔥 Proxy error:", err);
+
+  } catch (error) {
+    console.error('❌ Error:', error);
     
-    let errorMessage = err.message || String(err);
-    if (errorMessage.includes('timeout') || err.name === 'AbortError') {
-      errorMessage = "API 處理時間過長，請減少圖片數量";
+    let errorMessage = error.message || 'Unknown error';
+    if (errorMessage.includes('timeout')) {
+      errorMessage = 'API 處理時間過長，請減少圖片數量';
     } else if (errorMessage.includes('GEMINI_API_KEY')) {
-      errorMessage = "環境變數未配置";
+      errorMessage = '環境變數未配置';
     } else if (errorMessage.includes('404')) {
-      errorMessage = "模型不存在";
+      errorMessage = '模型不存在或已被淘汰';
     } else if (errorMessage.includes('400')) {
-      errorMessage = "API 請求格式錯誤";
+      errorMessage = 'API 請求格式錯誤';
     }
     
     return {
       statusCode: 500,
-      headers: baseHeaders,
-      body: JSON.stringify({ error: errorMessage, details: err.toString() }),
+      headers,
+      body: JSON.stringify({ 
+        error: errorMessage,
+        details: error.toString()
+      })
     };
   }
 };
