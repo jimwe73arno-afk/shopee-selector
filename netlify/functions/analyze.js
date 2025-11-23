@@ -61,16 +61,21 @@ async function callGeminiAPI(model, contents, generationConfig = {}) {
 
   if (!response.ok) {
     const errorText = await response.text();
+    console.error(`❌ Gemini API error (${response.status}):`, errorText);
     throw new Error(`Gemini API error (${response.status}): ${errorText}`);
   }
 
   const data = await response.json();
+  console.log(`✅ Gemini API response received, candidates: ${data.candidates?.length || 0}`);
+  
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
   
   if (!text) {
-    throw new Error('Empty response from Gemini API');
+    console.error('❌ Empty response from Gemini API. Full response:', JSON.stringify(data, null, 2));
+    throw new Error('Empty response from Gemini API. Please check the API key and model name.');
   }
-
+  
+  console.log(`✅ Gemini response text length: ${text.length} chars`);
   return text;
 }
 
@@ -252,7 +257,9 @@ exports.handler = async (event, context) => {
     const tier = checkUserTier(event);
     console.log(`👤 User Tier: ${tier}`);
 
-    // Tier-based validation and limits
+    // 暂时移除付费限制 - 所有功能开放
+    // Tier-based validation and limits - DISABLED FOR TESTING
+    /*
     if (tier === 'free') {
       if (images && images.length > 0) {
         return {
@@ -265,26 +272,48 @@ exports.handler = async (event, context) => {
           })
         };
       }
-      // Free tier: text-only with flash model
-      console.log(`⚡ Free tier: Text-only analysis with ${MODEL_FLASH}`);
-      
+    }
+    */
+    
+    // All tiers: text-only or image analysis (temporarily open)
+    console.log(`⚡ Processing request: ${images.length} images with ${MODEL_FLASH}`);
+    
+    // If text-only request
+    if (!images || images.length === 0) {
+      const systemPrompt = `You are BrotherG, an elite Shopee E-commerce Consultant. Your tone is professional, sharp, and profit-oriented.
+
+CRITICAL OUTPUT REQUIREMENTS:
+- You MUST output valid JSON only (no markdown code blocks, no extra text)
+- JSON structure must match exactly:
+{
+  "summary": "Detailed strategic analysis (2-3 paragraphs)",
+  "recommendations": ["Actionable Step 1", "Actionable Step 2", "Actionable Step 3"],
+  "plan": "7-Day Execution Plan with specific actions and timelines"
+}`;
+
       const textResponse = await callGeminiAPI(MODEL_FLASH, [{
         role: "user",
-        parts: [{ text: textPrompt }]
+        parts: [
+          { text: systemPrompt },
+          { text: textPrompt }
+        ]
       }], {
-        maxOutputTokens: 2048
+        maxOutputTokens: 2048,
+        temperature: 0.7
       });
 
       // Try to parse as JSON, fallback to plain text
       let result;
       try {
-        result = JSON.parse(cleanJSONResponse(textResponse));
+        const cleanedJSON = cleanJSONResponse(textResponse);
+        result = JSON.parse(cleanedJSON);
       } catch (e) {
+        console.warn('⚠️ JSON parse failed, using fallback format');
         // Fallback: wrap in expected format
         result = {
           summary: textResponse,
-          recommendations: ["Upgrade to Pro for structured analysis", "Provide more specific product details", "Consider market trends"],
-          plan: "Free tier provides basic insights. Upgrade for detailed execution plans."
+          recommendations: ["分析完成，請查看上方摘要", "根據分析結果調整策略", "持續監控市場動態"],
+          plan: "根據分析結果制定執行計劃。建議先從核心建議開始實施。"
         };
       }
 
@@ -295,7 +324,9 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Pro tier: max 1 image
+    // 暂时移除图片数量限制 - 所有功能开放
+    // Pro/Master tier limits - DISABLED FOR TESTING
+    /*
     if (tier === 'pro') {
       if (images && images.length > 1) {
         return {
@@ -310,7 +341,6 @@ exports.handler = async (event, context) => {
       }
     }
 
-    // Master tier: max 10 images
     if (tier === 'master') {
       if (images && images.length > 10) {
         return {
@@ -323,6 +353,19 @@ exports.handler = async (event, context) => {
           })
         };
       }
+    }
+    */
+    
+    // Max 10 images for safety
+    if (images && images.length > 10) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ 
+          error: 'Maximum 10 images allowed',
+          limit: 10
+        })
+      };
     }
 
     // Pro/Master: Map-Reduce pipeline

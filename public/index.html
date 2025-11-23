@@ -601,8 +601,14 @@
 
                 const data = await response.json();
 
-                if (!data.ok) {
+                // 检查是否有错误
+                if (data.error) {
                     throw new Error(data.error || '分析失敗');
+                }
+
+                // 检查是否有有效数据
+                if (!data.summary && !data.recommendations && !data.plan) {
+                    throw new Error('API 返回空数据，请稍后重试');
                 }
 
                 // Hide loading
@@ -629,23 +635,40 @@
                 const top10List = document.getElementById('top-10-list');
                 top10List.innerHTML = '';
                 
-                recommendations.slice(0, 10).forEach((rec, index) => {
-                    const item = typeof rec === 'string' ? rec : rec.item || rec;
-                    const reason = typeof rec === 'string' ? '' : rec.reason || '';
-                    
-                    top10List.innerHTML += `
-                        <li class="flex items-start text-sm border-b border-blue-100 pb-2">
-                            <span class="font-mono font-bold text-aiBlue w-6 flex-shrink-0">#${index + 1}</span>
-                            <div>
-                                <span class="font-bold text-textMain">${item}</span>
-                                ${reason ? `<span class="text-textSub">: ${reason}</span>` : ''}
-                            </div>
-                        </li>
-                    `;
-                });
+                // 如果没有推荐，至少显示摘要
+                if (recommendations.length === 0 && data.summary) {
+                    // 将摘要分段显示
+                    const summaryParts = data.summary.split('。').filter(p => p.trim());
+                    summaryParts.slice(0, 10).forEach((part, index) => {
+                        top10List.innerHTML += `
+                            <li class="flex items-start text-sm border-b border-blue-100 pb-2">
+                                <span class="font-mono font-bold text-aiBlue w-6 flex-shrink-0">#${index + 1}</span>
+                                <div>
+                                    <span class="text-textSub">${part.trim()}。</span>
+                                </div>
+                            </li>
+                        `;
+                    });
+                } else {
+                    recommendations.slice(0, 10).forEach((rec, index) => {
+                        const item = typeof rec === 'string' ? rec : (rec.item || rec || `建議 ${index + 1}`);
+                        const reason = typeof rec === 'string' ? '' : (rec.reason || '');
+                        
+                        top10List.innerHTML += `
+                            <li class="flex items-start text-sm border-b border-blue-100 pb-2">
+                                <span class="font-mono font-bold text-aiBlue w-6 flex-shrink-0">#${index + 1}</span>
+                                <div>
+                                    <span class="font-bold text-textMain">${item}</span>
+                                    ${reason ? `<span class="text-textSub">: ${reason}</span>` : ''}
+                                </div>
+                            </li>
+                        `;
+                    });
+                }
 
                 // Populate extended ideas
-                document.getElementById('extended-ideas').innerText = extendedIdeas || '暫無延伸建議';
+                const extendedIdeasText = extendedIdeas || data.summary || '暫無延伸建議';
+                document.getElementById('extended-ideas').innerText = extendedIdeasText;
 
                 // Show results
                 document.getElementById('shopee-results').classList.remove('hidden');
@@ -656,8 +679,19 @@
             } catch (error) {
                 console.error('分析錯誤:', error);
                 document.getElementById('shopee-loading').classList.add('hidden');
+                document.getElementById('shopee-results').classList.add('hidden');
                 document.getElementById('shopee-empty').classList.remove('hidden');
-                showToast('分析失敗: ' + error.message);
+                
+                // 显示更详细的错误信息
+                const errorMsg = error.message || '未知錯誤';
+                showToast('分析失敗: ' + errorMsg);
+                
+                // 在控制台显示完整错误
+                console.error('完整錯誤信息:', {
+                    message: error.message,
+                    stack: error.stack,
+                    error: error
+                });
             }
         }
 
