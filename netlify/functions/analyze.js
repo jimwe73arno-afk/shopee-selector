@@ -1,14 +1,12 @@
 /**
- * BrotherG AI - Shopee Analyst
+ * BrotherG.AI Shopee Analyzer | Gemini 3.0 Stable Multi-Image Version
  * v3.0-Stable-MapReduce Architecture
  * 
  * Map Phase: gemini-3.0-flash (OCR-only, 512 tokens)
  * Reduce Phase: gemini-3.0-pro (Deep reasoning, 1024 tokens)
- * 
- * Stable multi-image processing without MAX_TOKENS issues
  */
 
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { GoogleGenerativeAI } = require('google-genai');
 
 const GEMINI_API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
 
@@ -35,8 +33,8 @@ function checkUserTier(event) {
  * Build system prompt for Shopee Analyst
  */
 function buildSystemPrompt(tier = 'free') {
-  return `你是 BrotherG.AI 的 Shopee 選品分析師。
-請閱讀 OCR 後的資料，輸出一份「選品決策卡」，使用繁體中文。
+  return `你是 BrotherG.AI 的 Shopee 選品決策分析師。
+請根據以下商品數據與圖片摘要，輸出繁體中文報告。
 
 輸出格式必須是有效的 JSON（不要 markdown 代碼塊）：
 
@@ -94,7 +92,9 @@ exports.handler = async (event, context) => {
     }
 
     // Initialize Gemini client
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    const client = new GoogleGenerativeAI({
+      apiKey: GEMINI_API_KEY
+    });
 
     // Parse request body
     let body;
@@ -142,7 +142,7 @@ exports.handler = async (event, context) => {
     if (!processedImages || processedImages.length === 0) {
       console.log(`⚡ Text-only request with gemini-3.0-flash`);
       
-      const model = genAI.getGenerativeModel({ 
+      const model = client.getGenerativeModel({ 
         model: 'gemini-3.0-flash'
       });
 
@@ -200,13 +200,12 @@ exports.handler = async (event, context) => {
     const mapStartTime = Date.now();
     console.log(`📊 Map Phase: OCR extraction with gemini-3.0-flash...`);
     
-    const mapModel = genAI.getGenerativeModel({ 
+    const mapModel = client.getGenerativeModel({ 
       model: 'gemini-3.0-flash'
     });
 
-    const ocrPrompt = `你是一位資料助理。請僅從圖片中擷取文字資料，
-例如商品名稱、價格、分類、銷量、退貨率、評分等。
-不要分析、不要建議，只輸出純文字摘要。
+    const ocrPrompt = `請從圖片中擷取商品名稱、價格、分類、銷量、退貨率、評分。
+只輸出文字摘要，不要評論。
 使用繁體中文，格式如下：
 
 商品名稱: ...
@@ -268,11 +267,9 @@ exports.handler = async (event, context) => {
     const reduceStartTime = Date.now();
     console.log(`🧠 Reduce Phase: Deep reasoning with gemini-3.0-pro...`);
 
-    const reduceModel = genAI.getGenerativeModel({
+    const reduceModel = client.getGenerativeModel({
       model: 'gemini-3.0-pro',
-      systemInstruction: {
-        parts: [{ text: buildSystemPrompt(tier) }]
-      }
+      systemInstruction: buildSystemPrompt(tier)
     });
 
     const userPrompt = mergedText 
