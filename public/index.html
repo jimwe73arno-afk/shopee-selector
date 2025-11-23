@@ -1,368 +1,999 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BROTHER G | 蝦皮選品 AI 分析</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrotherGAi | Pure Singularity</title>
     
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      padding: 20px;
-    }
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&family=JetBrains+Mono:wght@400;500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
     
-    .container {
-      max-width: 900px;
-      margin: 40px auto;
-      background: white;
-      padding: 40px;
-      border-radius: 20px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    }
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
     
-    .header {
-      text-align: center;
-      margin-bottom: 40px;
-    }
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    h1 {
-      color: #2d3748;
-      font-size: 32px;
-      margin-bottom: 10px;
-    }
-    
-    .subtitle {
-      color: #718096;
-      font-size: 14px;
-    }
-    
-    .badge {
-      display: inline-block;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 4px 12px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 600;
-      margin-top: 8px;
-    }
-    
-    .upload-section {
-      margin-bottom: 24px;
-    }
-    
-    label {
-      display: block;
-      font-weight: 600;
-      color: #4a5568;
-      margin-bottom: 12px;
-      font-size: 16px;
-    }
-    
-    input[type="file"] {
-      width: 100%;
-      padding: 12px;
-      border: 2px dashed #cbd5e0;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: all 0.3s;
-      font-size: 14px;
-    }
-    
-    input[type="file"]:hover {
-      border-color: #667eea;
-      background: #f7fafc;
-    }
-    
-    .preview {
-      display: none;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 12px;
-      margin-top: 16px;
-    }
-    
-    .preview.show {
-      display: grid;
-    }
-    
-    .preview img {
-      width: 100%;
-      height: 140px;
-      object-fit: cover;
-      border-radius: 8px;
-      border: 2px solid #e2e8f0;
-      transition: transform 0.2s;
-    }
-    
-    .preview img:hover {
-      transform: scale(1.05);
-    }
-    
-    textarea {
-      width: 100%;
-      padding: 12px;
-      border: 2px solid #e2e8f0;
-      border-radius: 12px;
-      font-size: 16px;
-      resize: vertical;
-      font-family: inherit;
-      transition: all 0.3s;
-    }
-    
-    textarea:focus {
-      outline: none;
-      border-color: #667eea;
-      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-    
-    button {
-      width: 100%;
-      padding: 18px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      border-radius: 12px;
-      font-size: 18px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s;
-      margin-top: 24px;
-    }
-    
-    button:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-    }
-    
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    
-    .result-container {
-      margin-top: 32px;
-      display: none;
-    }
-    
-    .result-container.show {
-      display: block;
-    }
-    
-    .result-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-      padding: 12px 16px;
-      background: #f7fafc;
-      border-radius: 8px;
-    }
-    
-    .model-badge {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-    
-    .time-badge {
-      color: #718096;
-      font-size: 14px;
-    }
-    
-    .result-content {
-      background: #f7fafc;
-      padding: 24px;
-      border-radius: 12px;
-      line-height: 1.8;
-      color: #2d3748;
-      white-space: pre-wrap;
-      max-height: 600px;
-      overflow-y: auto;
-    }
-    
-    .loading {
-      text-align: center;
-      padding: 40px;
-      color: #667eea;
-      font-size: 18px;
-    }
-    
-    .error {
-      background: #fff5f5;
-      color: #c53030;
-      padding: 16px;
-      border-radius: 12px;
-      border-left: 4px solid #fc8181;
-      margin-top: 16px;
-    }
-    
-    .info {
-      background: #ebf8ff;
-      color: #2c5282;
-      padding: 12px 16px;
-      border-radius: 8px;
-      font-size: 14px;
-      margin-top: 16px;
-      border-left: 4px solid #4299e1;
-    }
-    
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-    
-    .loading-animation {
-      animation: pulse 1.5s ease-in-out infinite;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>🎯 BROTHER G 蝦皮選品 AI</h1>
-      <p class="subtitle">專業的選品數據分析助手</p>
-      <span class="badge">Powered by Gemini 3.0 Pro (兩段式分析)</span>
-    </div>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Rajdhani', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        aiBlue: '#00A0E9',
+                        panel: '#F8FAFC',
+                        border: '#E2E8F0',
+                        textMain: '#0F172A',
+                        textSub: '#64748B',
+                        gold: '#D97706',
+                    },
+                    boxShadow: {
+                        'neon': '0 0 15px rgba(0, 160, 233, 0.2)',
+                        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+                        'card-hover': '0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02)',
+                        'glow-pro': '0 0 25px rgba(0, 160, 233, 0.25)',
+                        'glow-master': '0 0 25px rgba(217, 119, 6, 0.25)',
+                    },
+                    animation: {
+                        'shockwave': 'shockwave 0.6s ease-out',
+                    },
+                    keyframes: {
+                        shockwave: {
+                            '0%': { transform: 'translate(-50%, -50%) scale(0)', opacity: '0.5' },
+                            '100%': { transform: 'translate(-50%, -50%) scale(3)', opacity: '0' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
 
-    <div class="upload-section">
-      <label for="imageInput">📷 上傳蝦皮後台截圖（最多6張）</label>
-      <input type="file" id="imageInput" multiple accept="image/*" max="6">
-      <div id="preview" class="preview"></div>
-      <div class="info">
-        💡 支援 JPG、PNG、WEBP 格式，建議每張圖片小於 5MB
-      </div>
-    </div>
+    <style>
+        body { background-color: #FFFFFF; color: #0F172A; overflow: hidden; }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 4px; background: #FFF; }
+        ::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00A0E9; }
 
-    <div class="upload-section">
-      <label for="prompt">💬 分析需求（可選）</label>
-      <textarea 
-        id="prompt" 
-        rows="3" 
-        placeholder="例如：請分析這些商品的銷售數據，並給出選品建議和優化方向"
-      ></textarea>
-    </div>
-
-    <button id="analyzeBtn">
-      <span id="btnText">🚀 開始 AI 智能分析</span>
-      <span id="btnLoading" class="loading-animation" style="display:none;">⏳ 分析中...</span>
-    </button>
-
-    <div id="resultContainer" class="result-container">
-      <div class="result-header">
-        <div class="model-badge" id="modelBadge">Gemini 3.0 Pro</div>
-        <div class="time-badge" id="timeBadge">⏱️ --</div>
-      </div>
-      <div class="result-content" id="resultContent"></div>
-    </div>
-  </div>
-
-  <script>
-    const imageInput = document.getElementById('imageInput');
-    const preview = document.getElementById('preview');
-    const analyzeBtn = document.getElementById('analyzeBtn');
-    const btnText = document.getElementById('btnText');
-    const btnLoading = document.getElementById('btnLoading');
-    const resultContainer = document.getElementById('resultContainer');
-    const resultContent = document.getElementById('resultContent');
-    const modelBadge = document.getElementById('modelBadge');
-    const timeBadge = document.getElementById('timeBadge');
-    const promptInput = document.getElementById('prompt');
-
-    // 圖片預覽
-    imageInput.addEventListener('change', function() {
-      preview.innerHTML = '';
-      const files = Array.from(this.files).slice(0, 6);
-      
-      if (files.length > 0) {
-        preview.classList.add('show');
-        files.forEach(file => {
-          const img = document.createElement('img');
-          img.src = URL.createObjectURL(file);
-          img.alt = file.name;
-          preview.appendChild(img);
-        });
-      } else {
-        preview.classList.remove('show');
-      }
-    });
-
-    // 轉換為 Base64
-    function toBase64(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
-
-    // 分析按鈕
-    analyzeBtn.addEventListener('click', async function() {
-      const files = Array.from(imageInput.files).slice(0, 6);
-      
-      if (files.length === 0) {
-        resultContainer.classList.add('show');
-        resultContent.className = 'error';
-        resultContent.textContent = '❌ 請先上傳至少 1 張圖片';
-        return;
-      }
-
-      // 顯示載入狀態
-      analyzeBtn.disabled = true;
-      btnText.style.display = 'none';
-      btnLoading.style.display = 'inline';
-      
-      resultContainer.classList.add('show');
-      resultContent.className = 'loading';
-      resultContent.innerHTML = '🔄 AI 正在進行兩段式分析...<br><br>階段1: 快速讀取圖片數據<br>階段2: 深度分析選品策略<br><br>預計 8-15 秒，請稍候...';
-
-      try {
-        // 轉換圖片為 Base64
-        const images = await Promise.all(files.map(file => toBase64(file)));
-
-        const prompt = promptInput.value || '請分析這些蝦皮數據，並給出專業的選品建議';
-
-        // 呼叫 API
-        const response = await fetch('/.netlify/functions/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            images: images,
-            prompt: prompt,
-            systemPrompt: '你是專業的蝦皮選品顧問，擅長數據分析和選品策略。'
-          })
-        });
-
-        const data = await response.json();
-
-        if (data.ok) {
-          // 顯示成功結果
-          modelBadge.textContent = data.debug.model;
-          timeBadge.textContent = `⏱️ ${data.debug.time}`;
-          
-          resultContent.className = 'result-content';
-          resultContent.textContent = data.result;
-        } else {
-          throw new Error(data.error || '分析失敗');
+        /* Pure Background (No Grid) */
+        .cosmos-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: 
+                radial-gradient(circle at 10% 10%, rgba(0, 160, 233, 0.03) 0%, transparent 40%),
+                radial-gradient(circle at 90% 90%, rgba(0, 160, 233, 0.03) 0%, transparent 40%);
+            z-index: -1;
+            pointer-events: none;
         }
 
-      } catch (error) {
-        console.error('Error:', error);
-        resultContent.className = 'error';
-        resultContent.textContent = '❌ 分析失敗：' + error.message;
-      } finally {
-        // 恢復按鈕狀態
-        analyzeBtn.disabled = false;
-        btnText.style.display = 'inline';
-        btnLoading.style.display = 'none';
-      }
-    });
-  </script>
+        /* Core Card Design - Horizontal Layout */
+        .core-card {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: row; 
+            align-items: stretch;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        /* Card Hover */
+        .core-card:hover {
+            border-color: #00A0E9;
+            transform: translateY(-4px);
+            box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.05), 0 0 0 1px #00A0E9 inset;
+            z-index: 10;
+        }
+
+        /* Sweep Flash Effect */
+        .core-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 50%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 160, 233, 0.1), transparent);
+            transform: skewX(-25deg);
+            transition: left 0.7s ease-in-out;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .core-card:hover::before {
+            left: 200%;
+            transition: left 0.7s ease-in-out;
+        }
+        
+        /* Icon Box */
+        .core-card .icon-box {
+            transition: all 0.3s;
+            border-right: 1px solid #E2E8F0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 8rem;
+            flex-shrink: 0;
+            background: #F8FAFC;
+            position: relative;
+            z-index: 1;
+        }
+        .core-card:hover .icon-box {
+            background: #F0F9FF;
+            border-right-color: #00A0E9;
+        }
+        .core-card:hover .icon-glow {
+            color: #00A0E9;
+            transform: scale(1.1);
+            transition: all 0.3s;
+        }
+
+        /* Shockwave Effect */
+        .shockwave-container {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 150%; padding-top: 150%;
+            background: radial-gradient(circle, rgba(0, 160, 233, 0.4) 0%, transparent 70%);
+            transform: translate(-50%, -50%) scale(0);
+            border-radius: 50%;
+            opacity: 0;
+        }
+        .core-card:active .shockwave-effect {
+            animation: shockwave 0.4s ease-out;
+        }
+
+        /* Charge Bar */
+        .charge-track {
+            position: absolute;
+            bottom: 0; left: 0;
+            width: 100%; height: 2px;
+            background: #E2E8F0;
+            overflow: hidden;
+            z-index: 3;
+        }
+        .charge-bar {
+            width: 0%;
+            height: 100%;
+            background: #00A0E9;
+            transition: width 0.4s ease-out;
+            position: relative;
+        }
+        .core-card:hover .charge-bar {
+            width: 100%;
+        }
+        .charge-bar::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+            transform: translateX(-100%);
+            animation: charge-flow 1s infinite;
+        }
+        @keyframes charge-flow {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* Inputs */
+        .cyber-input {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            color: #0F172A;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+        }
+        .cyber-input:focus {
+            border-color: #00A0E9;
+            box-shadow: 0 0 0 4px rgba(0, 160, 233, 0.1);
+            outline: none;
+        }
+
+        /* Tech Corners */
+        .tech-corner {
+            position: absolute;
+            width: 6px; height: 6px;
+            border: 1px solid #CBD5E1;
+            transition: all 0.3s;
+            z-index: 3;
+        }
+        .core-card:hover .tech-corner {
+            border-color: #00A0E9;
+        }
+
+        /* Custom file input style */
+        .custom-file-upload {
+            border: 2px dashed #CBD5E1;
+            background-color: #F8FAFC;
+            transition: all 0.3s;
+        }
+        .custom-file-upload:hover {
+            border-color: #00A0E9;
+            background-color: #F0F9FF;
+        }
+
+        /* Pricing Card Check/Cross */
+        .feature-check { color: #00A0E9; margin-right: 0.5rem; }
+        .feature-cross { color: #94A3B8; margin-right: 0.5rem; opacity: 0.5; }
+        
+        /* Plan Selection Transitions */
+        .plan-card {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden selection:bg-aiBlue selection:text-white">
+
+    <div class="cosmos-bg"></div>
+
+    <!-- Left Sidebar (White) -->
+    <aside class="w-20 bg-white/90 backdrop-blur-md border-r border-border flex flex-col items-center py-8 z-30 flex-shrink-0">
+        <!-- Logo -->
+        <div class="w-12 h-12 mb-16 cursor-pointer relative group" onclick="navigateTo('home')">
+            <!-- Placeholder for BrotheGaiblue.png -->
+            <div class="w-full h-full bg-aiBlue rounded-full flex items-center justify-center text-white text-xl font-bold font-display">G</div>
+        </div>
+
+        <!-- Icons -->
+        <nav class="flex-1 flex flex-col space-y-10 w-full items-center">
+            <button onclick="navigateTo('home')" class="group relative w-12 h-12 flex items-center justify-center transition-all">
+                <i class="fa-solid fa-rocket text-xl text-gray-400 group-hover:text-aiBlue transition-colors transform group-hover:-rotate-45 duration-300"></i>
+            </button>
+            
+            <button class="group relative w-12 h-12 flex items-center justify-center transition-all">
+                <i class="fa-solid fa-layer-group text-xl text-gray-400 group-hover:text-aiBlue transition-colors"></i>
+            </button>
+
+            <button class="group relative w-12 h-12 flex items-center justify-center transition-all">
+                <i class="fa-solid fa-gear text-xl text-gray-400 group-hover:text-aiBlue transition-colors"></i>
+            </button>
+        </nav>
+
+        <!-- Status -->
+        <div class="flex flex-col items-center space-y-2">
+            <div class="text-[8px] font-mono text-aiBlue tracking-widest font-bold">ON</div>
+            <div class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+        </div>
+    </aside>
+
+    <!-- Main View -->
+    <main class="flex-1 relative overflow-hidden flex flex-col">
+        
+        <!-- Top HUD -->
+        <header class="h-16 px-8 flex justify-between items-center z-20 border-b border-border bg-white/80 backdrop-blur-md">
+            <div class="flex items-center space-x-4">
+                <div class="h-2 w-2 bg-aiBlue rotate-45"></div>
+                <span class="text-textMain font-display text-xl tracking-[0.1em] font-bold">BROTHER<span class="text-aiBlue">GAi</span></span>
+            </div>
+            <div class="flex items-center space-x-8 text-xs font-mono text-textSub">
+                <div class="flex items-center space-x-2">
+                    <span class="text-aiBlue animate-pulse">●</span>
+                    <span>SYSTEM READY</span>
+                </div>
+                <div class="border border-border px-3 py-1 rounded text-aiBlue bg-blue-50 font-bold">V.6.4 Interaction</div>
+            </div>
+        </header>
+
+        <!-- Viewport -->
+        <div class="flex-1 overflow-y-auto scroll-smooth p-8 md:p-16 flex flex-col">
+
+            <!-- === VIEW: CORE SELECTOR (HOME) === -->
+            <div id="view-home" class="flex-1 flex flex-col justify-center max-w-7xl mx-auto w-full fade-in">
+                
+                <div class="mb-20 relative pl-4 border-l-4 border-aiBlue">
+                    <h1 class="text-6xl md:text-8xl font-display font-bold text-textMain mb-4 tracking-tight leading-none uppercase">
+                        Unleash <span class="text-transparent bg-clip-text bg-gradient-to-r from-aiBlue to-blue-600">Potential</span>
+                    </h1>
+                    <p class="text-xl text-textSub font-light max-w-xl leading-relaxed">
+                        Instant, intelligent tools designed to empower your daily decisions.
+                    </p>
+                </div>
+
+                <!-- Module Grid (2 Columns) -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+                    
+                    <!-- Module 1: Shopee -->
+                    <div onclick="navigateTo('shopee')" class="core-card h-40 cursor-pointer group">
+                        <div class="shockwave-container"><div class="shockwave-effect"></div></div>
+                        <div class="tech-corner top-0 left-0 border-t border-l"></div>
+                        <div class="tech-corner bottom-0 right-0 border-b border-r"></div>
+
+                        <!-- Icon Left -->
+                        <div class="icon-box">
+                            <i class="fa-solid fa-bag-shopping text-4xl text-gray-400 icon-glow"></i>
+                        </div>
+
+                        <!-- Content Right -->
+                        <div class="flex-1 p-6 flex flex-col justify-between relative z-10">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h2 class="text-2xl font-display font-bold text-textMain mb-1 group-hover:text-aiBlue transition-colors tracking-wide">Shopee Analyst</h2>
+                                    <p class="text-sm text-textSub font-medium">Find winning products instantly.</p>
+                                </div>
+                                <span class="font-mono text-[10px] text-aiBlue border border-aiBlue/30 px-2 py-0.5 bg-blue-50 font-bold">PRO</span>
+                            </div>
+                            
+                            <div class="flex justify-between items-end">
+                                <span class="font-mono text-xs text-textSub group-hover:text-textMain transition-colors font-bold">STATUS: ACTIVE</span>
+                                <i class="fa-solid fa-arrow-right text-gray-400 group-hover:text-aiBlue group-hover:translate-x-1 transition-all"></i>
+                            </div>
+                        </div>
+
+                        <!-- Charge Bar -->
+                        <div class="charge-track">
+                            <div class="charge-bar"></div>
+                        </div>
+                    </div>
+
+                    <!-- Module 2: Landlord -->
+                    <div onclick="navigateTo('landlord')" class="core-card h-40 cursor-pointer group">
+                        <div class="shockwave-container"><div class="shockwave-effect"></div></div>
+                        <div class="tech-corner top-0 left-0 border-t border-l"></div>
+                        <div class="tech-corner bottom-0 right-0 border-b border-r"></div>
+
+                        <div class="icon-box">
+                            <i class="fa-solid fa-house-shield text-4xl text-gray-400 icon-glow"></i>
+                        </div>
+
+                        <div class="flex-1 p-6 flex flex-col justify-between relative z-10">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h2 class="text-2xl font-display font-bold text-textMain mb-1 group-hover:text-aiBlue transition-colors tracking-wide">Landlord Shield</h2>
+                                    <p class="text-sm text-textSub font-medium">Secure your rental income.</p>
+                                </div>
+                                <span class="font-mono text-[10px] text-aiBlue border border-aiBlue/30 px-2 py-0.5 bg-blue-50 font-bold">PRO</span>
+                            </div>
+                            
+                            <div class="flex justify-between items-end">
+                                <span class="font-mono text-xs text-textSub group-hover:text-textMain transition-colors font-bold">STATUS: ACTIVE</span>
+                                <i class="fa-solid fa-arrow-right text-gray-400 group-hover:text-aiBlue group-hover:translate-x-1 transition-all"></i>
+                            </div>
+                        </div>
+
+                        <!-- Charge Bar -->
+                        <div class="charge-track">
+                            <div class="charge-bar"></div>
+                        </div>
+                    </div>
+
+                    <!-- Module 3: Travel -->
+                    <div onclick="showToast('Module Updating...')" class="core-card h-40 cursor-pointer group opacity-60 hover:opacity-100 border-dashed hover:border-solid hover:border-aiBlue">
+                        <div class="shockwave-container"><div class="shockwave-effect"></div></div>
+                        
+                        <div class="icon-box">
+                            <i class="fa-solid fa-plane-departure text-4xl text-gray-400 group-hover:text-aiBlue transition-colors"></i>
+                        </div>
+
+                        <div class="flex-1 p-6 flex flex-col justify-between relative z-10">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h2 class="text-2xl font-display font-bold text-gray-400 mb-1 group-hover:text-textMain transition-colors">Travel Planner</h2>
+                                    <p class="text-sm text-textSub font-medium">Your perfect journey, optimized.</p>
+                                </div>
+                                <i class="fa-solid fa-lock text-gray-400"></i>
+                            </div>
+                            <div class="font-mono text-xs text-aiBlue bg-blue-50 px-2 py-1 rounded self-start border border-aiBlue/20 font-bold">
+                                COMING SOON
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Module 4: Tesla -->
+                    <div onclick="showToast('Connecting...')" class="core-card h-40 cursor-pointer group opacity-60 hover:opacity-100 border-dashed hover:border-solid hover:border-aiBlue">
+                        <div class="shockwave-container"><div class="shockwave-effect"></div></div>
+                        
+                        <div class="icon-box">
+                            <!-- Custom Model X Falcon Wing SVG Icon -->
+                            <svg class="w-12 h-12 text-gray-400 group-hover:text-aiBlue transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <!-- Car Body Base -->
+                                <path d="M5 17h14" />
+                                <path d="M6 17l1.5-5h9l1.5 5" />
+                                <!-- Left Falcon Wing -->
+                                <path d="M7.5 12 L3 5" />
+                                <path d="M3 5 L9 7" />
+                                <!-- Right Falcon Wing -->
+                                <path d="M16.5 12 L21 5" />
+                                <path d="M21 5 L15 7" />
+                                <!-- Wheels -->
+                                <circle cx="7" cy="17" r="1.5" />
+                                <circle cx="17" cy="17" r="1.5" />
+                            </svg>
+                        </div>
+
+                        <div class="flex-1 p-6 flex flex-col justify-between relative z-10">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h2 class="text-2xl font-display font-bold text-gray-400 mb-1 group-hover:text-textMain transition-colors">Choose Your Tesla</h2>
+                                    <p class="text-sm text-textSub font-medium">Find your dream configuration.</p>
+                                </div>
+                                <i class="fa-solid fa-lock text-gray-400"></i>
+                            </div>
+                            <div class="font-mono text-xs text-aiBlue bg-blue-50 px-2 py-1 rounded self-start border border-aiBlue/20 font-bold">
+                                COMING SOON
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- === VIEW: SHOPEE INTERFACE === -->
+            <div id="view-shopee" class="hidden h-full flex flex-col max-w-7xl mx-auto w-full fade-in">
+                <!-- Nav Bar -->
+                <div class="flex items-center space-x-4 mb-10">
+                    <button onclick="navigateTo('home')" class="w-10 h-10 border border-gray-300 flex items-center justify-center text-textSub hover:bg-blue-50 hover:text-aiBlue hover:border-aiBlue transition-all bg-white shadow-sm rounded-lg">
+                        <i class="fa-solid fa-angle-left"></i>
+                    </button>
+                    <div class="h-px flex-1 bg-gradient-to-r from-aiBlue/50 to-transparent"></div>
+                    <div class="font-mono text-xs text-aiBlue tracking-widest shadow-sm px-3 py-1 border border-aiBlue rounded bg-blue-50 font-bold">SHOPEE ANALYST</div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
+                    <!-- Left Control (Input and Mode Selection) -->
+                    <div class="lg:col-span-4 space-y-6">
+                        
+                        <!-- Mode Tabs (Free / Paid) -->
+                        <div class="flex border-b border-border bg-white rounded-t-xl overflow-hidden shadow-card">
+                            <button id="tab-free" onclick="switchShopeeMode('free')" class="flex-1 py-3 text-sm font-bold transition-all border-b-2" data-mode="free">
+                                <span class="text-aiBlue">免費版</span> <span class="text-xs text-textSub">(文字)</span>
+                            </button>
+                            <button id="tab-paid" onclick="switchShopeeMode('paid')" class="flex-1 py-3 text-sm font-bold transition-all border-b-2" data-mode="paid">
+                                <span class="text-textSub">付費版</span> <span class="text-xs text-textSub">(報表圖)</span>
+                            </button>
+                        </div>
+                        
+                        <!-- Input Card -->
+                        <div class="core-card flex-col p-6 h-auto rounded-b-xl" style="display: flex; flex-direction: column;">
+                            
+                            <!-- === Free Mode Content (Single Step) === -->
+                            <div id="shopee-input-free">
+                                <div>
+                                    <label class="text-xs font-bold text-aiBlue mb-2 block tracking-widest">WHAT ARE YOU SELLING? (請提供細節)</label>
+                                    <textarea id="shopee-keyword" rows="5" placeholder="例如：我在蝦皮賣 eSIM、小米手機、Dyson，幫我看接下來要主推什麼。 (單價、毛利、銷量等資訊越詳細，建議越精準)" 
+                                        class="w-full cyber-input p-4 text-base rounded-lg placeholder-gray-400 resize-none border-l-4 border-l-aiBlue"></textarea>
+                                    
+                                    <button onclick="runShopeeAnalysis()" class="w-full mt-4 bg-textMain text-white font-display font-bold py-4 hover:bg-aiBlue transition-all duration-300 tracking-widest uppercase text-lg relative overflow-hidden shadow-lg rounded-lg">
+                                        開始分析市場
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- === Paid Mode Content (Redirect) === -->
+                            <div id="shopee-input-paid" class="hidden">
+                                
+                                <div class="opacity-40 pointer-events-none mb-4">
+                                    <div class="flex justify-between items-center mb-4">
+                                        <label class="text-xs font-bold text-textSub mb-1 block tracking-widest">UPLOAD REPORTS (MAX 10)</label>
+                                        <span class="font-mono text-[10px] text-red-500 border border-red-200 px-2 py-0.5 rounded bg-red-50 font-bold">PRO REQUIRED</span>
+                                    </div>
+                                    
+                                    <label for="shopee-image-upload" class="custom-file-upload p-6 flex flex-col items-center justify-center h-32 cursor-pointer rounded-lg mb-4">
+                                        <i class="fa-solid fa-cloud-arrow-up text-3xl text-textSub mb-2"></i>
+                                        <span class="text-sm font-medium text-textSub">點擊上傳 Shopee 報表截圖</span>
+                                        <span class="text-xs text-gray-400 font-mono">最多 10 張 (GMV, 廣告, 商品列表...)</span>
+                                        <input type="file" id="shopee-image-upload" multiple accept="image/*" class="hidden">
+                                    </label>
+
+                                    <label class="text-xs font-bold text-textSub mb-2 block tracking-widest">YOUR QUERY</label>
+                                    <textarea rows="2" placeholder="例如：看完圖，接下來 7 天我該怎麼選品？" 
+                                        class="w-full cyber-input p-3 text-base rounded-lg placeholder-gray-400 resize-none border-l-4 border-l-textSub"></textarea>
+                                </div>
+
+                                <!-- Upgrade Button (Generic for Mobile view if needed, but mainly controlled by Right Panel) -->
+                                <button onclick="showToast('請於右側選擇方案進行升級')" class="w-full mt-4 bg-gray-300 text-white font-display font-bold py-4 tracking-widest uppercase text-lg relative rounded-lg flex justify-center items-center gap-2 cursor-not-allowed">
+                                    <i class="fa-solid fa-crown text-gray-100"></i> 請選擇方案
+                                </button>
+                                <p class="text-[10px] text-textSub mt-2 text-center font-mono">
+                                    (請於右側選擇方案)
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Data Vis (Dynamic Content) -->
+                    <div class="lg:col-span-8 core-card flex-col p-8 relative rounded-xl overflow-y-auto" style="display: flex; flex-direction: column;">
+                        
+                        <!-- Loading -->
+                        <div id="shopee-loading" class="hidden absolute inset-0 bg-white/90 z-20 flex flex-col items-center justify-center rounded-xl">
+                            <div class="w-32 h-32 border-t-4 border-b-4 border-aiBlue rounded-full animate-spin mb-8 shadow-neon"></div>
+                            <div class="text-4xl font-display font-bold text-textMain tracking-widest animate-pulse">ANALYZING</div>
+                            <div class="text-xs font-mono text-aiBlue mt-4 border border-aiBlue px-4 py-1 font-bold rounded-full">FETCHING MARKET DATA</div>
+                        </div>
+
+                        <!-- Empty State (Shown in Free Mode) -->
+                        <div id="shopee-empty" class="flex-1 flex flex-col items-center justify-center opacity-40">
+                            <i class="fa-solid fa-magnifying-glass-chart text-8xl mb-8 text-aiBlue animate-pulse"></i>
+                            <p class="font-mono text-sm tracking-[0.3em] text-textSub font-bold">等待選品輸入</p>
+                        </div>
+
+                        <!-- Results (Free Version Structure) -->
+                        <div id="shopee-results" class="hidden h-full flex flex-col w-full">
+                            
+                            <!-- Header -->
+                            <div class="mb-8 border-b border-gray-200 pb-4">
+                                <h3 class="text-xl font-display font-bold text-textMain">選品決策卡</h3>
+                                <p class="text-sm text-textSub">基於您的文字描述，以下是系統建議。</p>
+                            </div>
+
+                            <!-- Top 10 Core Recommendations -->
+                            <div class="mb-8 p-6 bg-blue-50 border border-aiBlue/30 rounded-lg">
+                                <p class="text-[10px] text-aiBlue font-bold uppercase mb-4 tracking-widest flex items-center">
+                                    <i class="fa-solid fa-star-of-life mr-2"></i> TOP 10 主推方向 (核心建議)
+                                </p>
+                                <ul id="top-10-list" class="space-y-3">
+                                    <!-- List items populated by JS -->
+                                </ul>
+                            </div>
+
+                            <!-- 90 Extended Ideas -->
+                            <div class="mb-8 p-6 bg-panel border border-border rounded-lg">
+                                <p class="text-[10px] text-textSub font-bold uppercase mb-4 tracking-widest flex items-center">
+                                    <i class="fa-solid fa-atom mr-2"></i> 90 個延伸測試組合/類別
+                                </p>
+                                <p id="extended-ideas" class="text-sm text-textSub leading-relaxed">
+                                    <span class="font-bold text-textMain">類別延伸:</span> 旅遊配件、智慧家居小型裝置、Dyson 副廠配件；
+                                    <span class="font-bold text-textMain">價位區間:</span> 瞄準中高價位客群 (NT$ 5,000+) 的升級款產品；
+                                    <span class="font-bold text-textMain">組合建議:</span> eSIM + 旅遊充電器套組，小米手機 + 品牌保護殼綁定銷售。
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <!-- Pricing Table (Shown in Paid Mode) -->
+                        <div id="shopee-paid-results" class="hidden h-full flex flex-col w-full">
+                            <div class="mb-6 flex justify-between items-end border-b border-border pb-4">
+                                <div>
+                                    <h3 class="text-2xl font-display font-bold text-textMain tracking-wide">CHOOSE YOUR PLAN</h3>
+                                    <p class="text-xs font-mono text-textSub mt-1">解鎖 AI 視覺深度診斷與批量分析能力</p>
+                                </div>
+                                <div class="text-[10px] font-bold bg-blue-50 text-aiBlue px-2 py-1 rounded border border-blue-100">
+                                    每月訂閱制
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1 items-start">
+                                
+                                <!-- Tier 1: Free -->
+                                <div id="plan-card-free" onclick="selectPlan('free')" class="plan-card border border-border rounded-xl p-6 flex flex-col relative bg-white opacity-90">
+                                    <h4 class="text-sm font-bold text-textSub uppercase tracking-widest mb-2">體驗版</h4>
+                                    <div class="mb-4">
+                                        <span class="text-3xl font-display font-bold text-textMain">$0</span>
+                                        <span class="text-xs text-textSub">/ month</span>
+                                    </div>
+                                    <p class="text-xs text-textSub mb-6 h-10">適合剛入門的新手，體驗 AI 威力。</p>
+                                    
+                                    <ul class="space-y-3 text-xs mb-8 flex-1">
+                                        <li class="flex items-center"><i class="fa-solid fa-check feature-check"></i> 每日 5 次 AI 對話</li>
+                                        <li class="flex items-center"><i class="fa-solid fa-check feature-check"></i> 單次對話 (無記憶)</li>
+                                        <li class="flex items-center text-gray-400"><i class="fa-solid fa-xmark feature-cross"></i> AI 視覺診斷</li>
+                                        <li class="flex items-center text-gray-400"><i class="fa-solid fa-xmark feature-cross"></i> 批量分析</li>
+                                    </ul>
+
+                                    <button class="w-full py-2 border border-border text-textSub font-bold text-xs rounded pointer-events-none">
+                                        目前方案
+                                    </button>
+                                </div>
+
+                                <!-- Tier 2: PRO -->
+                                <div id="plan-card-pro" onclick="selectPlan('pro')" class="plan-card border border-border rounded-xl p-6 flex flex-col relative bg-white opacity-90">
+                                    <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-aiBlue text-white text-[10px] font-bold px-3 py-1 rounded-full tracking-wider shadow-sm opacity-0 transition-opacity duration-300" id="badge-pro">
+                                        個人賣家首選
+                                    </div>
+                                    <h4 class="text-sm font-bold text-textSub uppercase tracking-widest mb-2 transition-colors duration-300" id="title-pro">專業版</h4>
+                                    <div class="mb-4">
+                                        <span class="text-3xl font-display font-bold text-textMain">$688</span>
+                                        <span class="text-xs text-textSub">/ month</span>
+                                    </div>
+                                    <p class="text-xs text-textSub mb-6 h-10">適合全職賣家，深度優化利潤。</p>
+                                    
+                                    <ul class="space-y-3 text-xs mb-8 flex-1 font-medium">
+                                        <li class="flex items-center"><i class="fa-solid fa-check feature-check"></i> 無限次 AI 對話</li>
+                                        <li class="flex items-center"><i class="fa-solid fa-check feature-check"></i> 每日 20 次 視覺診斷</li>
+                                        <li class="flex items-center"><i class="fa-solid fa-check feature-check"></i> 單張圖片上傳</li>
+                                        <li class="flex items-center text-red-400"><i class="fa-solid fa-xmark feature-cross"></i> 無長期記憶 (對話獨立)</li>
+                                        <li class="flex items-center"><i class="fa-solid fa-check feature-check"></i> 競品數據分析</li>
+                                    </ul>
+
+                                    <button onclick="event.stopPropagation(); goToPaymentPro()" class="w-full py-3 bg-gray-200 text-gray-500 font-bold text-sm rounded shadow-sm hover:bg-aiBlue hover:text-white transition-colors duration-300" id="btn-pro">
+                                        立即升級 PRO
+                                    </button>
+                                </div>
+
+                                <!-- Tier 3: MASTER -->
+                                <div id="plan-card-master" onclick="selectPlan('master')" class="plan-card border border-border rounded-xl p-6 flex flex-col relative bg-white opacity-90">
+                                    <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-yellow-500 to-amber-600 text-white text-[10px] font-bold px-3 py-1 rounded-full tracking-wider shadow-sm opacity-0 transition-opacity duration-300" id="badge-master">
+                                        工作室/企業專用
+                                    </div>
+                                    <h4 class="text-sm font-bold text-textSub uppercase tracking-widest mb-2 transition-colors duration-300" id="title-master">大師版</h4>
+                                    <div class="mb-4">
+                                        <span class="text-3xl font-display font-bold text-textMain">$1,688</span>
+                                        <span class="text-xs text-textSub">/ month</span>
+                                    </div>
+                                    <p class="text-xs text-textSub mb-6 h-10">適合工作室與多平台經營者，極致效率。</p>
+                                    
+                                    <ul class="space-y-3 text-xs mb-8 flex-1">
+                                        <li class="flex items-center"><i class="fa-solid fa-check text-amber-500 mr-2"></i> 無限次 AI 對話</li>
+                                        <li class="flex items-center"><i class="fa-solid fa-check text-amber-500 mr-2"></i> 每日 50 次 視覺診斷</li>
+                                        <li class="flex items-center"><i class="fa-solid fa-fire text-amber-500 mr-2"></i> 批量上傳 (一次 10 張)</li>
+                                        <li class="flex items-center"><i class="fa-solid fa-brain text-amber-500 mr-2"></i> AI 長期記憶 (店鋪語境)</li>
+                                        <li class="flex items-center"><i class="fa-solid fa-bolt text-amber-500 mr-2"></i> 優先算力通道</li>
+                                    </ul>
+
+                                    <button onclick="event.stopPropagation(); goToPaymentMaster()" class="w-full py-2 border border-border text-textSub font-bold text-xs rounded hover:bg-amber-50 hover:text-amber-600 hover:border-amber-500 transition-colors duration-300" id="btn-master">
+                                        成為大師
+                                    </button>
+                                </div>
+
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- === VIEW: LANDLORD SHIELD === (Unchanged) -->
+            <div id="view-landlord" class="hidden h-full flex flex-col max-w-7xl mx-auto w-full fade-in">
+                <!-- Nav Bar -->
+                <div class="flex items-center space-x-4 mb-10">
+                    <button onclick="navigateTo('home')" class="w-10 h-10 border border-gray-300 flex items-center justify-center text-textSub hover:bg-blue-50 hover:text-aiBlue hover:border-aiBlue transition-all bg-white shadow-sm">
+                        <i class="fa-solid fa-angle-left"></i>
+                    </button>
+                    <div class="h-px flex-1 bg-gradient-to-r from-aiBlue/50 to-transparent"></div>
+                    <div class="font-mono text-xs text-aiBlue tracking-widest shadow-sm px-3 py-1 border border-aiBlue rounded bg-blue-50 font-bold">LANDLORD SHIELD</div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
+                    <!-- Input -->
+                    <div class="lg:col-span-4 space-y-6">
+                        <div class="core-card flex-col p-8 space-y-6 h-auto" style="display: flex; flex-direction: column;">
+                            <div class="space-y-2">
+                                <label class="text-[10px] font-bold text-aiBlue tracking-widest">TENANT NAME</label>
+                                <input type="text" id="landlord-name" class="w-full cyber-input p-3 text-textMain rounded-none border-l-2 border-l-aiBlue">
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-[10px] font-bold text-aiBlue tracking-widest">MONTHLY INCOME</label>
+                                <input type="number" id="landlord-income" value="50000" class="w-full cyber-input p-3 text-textMain rounded-none border-l-2 border-l-aiBlue">
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-[10px] font-bold text-aiBlue tracking-widest">HISTORY</label>
+                                <select id="landlord-history" class="w-full cyber-input p-3 text-textMain cursor-pointer rounded-none border-l-2 border-l-aiBlue">
+                                    <option value="good">Excellent (No Issues)</option>
+                                    <option value="fair">Average (Minor Issues)</option>
+                                    <option value="poor">Poor (Eviction Record)</option>
+                                </select>
+                            </div>
+                            <button onclick="runLandlordAnalysis()" class="w-full mt-6 bg-textMain text-white font-display font-bold py-4 hover:bg-aiBlue hover:shadow-lg transition-all duration-300 tracking-widest text-lg uppercase">
+                                Check Tenant
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Output -->
+                    <div class="lg:col-span-8 core-card flex-col p-8 relative flex items-center justify-center" style="display: flex; flex-direction: column;">
+                        
+                        <div id="landlord-loading" class="hidden absolute inset-0 bg-white/95 z-20 flex flex-col items-center justify-center">
+                            <div class="w-24 h-24 border-4 border-gray-200 border-t-textMain rounded-full animate-spin mb-6"></div>
+                            <p class="font-mono text-textMain text-sm tracking-[0.2em] animate-pulse font-bold">CALCULATING RISK...</p>
+                        </div>
+
+                        <div id="landlord-empty" class="opacity-40 text-center">
+                            <i class="fa-solid fa-user-shield text-8xl mb-8 text-textSub"></i>
+                            <p class="font-mono text-sm tracking-[0.3em] text-textSub font-bold">READY TO SCREEN</p>
+                        </div>
+
+                        <div id="landlord-results" class="hidden w-full max-w-lg text-center fade-in">
+                            <div id="landlord-badge" class="inline-block px-8 py-2 border border-aiBlue font-mono text-xs font-bold tracking-[0.3em] mb-10 shadow-sm bg-blue-50 text-aiBlue">
+                                --
+                            </div>
+                            
+                            <div class="flex justify-center items-center space-x-16 mb-16">
+                                <div class="relative">
+                                    <svg class="w-56 h-56 transform -rotate-90">
+                                        <circle cx="112" cy="112" r="90" stroke="#E2E8F0" stroke-width="6" fill="transparent" />
+                                        <circle id="risk-circle" cx="112" cy="112" r="90" stroke="#00A0E9" stroke-width="6" fill="transparent" stroke-dasharray="565" stroke-dashoffset="565" class="transition-all duration-1000" />
+                                    </svg>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                        <span id="landlord-score" class="text-7xl font-display font-bold text-textMain">0</span>
+                                        <span class="text-[10px] font-mono text-textSub uppercase mt-2 tracking-widest font-bold">Safety Score</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="text-left space-y-8">
+                                    <div>
+                                        <p class="text-[10px] font-mono text-aiBlue uppercase tracking-wider mb-1 font-bold">Deposit</p>
+                                        <p class="text-5xl font-display font-bold text-textMain" id="landlord-deposit">--</p>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] font-mono text-aiBlue uppercase tracking-wider mb-1 font-bold">Result</p>
+                                        <p class="text-xl font-bold text-textSub tracking-wide">PENDING</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="border-t border-gray-200 pt-8">
+                                <p id="landlord-summary" class="text-textSub font-mono text-sm leading-relaxed text-left border-l-2 border-aiBlue pl-4">...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-8 right-8 bg-textMain text-white px-6 py-3 rounded-lg shadow-xl transform translate-y-24 opacity-0 transition-all duration-300 z-50 flex items-center gap-3">
+        <i class="fa-solid fa-info-circle text-aiBlue"></i>
+        <span id="toast-msg" class="font-medium text-sm">Notification</span>
+    </div>
+
+    <!-- Modal for Shockwave on Click (Simulation) -->
+    <div id="shockwave-overlay" class="fixed inset-0 z-40 hidden pointer-events-none"></div>
+
+    <script>
+        // State for Shopee Mode
+        let shopeeMode = 'free';
+        let currentPlan = null;
+
+        // --- Navigation Logic ---
+        function navigateTo(viewId) {
+            document.querySelectorAll('[id^="view-"]').forEach(el => el.classList.add('hidden'));
+            const target = document.getElementById('view-' + viewId);
+            target.classList.remove('hidden');
+            
+            // Reset animations
+            target.classList.remove('fade-in');
+            void target.offsetWidth; // Trigger reflow
+            target.classList.add('fade-in');
+            
+            window.scrollTo(0, 0);
+        }
+
+        // --- Toast Logic ---
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('translate-y-24', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-24', 'opacity-0');
+            }, 3000);
+        }
+        
+        // --- Shopee Mode Switch Logic ---
+        function switchShopeeMode(mode) {
+            shopeeMode = mode;
+            const tabFree = document.getElementById('tab-free');
+            const tabPaid = document.getElementById('tab-paid');
+            const inputFree = document.getElementById('shopee-input-free');
+            const inputPaid = document.getElementById('shopee-input-paid');
+            const resultsDiv = document.getElementById('shopee-results');
+            const paidResultsDiv = document.getElementById('shopee-paid-results');
+            
+            if (mode === 'free') {
+                tabFree.classList.add('border-aiBlue', 'text-aiBlue');
+                tabPaid.classList.remove('border-aiBlue', 'text-aiBlue');
+                tabPaid.classList.add('border-transparent');
+
+                inputFree.classList.remove('hidden');
+                inputPaid.classList.add('hidden');
+
+                resultsDiv.classList.remove('hidden');
+                paidResultsDiv.classList.add('hidden');
+                
+                // Reset result view to empty state
+                document.getElementById('shopee-results').classList.add('hidden');
+                document.getElementById('shopee-empty').classList.remove('hidden');
+
+                showToast('已切換至免費版 (文字分析)');
+
+            } else { // paid
+                tabPaid.classList.add('border-aiBlue', 'text-aiBlue');
+                tabFree.classList.remove('border-aiBlue', 'text-aiBlue');
+                tabFree.classList.add('border-transparent');
+
+                inputPaid.classList.remove('hidden');
+                inputFree.classList.add('hidden');
+
+                resultsDiv.classList.add('hidden');
+                paidResultsDiv.classList.remove('hidden');
+
+                document.getElementById('shopee-empty').classList.add('hidden');
+                
+                // Reset Plans on Switch
+                resetPlans();
+                
+                showToast('付費版：請選擇適合您的方案');
+            }
+        }
+        
+        // --- Plan Selection Logic ---
+        function resetPlans() {
+            currentPlan = null;
+            const plans = ['free', 'pro', 'master'];
+            
+            plans.forEach(plan => {
+                const card = document.getElementById(`plan-card-${plan}`);
+                
+                // Reset Base Styles
+                card.classList.remove('scale-105', 'z-10', 'opacity-100', 'border-aiBlue', 'shadow-glow-pro', 'border-yellow-500', 'shadow-glow-master');
+                card.classList.add('scale-100', 'z-0', 'opacity-90', 'border-border');
+                
+                // Reset Text Colors
+                if(plan === 'pro') {
+                    document.getElementById('title-pro').classList.remove('text-aiBlue');
+                    document.getElementById('title-pro').classList.add('text-textSub');
+                    document.getElementById('badge-pro').classList.remove('opacity-100');
+                    document.getElementById('badge-pro').classList.add('opacity-0');
+                    
+                    const btn = document.getElementById('btn-pro');
+                    btn.classList.remove('bg-aiBlue', 'text-white');
+                    btn.classList.add('bg-gray-200', 'text-gray-500');
+                }
+                
+                if(plan === 'master') {
+                    document.getElementById('title-master').classList.remove('text-amber-600');
+                    document.getElementById('title-master').classList.add('text-textSub');
+                    document.getElementById('badge-master').classList.remove('opacity-100');
+                    document.getElementById('badge-master').classList.add('opacity-0');
+                    
+                    const btn = document.getElementById('btn-master');
+                    btn.classList.remove('border-amber-500', 'text-amber-600');
+                    btn.classList.add('border-border', 'text-textSub');
+                }
+            });
+        }
+
+        function selectPlan(plan) {
+            // Prevent clicking same plan
+            if (currentPlan === plan) return;
+            
+            resetPlans();
+            currentPlan = plan;
+            
+            const card = document.getElementById(`plan-card-${plan}`);
+            
+            // Apply Active Styles
+            card.classList.remove('scale-100', 'z-0', 'opacity-90', 'border-border');
+            card.classList.add('scale-105', 'z-10', 'opacity-100');
+            
+            if (plan === 'free') {
+                 // Simple highlight for free
+                 card.classList.add('border-gray-400', 'shadow-lg');
+            } else if (plan === 'pro') {
+                card.classList.add('border-aiBlue', 'shadow-glow-pro');
+                
+                document.getElementById('title-pro').classList.remove('text-textSub');
+                document.getElementById('title-pro').classList.add('text-aiBlue');
+                document.getElementById('badge-pro').classList.remove('opacity-0');
+                document.getElementById('badge-pro').classList.add('opacity-100');
+                
+                const btn = document.getElementById('btn-pro');
+                btn.classList.remove('bg-gray-200', 'text-gray-500');
+                btn.classList.add('bg-aiBlue', 'text-white');
+            } else if (plan === 'master') {
+                card.classList.add('border-yellow-500', 'shadow-glow-master');
+                
+                document.getElementById('title-master').classList.remove('text-textSub');
+                document.getElementById('title-master').classList.add('text-amber-600');
+                document.getElementById('badge-master').classList.remove('opacity-0');
+                document.getElementById('badge-master').classList.add('opacity-100');
+                
+                const btn = document.getElementById('btn-master');
+                btn.classList.remove('border-border', 'text-textSub');
+                btn.classList.add('border-amber-500', 'text-amber-600');
+            }
+        }
+
+        // --- Payment Logic (ECPay) ---
+        function goToPaymentPro() {
+            showToast('PRO 方案付款連結準備中...');
+        }
+
+        function goToPaymentMaster() {
+            showToast('正在前往綠界 ECPay (大師版)...');
+            setTimeout(() => {
+                window.open('https://p.ecpay.com.tw/4A01064', '_blank');
+            }, 800);
+        }
+
+        // --- Shopee Logic (Free Mode - Single Step) ---
+        function runShopeeAnalysis() {
+            if (shopeeMode !== 'free') return showToast('請切換至免費版使用文字分析');
+            
+            const keyword = document.getElementById('shopee-keyword').value;
+            if(!keyword.trim()) return showToast('請輸入您的產品清單或需求');
+
+            // Show loading
+            document.getElementById('shopee-empty').classList.add('hidden');
+            document.getElementById('shopee-results').classList.add('hidden');
+            document.getElementById('shopee-loading').classList.remove('hidden');
+
+            showToast('開始進行選品分析...');
+
+            // Simulate the analysis time and output
+            setTimeout(() => {
+                document.getElementById('shopee-loading').classList.add('hidden');
+                document.getElementById('shopee-results').classList.remove('hidden');
+                
+                // Populate Top 10 List (Mock data)
+                const top10List = document.getElementById('top-10-list');
+                top10List.innerHTML = '';
+                
+                const recommendations = [
+                    { item: "高階 eSIM (多國漫遊)", reason: "高毛利、低庫存風險，瞄準旅遊復甦熱潮。" },
+                    { item: "小米生態鏈清潔組合", reason: "利用小米品牌信任度，搭配 Dyson 形成高中低端市場佈局。" },
+                    { item: "Dyson 濾網訂閱服務", reason: "創造週期性收入，鎖定舊有 Dyson 客群，提高 LTV。" },
+                    { item: "輕巧型 5G 手機 (中階)", reason: "填補 iPhone/旗艦機價格空缺，吸引預算有限但追求性能的消費者。" },
+                    { item: "熱銷品客製化組合包", reason: "將熱銷 eSIM 與特定手機型號打包，提高客單價。" },
+                    { item: "入門級智慧手環/手錶", reason: "低價引流款，吸引年輕人，促進後續購買。" },
+                    { item: "無線吸塵器周邊配件", reason: "專注於延長管、地刷等易損耗配件，競爭少，利潤高。" },
+                    { item: "親子/教育平板電腦", reason: "鎖定家庭客群，與學習 APP 進行綑綁推廣。" },
+                    { item: "極簡風行動電源 (高容量)", reason: "高需求品，可作為主力行銷品，設置優勢價格。" },
+                    { item: "特定國家 eSIM 批發專案", reason: "針對重度使用者或小型旅行社，擴大 B2B 市場。" }
+                ];
+                
+                recommendations.forEach((rec, index) => {
+                    top10List.innerHTML += `
+                        <li class="flex items-start text-sm border-b border-blue-100 pb-2">
+                            <span class="font-mono font-bold text-aiBlue w-6 flex-shrink-0">#${index + 1}</span>
+                            <div>
+                                <span class="font-bold text-textMain">${rec.item}:</span>
+                                <span class="text-textSub">${rec.reason}</span>
+                            </div>
+                        </li>
+                    `;
+                });
+                
+                // Clear input field after successful simulation
+                document.getElementById('shopee-keyword').value = '';
+                
+                showToast('選品決策卡已成功生成！');
+            }, 3000); 
+        }
+
+        // --- Landlord Logic (Unchanged) ---
+        function runLandlordAnalysis() {
+            const name = document.getElementById('landlord-name').value;
+            if(!name) return showToast('Please enter tenant name');
+
+            document.getElementById('landlord-empty').classList.add('hidden');
+            document.getElementById('landlord-results').classList.add('hidden');
+            document.getElementById('landlord-loading').classList.remove('hidden');
+
+            setTimeout(() => {
+                const score = Math.floor(Math.random() * 30) + 70;
+                const risk = score > 85 ? "Approved" : "Caution";
+                const colorClass = score > 85 ? "bg-green-50 text-green-700 border-green-200" : "bg-orange-50 text-orange-700 border-orange-200";
+
+                const badge = document.getElementById('landlord-badge');
+                badge.innerText = risk;
+                badge.className = `inline-block px-6 py-2 rounded-full font-semibold text-sm mb-12 self-center border ${colorClass}`;
+                
+                document.getElementById('landlord-score').innerText = score;
+                document.getElementById('landlord-deposit').innerText = score > 85 ? "2 Mo" : "3 Mo";
+                document.getElementById('landlord-summary').innerText = `Tenant ${name} has a ${score > 85 ? 'strong' : 'fair'} credit profile. Income-to-rent ratio is within acceptable limits. ${score > 85 ? 'Standard lease recommended.' : 'Guarantor suggested.'}`;
+
+                const circle = document.getElementById('risk-circle');
+                const circumference = 565;
+                const offset = circumference - (score / 100) * circumference;
+                circle.style.strokeDashoffset = offset;
+                circle.style.stroke = score > 85 ? "#22c55e" : "#f97316";
+
+                document.getElementById('landlord-loading').classList.add('hidden');
+                document.getElementById('landlord-results').classList.remove('hidden');
+            }, 1500);
+        }
+
+        // Init
+        window.onload = function() {
+            navigateTo('home');
+            switchShopeeMode('free'); // Ensure default mode is set correctly
+        };
+    </script>
 </body>
 </html>

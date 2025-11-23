@@ -1,188 +1,383 @@
+/**
+ * BrotherG AI - Shopee Analyst
+ * Map-Reduce Architecture for Image Analysis
+ * 
+ * Frontend calls: POST /api/analyze
+ * Netlify Function: netlify/functions/analyze.js
+ */
+
 const GEMINI_API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || '';
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-// 🎯 兩段式策略
-const MODEL_FAST = 'gemini-2.5-flash';        // 階段1: 快速讀圖
-const MODEL_PRO = 'gemini-3-pro-preview';     // 階段2: 深度分析
+// Model endpoints
+const MODEL_FLASH = 'gemini-1.5-flash';  // Fast vision processing (Map phase)
+const MODEL_PRO = 'gemini-1.5-pro';      // Deep reasoning (Reduce phase)
 
-async function callGemini(model, contents) {
+/**
+ * Check user tier from headers (JWT or custom header)
+ * Returns: 'free' | 'pro' | 'master'
+ */
+function checkUserTier(event) {
+  // TODO: Implement JWT verification or custom header check
+  // For now, mock implementation based on headers
+  const authHeader = event.headers.authorization || event.headers['x-user-tier'] || '';
+  
+  // If JWT exists, decode and check tier
+  // If custom header exists, use it directly
+  if (authHeader.includes('master') || authHeader === 'master') {
+    return 'master';
+  }
+  if (authHeader.includes('pro') || authHeader === 'pro') {
+    return 'pro';
+  }
+  
+  // Default to free tier
+  return 'free';
+}
+
+/**
+ * Call Gemini API with proper error handling
+ */
+async function callGeminiAPI(model, contents, generationConfig = {}) {
   const url = `${GEMINI_ENDPOINT}/${model}:generateContent?key=${GEMINI_API_KEY}`;
   
+  const defaultConfig = {
+    temperature: 0.7,
+    topP: 0.8,
+    topK: 40,
+    maxOutputTokens: 4096
+  };
+
+  const payload = {
+    contents: contents,
+    generationConfig: { ...defaultConfig, ...generationConfig }
+  };
+
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents,
-      generationConfig: {
-        temperature: 0.7,
-        topP: 0.8,
-        topK: 40,
-        maxOutputTokens: 4096
-      }
-    })
+    body: JSON.stringify(payload)
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`${model} error: ${response.status}`);
+    throw new Error(`Gemini API error (${response.status}): ${errorText}`);
   }
 
   const data = await response.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  
+  if (!text) {
+    throw new Error('Empty response from Gemini API');
+  }
+
+  return text;
 }
 
+/**
+ * MAP PHASE: Process each image in parallel using gemini-1.5-flash
+ */
+async function mapPhaseVision(images) {
+  console.log(`📊 Map Phase: Processing ${images.length} images in parallel...`);
+  
+  const visionPrompt = `Describe this image in detail. Extract key data:
+- Price information
+- Sales numbers
+- Product Type
+- Visual Style
+- Competitor Data
+- Any numeric metrics visible
+
+Output as structured text summary. Be concise but comprehensive.`;
+
+  const visionTasks = images.map((imgBase64, index) => {
+    // Clean base64 string
+    const cleanBase64 = imgBase64.replace(/^data:image\/\w+;base64,/, '');
+    
+    // Detect mime type
+    let mimeType = 'image/jpeg';
+    if (imgBase64.includes('data:image/png')) mimeType = 'image/png';
+    else if (imgBase64.includes('data:image/webp')) mimeType = 'image/webp';
+
+    const parts = [
+      { text: visionPrompt },
+      {
+        inlineData: {
+          mimeType: mimeType,
+          data: cleanBase64
+        }
+      }
+    ];
+
+    console.log(`🔄 Processing image ${index + 1}/${images.length}...`);
+    
+    return callGeminiAPI(MODEL_FLASH, [{
+      role: "user",
+      parts: parts
+    }], {
+      maxOutputTokens: 1024,  // Concise for speed
+      temperature: 0.3
+    }).then(result => {
+      console.log(`✅ Image ${index + 1} processed (${result.length} chars)`);
+      return `[Image ${index + 1} Analysis]:\n${result}\n\n`;
+    }).catch(error => {
+      console.error(`❌ Image ${index + 1} failed:`, error.message);
+      return `[Image ${index + 1} Analysis]: Error - ${error.message}\n\n`;
+    });
+  });
+
+  // Execute all vision tasks in parallel
+  const results = await Promise.all(visionTasks);
+  const visualContext = results.join('\n');
+  
+  console.log(`✅ Map Phase complete. Total context: ${visualContext.length} chars`);
+  return visualContext;
+}
+
+/**
+ * REDUCE PHASE: Deep reasoning using gemini-1.5-pro
+ */
+async function reducePhaseReasoning(textPrompt, visualContext) {
+  console.log(`🧠 Reduce Phase: Deep reasoning with ${MODEL_PRO}...`);
+  
+  const systemPrompt = `You are BrotherG, an elite Shopee E-commerce Consultant. Your tone is professional, sharp, and profit-oriented.
+
+Use the following visual context data to answer the user's question.
+
+CRITICAL OUTPUT REQUIREMENTS:
+- You MUST output valid JSON only (no markdown code blocks, no extra text)
+- JSON structure must match exactly:
+{
+  "summary": "Detailed strategic analysis (2-3 paragraphs)",
+  "recommendations": ["Actionable Step 1", "Actionable Step 2", "Actionable Step 3"],
+  "plan": "7-Day Execution Plan with specific actions and timelines"
+}
+
+- "summary": Comprehensive analysis with data insights
+- "recommendations": Array of exactly 3 actionable recommendations
+- "plan": Detailed 7-day execution plan with daily tasks`;
+
+  const userPrompt = visualContext 
+    ? `Visual Context Data:\n${visualContext}\n\nUser Question: ${textPrompt}`
+    : textPrompt;
+
+  const parts = [
+    { text: systemPrompt },
+    { text: userPrompt }
+  ];
+
+  const reasoningText = await callGeminiAPI(MODEL_PRO, [{
+    role: "user",
+    parts: parts
+  }], {
+    maxOutputTokens: 2048,
+    temperature: 0.7
+  });
+
+  console.log(`✅ Reduce Phase complete. Response: ${reasoningText.length} chars`);
+  return reasoningText;
+}
+
+/**
+ * Clean JSON response (remove markdown code blocks if present)
+ */
+function cleanJSONResponse(text) {
+  // Remove markdown code blocks
+  let cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+  
+  // Find JSON object
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    return jsonMatch[0];
+  }
+  
+  return cleaned;
+}
+
+/**
+ * Main handler
+ */
 exports.handler = async (event, context) => {
+  // Set Netlify optimization
   context.callbackWaitsForEmptyEventLoop = false;
 
+  // CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Tier',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Content-Type': 'application/json'
   };
 
+  // Handle preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
 
-  if (event.httpMethod === 'GET') {
+  // Only allow POST
+  if (event.httpMethod !== 'POST') {
     return {
-      statusCode: 200,
+      statusCode: 405,
       headers,
-      body: JSON.stringify({ 
-        status: 'ok',
-        message: 'Gemini API 兩段式分析',
-        endpoints: {
-          analyze: 'POST /api/analyze'
-        }
-      })
+      body: JSON.stringify({ error: 'Method not allowed. Use POST.' })
     };
   }
 
   try {
+    // Validate API key
     if (!GEMINI_API_KEY) {
-      throw new Error('Missing API Key');
+      throw new Error('Missing GOOGLE_GENERATIVE_AI_API_KEY environment variable');
     }
 
-    const body = JSON.parse(event.body || '{}');
-    const images = body.images || [];
-    const prompt = body.prompt || '';
-    const systemPrompt = body.systemPrompt || '';
+    // Parse request body
+    let body;
+    try {
+      body = JSON.parse(event.body || '{}');
+    } catch (e) {
+      throw new Error('Invalid JSON in request body');
+    }
 
-    if (images.length === 0 && !prompt) {
+    const { textPrompt = '', images = [] } = body;
+
+    // Validate input
+    if (!textPrompt && (!images || images.length === 0)) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: '請提供圖片或文字' })
+        body: JSON.stringify({ error: 'Please provide textPrompt or images' })
       };
     }
 
-    const hasImages = images.length > 0;
-    console.log(`📊 模式: ${hasImages ? '兩段式圖片分析' : '文字分析'}`);
-    console.log(`📷 圖片數: ${images.length}`);
+    // Check user tier
+    const tier = checkUserTier(event);
+    console.log(`👤 User Tier: ${tier}`);
 
-    const startTime = Date.now();
-    let finalResult = '';
-
-    if (hasImages) {
-      // ========================================
-      // 🎯 兩段式處理：快速 + 深度
-      // ========================================
+    // Tier-based validation and limits
+    if (tier === 'free') {
+      if (images && images.length > 0) {
+        return {
+          statusCode: 403,
+          headers,
+          body: JSON.stringify({ 
+            error: 'Image analysis requires Pro or Master tier. Please upgrade.',
+            tier: 'free',
+            limit: 0
+          })
+        };
+      }
+      // Free tier: text-only with flash model
+      console.log(`⚡ Free tier: Text-only analysis with ${MODEL_FLASH}`);
       
-      // 階段 1: 用 2.5 Flash 快速讀圖提取數據
-      console.log(`⚡ 階段1: ${MODEL_FAST} 快速讀圖...`);
-      
-      const parts1 = [];
-      
-      // 組合提示詞
-      let combinedPrompt = systemPrompt ? systemPrompt + '\n\n' + prompt : prompt;
-      parts1.push({ 
-        text: combinedPrompt + '\n\n請快速提取圖片中的所有關鍵數據和信息。' 
+      const textResponse = await callGeminiAPI(MODEL_FLASH, [{
+        role: "user",
+        parts: [{ text: textPrompt }]
+      }], {
+        maxOutputTokens: 2048
       });
 
-      // 加入圖片
-      images.slice(0, 6).forEach((img) => {
-        const cleanBase64 = img.replace(/^data:image\/\w+;base64,/, '');
-        let mimeType = 'image/jpeg';
-        if (img.includes('data:image/png')) mimeType = 'image/png';
-        else if (img.includes('data:image/webp')) mimeType = 'image/webp';
+      // Try to parse as JSON, fallback to plain text
+      let result;
+      try {
+        result = JSON.parse(cleanJSONResponse(textResponse));
+      } catch (e) {
+        // Fallback: wrap in expected format
+        result = {
+          summary: textResponse,
+          recommendations: ["Upgrade to Pro for structured analysis", "Provide more specific product details", "Consider market trends"],
+          plan: "Free tier provides basic insights. Upgrade for detailed execution plans."
+        };
+      }
 
-        parts1.push({
-          inlineData: {
-            mimeType: mimeType,
-            data: cleanBase64
-          }
-        });
-      });
-
-      const stage1Result = await callGemini(MODEL_FAST, [{
-        role: "user",
-        parts: parts1
-      }]);
-
-      const stage1Time = Date.now() - startTime;
-      console.log(`✅ 階段1完成 (${stage1Time}ms, ${stage1Result.length}字元)`);
-
-      // 階段 2: 用 3.0 Pro 深度分析（基於階段1的結果）
-      console.log(`🎯 階段2: ${MODEL_PRO} 深度分析...`);
-      
-      const stage2Prompt = `你是專業的蝦皮選品顧問。
-
-以下是從圖片中提取的數據：
-${stage1Result}
-
-請根據這些數據，提供專業的選品策略建議。`;
-
-      const stage2Result = await callGemini(MODEL_PRO, [{
-        role: "user",
-        parts: [{ text: stage2Prompt }]
-      }]);
-
-      const stage2Time = Date.now() - startTime - stage1Time;
-      console.log(`✅ 階段2完成 (${stage2Time}ms)`);
-
-      finalResult = stage2Result;
-
-    } else {
-      // 純文字：直接用 2.5 Flash
-      console.log(`⚡ 文字分析: ${MODEL_FAST}`);
-      
-      let combinedPrompt = systemPrompt ? systemPrompt + '\n\n' + prompt : prompt;
-      
-      finalResult = await callGemini(MODEL_FAST, [{
-        role: "user",
-        parts: [{ text: combinedPrompt }]
-      }]);
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify(result)
+      };
     }
 
-    const totalTime = Date.now() - startTime;
-    console.log(`✅ 總時間: ${totalTime}ms`);
+    // Pro tier: max 1 image
+    if (tier === 'pro') {
+      if (images && images.length > 1) {
+        return {
+          statusCode: 403,
+          headers,
+          body: JSON.stringify({ 
+            error: 'Pro tier allows maximum 1 image. Upgrade to Master for batch processing.',
+            tier: 'pro',
+            limit: 1
+          })
+        };
+      }
+    }
+
+    // Master tier: max 10 images
+    if (tier === 'master') {
+      if (images && images.length > 10) {
+        return {
+          statusCode: 403,
+          headers,
+          body: JSON.stringify({ 
+            error: 'Maximum 10 images allowed',
+            tier: 'master',
+            limit: 10
+          })
+        };
+      }
+    }
+
+    // Pro/Master: Map-Reduce pipeline
+    let visualContext = '';
+    
+    if (images && images.length > 0) {
+      // MAP PHASE: Parallel image processing
+      visualContext = await mapPhaseVision(images);
+    }
+
+    // REDUCE PHASE: Deep reasoning
+    const reasoningText = await reducePhaseReasoning(textPrompt, visualContext);
+
+    // Parse and clean JSON response
+    let result;
+    try {
+      const cleanedJSON = cleanJSONResponse(reasoningText);
+      result = JSON.parse(cleanedJSON);
+    } catch (e) {
+      console.error('❌ JSON parsing failed:', e.message);
+      // Fallback: wrap in expected format
+      result = {
+        summary: reasoningText,
+        recommendations: ["Review the analysis above", "Implement key insights", "Monitor results"],
+        plan: "7-day plan: Days 1-2: Analysis review. Days 3-5: Implementation. Days 6-7: Optimization."
+      };
+    }
+
+    // Validate result structure
+    if (!result.summary || !result.recommendations || !result.plan) {
+      console.warn('⚠️ Result missing required fields, using fallback');
+      result = {
+        summary: result.summary || reasoningText,
+        recommendations: Array.isArray(result.recommendations) ? result.recommendations : ["Action required", "Review data", "Execute plan"],
+        plan: result.plan || "Please review the summary and recommendations above."
+      };
+    }
+
+    console.log(`✅ Success: ${tier} tier, ${images.length} images, ${result.summary.length} chars summary`);
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({
-        ok: true,
-        result: finalResult,
-        summary: hasImages ? '兩段式分析完成' : '文字分析完成',
-        recommendations: finalResult,
-        plan: finalResult,
-        debug: {
-          modelUsed: hasImages ? `${MODEL_FAST} → ${MODEL_PRO}` : MODEL_FAST,
-          imageCount: images.length,
-          responseTime: `${totalTime}ms`
-        }
-      })
+      body: JSON.stringify(result)
     };
 
   } catch (error) {
     console.error('❌ Error:', error);
+    
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({
-        ok: false,
-        error: error.message
+      body: JSON.stringify({ 
+        error: error.message || 'Internal server error',
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
       })
     };
   }
