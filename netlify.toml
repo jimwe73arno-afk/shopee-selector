@@ -1,26 +1,11 @@
 [build]
   command = ""
   publish = "public"
-  functions = "netlify/functions"
 
-[functions]
-  node_bundler = "esbuild"
+[[edge_functions]]
+  function = "analyze"
+  path = "/api/analyze"
 
-[functions."*"]
-  timeout = 60  # Pro 版本超時設置：60 秒（需要優化處理流程）
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-
-# 付款成功頁面
-[[redirects]]
-  from = "/payment/success"
-  to = "/payment/success.html"
-  status = 200
-
-# SPA fallback - 所有其他路徑都重定向到 index.html
 [[redirects]]
   from = "/*"
   to = "/index.html"
