@@ -189,7 +189,7 @@ CRITICAL OUTPUT REQUIREMENTS:
     role: "user",
     parts: parts
   }], {
-    maxOutputTokens: 2048,
+    maxOutputTokens: 4096,  // 增加輸出長度以避免 JSON 被截斷
     temperature: 0.7
   });
 
@@ -199,6 +199,7 @@ CRITICAL OUTPUT REQUIREMENTS:
 
 /**
  * Clean JSON response (remove markdown code blocks if present)
+ * Handle truncated JSON from MAX_TOKENS
  */
 function cleanJSONResponse(text) {
   if (!text) return '';
@@ -207,8 +208,6 @@ function cleanJSONResponse(text) {
   let cleaned = text
     .replace(/```json\s*/gi, '')
     .replace(/```\s*/g, '')
-    .replace(/^[^{]*/, '') // Remove everything before first {
-    .replace(/[^}]*$/, '}') // Remove everything after last }
     .trim();
   
   // Find JSON object (more flexible matching)
@@ -217,19 +216,70 @@ function cleanJSONResponse(text) {
     cleaned = jsonMatch[0];
   }
   
-  // Try to fix common JSON issues
+  // Try to fix truncated JSON (from MAX_TOKENS)
   try {
     // Test if it's valid JSON
     JSON.parse(cleaned);
     return cleaned;
   } catch (e) {
-    // If not valid, try to extract JSON more aggressively
-    // Look for JSON-like structure
+    // If not valid, try to fix truncated JSON
     const jsonStart = cleaned.indexOf('{');
-    const jsonEnd = cleaned.lastIndexOf('}');
     
-    if (jsonStart >= 0 && jsonEnd > jsonStart) {
-      cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+    if (jsonStart >= 0) {
+      let jsonText = cleaned.substring(jsonStart);
+      
+      // Try to close unclosed strings and objects
+      // Count open braces and close them
+      let openBraces = 0;
+      let openBrackets = 0;
+      let inString = false;
+      let escapeNext = false;
+      
+      for (let i = 0; i < jsonText.length; i++) {
+        const char = jsonText[i];
+        
+        if (escapeNext) {
+          escapeNext = false;
+          continue;
+        }
+        
+        if (char === '\\') {
+          escapeNext = true;
+          continue;
+        }
+        
+        if (char === '"' && !escapeNext) {
+          inString = !inString;
+          continue;
+        }
+        
+        if (!inString) {
+          if (char === '{') openBraces++;
+          if (char === '}') openBraces--;
+          if (char === '[') openBrackets++;
+          if (char === ']') openBrackets--;
+        }
+      }
+      
+      // Close unclosed structures
+      if (inString) jsonText += '"';
+      while (openBrackets > 0) {
+        jsonText += ']';
+        openBrackets--;
+      }
+      while (openBraces > 0) {
+        jsonText += '}';
+        openBraces--;
+      }
+      
+      // Try parsing again
+      try {
+        JSON.parse(jsonText);
+        return jsonText;
+      } catch (e2) {
+        // If still invalid, return original and let caller handle it
+        return jsonText;
+      }
     }
     
     return cleaned;
@@ -421,14 +471,32 @@ CRITICAL OUTPUT REQUIREMENTS:
     try {
       const cleanedJSON = cleanJSONResponse(reasoningText);
       result = JSON.parse(cleanedJSON);
+      
+      // Validate required fields
+      if (!result.summary && !result.recommendations && !result.plan) {
+        throw new Error('JSON missing required fields');
+      }
     } catch (e) {
       console.error('❌ JSON parsing failed:', e.message);
-      // Fallback: wrap in expected format
+      console.error('Raw response (first 500 chars):', reasoningText.substring(0, 500));
+      
+      // Try to extract partial JSON fields even if parsing fails
+      const summaryMatch = reasoningText.match(/"summary"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
+      const recommendationsMatch = reasoningText.match(/"recommendations"\s*:\s*\[(.*?)\]/s);
+      const planMatch = reasoningText.match(/"plan"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
+      
       result = {
-        summary: reasoningText,
-        recommendations: ["Review the analysis above", "Implement key insights", "Monitor results"],
-        plan: "7-day plan: Days 1-2: Analysis review. Days 3-5: Implementation. Days 6-7: Optimization."
+        summary: summaryMatch ? summaryMatch[1].replace(/\\"/g, '"') : reasoningText.substring(0, 500) + '...',
+        recommendations: recommendationsMatch ? 
+          recommendationsMatch[1].split(',').map(r => r.trim().replace(/^"|"$/g, '').replace(/\\"/g, '"')).filter(r => r) :
+          ["請查看上方摘要了解詳細分析", "根據分析結果調整策略", "持續監控市場動態"],
+        plan: planMatch ? planMatch[1].replace(/\\"/g, '"') : "請根據上方摘要制定執行計劃。"
       };
+      
+      // If we still have a decent summary, use it
+      if (!result.summary || result.summary.length < 50) {
+        result.summary = reasoningText.substring(0, 800) || "分析完成，請查看建議。";
+      }
     }
 
     // Validate result structure
