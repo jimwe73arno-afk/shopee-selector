@@ -500,15 +500,74 @@
         }
 
         // --- Payment Logic ---
-        function goToPaymentPro() {
-            showToast('PRO 方案付款連結準備中...');
+        async function goToPaymentPro() {
+            showToast('正在準備 PRO 方案付款...');
+            
+            try {
+                // 獲取用戶 ID（如果有登入系統，這裡應該從 localStorage 或 cookie 取得）
+                const userId = localStorage.getItem('userId') || 'anonymous';
+                
+                // 調用支付 API
+                const response = await fetch('/.netlify/functions/payment-checkout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        plan: 'PRO',
+                        userId: userId,
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('付款請求失敗');
+                }
+
+                // 取得付款表單 HTML，並在當前視窗打開
+                const html = await response.text();
+                const newWindow = window.open('', '_blank');
+                newWindow.document.write(html);
+                newWindow.document.close();
+                
+            } catch (error) {
+                console.error('付款錯誤:', error);
+                showToast('付款請求失敗，請稍後再試');
+            }
         }
 
-        function goToPaymentMaster() {
-            showToast('正在前往綠界 ECPay (大師版)...');
-            setTimeout(() => {
-                window.open('https://p.ecpay.com.tw/4A01064', '_blank');
-            }, 800);
+        async function goToPaymentMaster() {
+            showToast('正在準備大師版付款...');
+            
+            try {
+                // 獲取用戶 ID（如果有登入系統，這裡應該從 localStorage 或 cookie 取得）
+                const userId = localStorage.getItem('userId') || 'anonymous';
+                
+                // 調用支付 API
+                const response = await fetch('/.netlify/functions/payment-checkout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        plan: 'MASTER',
+                        userId: userId,
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('付款請求失敗');
+                }
+
+                // 取得付款表單 HTML，並在當前視窗打開
+                const html = await response.text();
+                const newWindow = window.open('', '_blank');
+                newWindow.document.write(html);
+                newWindow.document.close();
+                
+            } catch (error) {
+                console.error('付款錯誤:', error);
+                showToast('付款請求失敗，請稍後再試');
+            }
         }
 
         // --- Shopee Analysis API Call ---
