@@ -413,6 +413,7 @@
                 inputPaid.classList.remove('hidden');
                 inputFree.classList.add('hidden');
 
+                // 付费版：隐藏结果区域，显示定价表在右侧
                 resultsDiv.classList.add('hidden');
                 paidResultsDiv.classList.remove('hidden');
 
@@ -421,7 +422,7 @@
                 // Reset Plans on Switch
                 resetPlans();
                 
-                showToast('付費版：請選擇適合您的方案');
+                showToast('付費版：可直接上傳圖片進行分析');
             }
         }
         
@@ -842,11 +843,16 @@
             console.log('📝 [圖片分析] 查詢文本:', query);
             console.log('📷 [圖片分析] 準備發送', uploadedImages.length, '張圖片');
             
-            // Show loading
-            document.getElementById('shopee-empty').classList.add('hidden');
-            document.getElementById('shopee-results').classList.add('hidden');
-            document.getElementById('shopee-paid-results').classList.add('hidden');
-            document.getElementById('shopee-loading').classList.remove('hidden');
+            // Show loading (hide both result areas)
+            const emptyEl = document.getElementById('shopee-empty');
+            const resultsEl = document.getElementById('shopee-results');
+            const paidResultsEl = document.getElementById('shopee-paid-results');
+            const loadingEl = document.getElementById('shopee-loading');
+            
+            if (emptyEl) emptyEl.classList.add('hidden');
+            if (resultsEl) resultsEl.classList.add('hidden');
+            if (paidResultsEl) paidResultsEl.classList.add('hidden');
+            if (loadingEl) loadingEl.classList.remove('hidden');
             
             showToast('開始進行圖片分析...');
             
