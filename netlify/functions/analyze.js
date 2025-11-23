@@ -1,176 +1,111 @@
 /**
  * BrotherG AI - Shopee Analyst
- * Map-Reduce Architecture for Image Analysis
+ * v3.0-SafeMap Architecture: OCR-First Map-Reduce
  * 
- * Frontend calls: POST /api/analyze
- * Netlify Function: netlify/functions/analyze.js
+ * Map Phase: gemini-1.5-flash-latest (OCR-only, 512 tokens)
+ * Reduce Phase: gemini-3.0-pro-preview (Deep reasoning, 1024 tokens)
  */
 
 const GEMINI_API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || '';
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 // Model endpoints
-const MODEL_FLASH = 'gemini-2.5-flash';  // Fast vision processing (Map phase)
-const MODEL_PRO = 'gemini-3-pro-preview';      // Deep reasoning (Reduce phase) - 生成報告回應
+const MODEL_FLASH_OCR = 'gemini-1.5-flash-latest';  // OCR-only (Map phase) - 更穩定的視覺處理
+const MODEL_PRO = 'gemini-3.0-pro-preview';         // Deep reasoning (Reduce phase)
+
+// Safety limits
+const MAX_IMAGES_FREE = 2;
+const MAX_IMAGES_PRO = 2;
+const MAX_IMAGES_MASTER = 5;
 
 /**
- * Check user tier from headers (JWT or custom header)
- * Returns: 'free' | 'pro' | 'master'
+ * Check user tier from headers
  */
 function checkUserTier(event) {
-  // TODO: Implement JWT verification or custom header check
-  // For now, mock implementation based on headers
   const authHeader = event.headers.authorization || event.headers['x-user-tier'] || '';
-  
-  // If JWT exists, decode and check tier
-  // If custom header exists, use it directly
   if (authHeader.includes('master') || authHeader === 'master') {
     return 'master';
   }
   if (authHeader.includes('pro') || authHeader === 'pro') {
     return 'pro';
   }
-  
-  // Default to free tier
   return 'free';
 }
 
 /**
- * Call Gemini API with proper error handling
+ * Call Gemini API using native fetch
  */
-async function callGeminiAPI(model, contents, generationConfig = {}) {
+async function callGeminiAPI(model, contents, config = {}) {
+  if (!GEMINI_API_KEY) {
+    throw new Error('Missing GOOGLE_GENERATIVE_AI_API_KEY');
+  }
+
   const url = `${GEMINI_ENDPOINT}/${model}:generateContent?key=${GEMINI_API_KEY}`;
   
-  const defaultConfig = {
-    temperature: 0.7,
-    topP: 0.8,
-    topK: 40,
-    maxOutputTokens: 4096
-  };
-
-  const payload = {
+  const requestBody = {
     contents: contents,
-    generationConfig: { ...defaultConfig, ...generationConfig }
+    generationConfig: {
+      maxOutputTokens: config.maxOutputTokens || 1024,
+      temperature: config.temperature !== undefined ? config.temperature : 0.7,
+    }
   };
 
   const response = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(requestBody)
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`❌ Gemini API error (${response.status}):`, errorText);
-    throw new Error(`Gemini API error (${response.status}): ${errorText}`);
+    const errorData = await response.json();
+    console.error(`❌ Gemini API error (${response.status}):`, errorData);
+    throw new Error(`Gemini API error (${response.status}): ${JSON.stringify(errorData)}`);
   }
 
   const data = await response.json();
-  console.log(`✅ Gemini API response received, candidates: ${data.candidates?.length || 0}`);
-  
   const candidate = data.candidates?.[0];
   const text = candidate?.content?.parts?.[0]?.text || '';
   const finishReason = candidate?.finishReason;
-  
-  // 處理 MAX_TOKENS 情況（輸出被截斷，但可能仍有部分內容）
-  if (!text && finishReason === 'MAX_TOKENS') {
-    console.warn('⚠️ Response hit MAX_TOKENS limit. Trying to extract partial content...');
-    
-    // 嘗試從所有 parts 中提取內容
-    const allParts = candidate?.content?.parts || [];
-    let partialText = allParts.map(p => p.text || '').join('').trim();
-    
-    if (partialText && partialText.length > 50) {
-      console.log(`✅ Extracted partial response: ${partialText.length} chars`);
-      return partialText;
-    }
-    
-    // 嘗試從完整的 response 中提取任何文本內容
-    const responseStr = JSON.stringify(data);
-    const textMatch = responseStr.match(/"text":"([^"]{50,}?)"/);
-    if (textMatch && textMatch[1]) {
-      partialText = textMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\u([0-9a-f]{4})/gi, (match, code) => String.fromCharCode(parseInt(code, 16)));
-      if (partialText.length > 50) {
-        console.log(`✅ Extracted text from response: ${partialText.length} chars`);
-        return partialText;
-      }
-    }
-    
-    // 嘗試從 candidate 的其他字段提取
-    if (candidate?.content) {
-      const contentStr = JSON.stringify(candidate.content);
-      const contentMatch = contentStr.match(/"text":"([^"]{50,}?)"/);
-      if (contentMatch && contentMatch[1]) {
-        partialText = contentMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
-        if (partialText.length > 50) {
-          console.log(`✅ Extracted text from candidate content: ${partialText.length} chars`);
-          return partialText;
-        }
-      }
-    }
-    
-    // 最後的 fallback：拋出錯誤而不是返回無意義的消息
-    console.error('❌ No extractable content from MAX_TOKENS response. Full response:', JSON.stringify(data, null, 2));
-    throw new Error('Response hit MAX_TOKENS limit and no extractable content available. Please reduce image complexity or increase maxOutputTokens.');
-  }
-  
-  // 如果 finishReason 是 MAX_TOKENS 但已有 text，記錄警告但仍返回
-  if (text && finishReason === 'MAX_TOKENS') {
-    console.warn(`⚠️ Response truncated at MAX_TOKENS, but got ${text.length} chars. Content may be incomplete.`);
-    // 即使被截斷，如果有足夠的內容（>100 字符），仍然返回
-    if (text.length > 100) {
-      return text;
-    } else {
-      console.warn(`⚠️ Text too short (${text.length} chars), trying to extract more...`);
-      // 繼續嘗試提取更多內容
-    }
-  }
-  
+
   if (!text) {
     console.error('❌ Empty response from Gemini API. Full response:', JSON.stringify(data, null, 2));
     throw new Error(`Empty response from Gemini API. Finish reason: ${finishReason || 'unknown'}`);
   }
-  
-  console.log(`✅ Gemini response text length: ${text.length} chars, finishReason: ${finishReason || 'normal'}`);
+
+  if (finishReason === 'MAX_TOKENS') {
+    console.warn(`⚠️ Response truncated at MAX_TOKENS, but got ${text.length} chars.`);
+  }
+
+  console.log(`✅ Gemini response: ${text.length} chars, finishReason: ${finishReason || 'normal'}`);
   return text;
 }
 
 /**
- * MAP PHASE: Process each image in parallel using gemini-2.5-flash
+ * MAP PHASE: OCR-only extraction using gemini-1.5-flash-latest
  */
-async function mapPhaseVision(images) {
+async function mapPhaseOCR(images) {
   const mapStartTime = Date.now();
-  console.log(`📊 Map Phase: Processing ${images.length} images in parallel...`);
+  console.log(`📊 Map Phase (OCR): Processing ${images.length} images in parallel...`);
   console.log(`⏱️ Map Phase started at: ${new Date().toISOString()}`);
-  
-  const visionPrompt = `你是一個 OCR 文字提取專家。請用繁體中文提取這張圖片中的所有**文字、數字、表格數據**。
 
-**專注提取以下數據：**
-1. 價格資訊（單價、價格區間、折扣）
-2. 商品名稱和品類
-3. 銷售數據（GMV、訂單數、轉換率、ROI、CTR）
-4. 數字指標（庫存、銷量、廣告花費、點擊數）
-5. 日期和時間範圍
-6. 表格中的所有數值
+  const ocrPrompt = `你是一位資料助理。
+請只從圖片中「提取可讀文字」：商品名稱、價格、分類、銷量、退貨率、評分等。
+不要做策略，不要總結，直接輸出純文字表格摘要。
+使用繁體中文，格式如下：
 
-**輸出格式要求：**
-- 只輸出結構化的數據列表（不要描述視覺元素）
-- 每個數據項一行
-- 使用繁體中文
-- 保留原始數字和單位
-- 如果有表格，按行列列出所有數值
+商品名稱: ...
+價格: ...
+銷量: ...
+轉換率: ...
+（其他數據）
 
-範例輸出格式：
-價格帶: $299-$389
-商品類型: 蛋白威化餅
-GMV: 45,280 TWD
-轉換率: 3.2%
-訂單數: 156
-廣告花費: 12,500 TWD
-ROI: 2.8
-...（其他數據）`;
+只提取數據，不要分析。`;
 
-  const visionTasks = images.map((imgBase64, index) => {
+  const ocrTasks = images.map((imgBase64, index) => {
+    const imageStartTime = Date.now();
+    
     // Clean base64 string
     const cleanBase64 = imgBase64.replace(/^data:image\/\w+;base64,/, '');
     
@@ -180,7 +115,7 @@ ROI: 2.8
     else if (imgBase64.includes('data:image/webp')) mimeType = 'image/webp';
 
     const parts = [
-      { text: visionPrompt },
+      { text: ocrPrompt },
       {
         inlineData: {
           mimeType: mimeType,
@@ -189,52 +124,46 @@ ROI: 2.8
       }
     ];
 
-    console.log(`🔄 Processing image ${index + 1}/${images.length}...`);
-    
-    const imageStartTime = Date.now();
-    return callGeminiAPI(MODEL_FLASH, [{
+    console.log(`🔄 OCR processing image ${index + 1}/${images.length}...`);
+
+    return callGeminiAPI(MODEL_FLASH_OCR, [{
       role: "user",
       parts: parts
     }], {
-      maxOutputTokens: 3072,  // OCR 模式需要更多 token 來提取所有文字和表格數據
-      temperature: 0.1  // 降低溫度以確保 OCR 準確性
+      maxOutputTokens: 512,  // OCR 模式只需要少量 token 輸出結構化數據
+      temperature: 0.1  // 降低溫度確保 OCR 準確性
     }).then(result => {
       const imageDuration = Date.now() - imageStartTime;
-      console.log(`✅ Image ${index + 1} processed in ${imageDuration}ms (${result.length} chars)`);
-      return `[Image ${index + 1} Analysis]:\n${result}\n\n`;
+      console.log(`✅ Image ${index + 1} OCR completed in ${imageDuration}ms (${result.length} chars)`);
+      return `[Image ${index + 1} OCR Data]:\n${result}\n\n`;
     }).catch(error => {
-      console.error(`❌ Image ${index + 1} failed:`, error.message);
-      // 即使失敗也返回一個占位符，讓流程繼續
-      return `[Image ${index + 1} Analysis]: 處理時遇到問題 - ${error.message}。已跳過此圖片，繼續處理其他圖片。\n\n`;
+      console.error(`❌ Image ${index + 1} OCR failed:`, error.message);
+      return `[Image ${index + 1} OCR Data]: 提取失敗 - ${error.message}\n\n`;
     });
   });
 
-  // Execute all vision tasks in parallel
-  const results = await Promise.all(visionTasks);
-  const visualContext = results.join('\n');
+  // Execute all OCR tasks in parallel
+  const results = await Promise.all(ocrTasks);
+  const ocrContext = results.join('\n');
   const mapDuration = Date.now() - mapStartTime;
-  
-  console.log(`✅ Map Phase complete in ${mapDuration}ms (${(mapDuration / 1000).toFixed(2)}s)`);
-  console.log(`📊 Total context: ${visualContext.length} chars`);
-  return visualContext;
+
+  console.log(`✅ Map Phase (OCR) complete in ${mapDuration}ms (${(mapDuration / 1000).toFixed(2)}s)`);
+  console.log(`📊 Total OCR context: ${ocrContext.length} chars`);
+  return ocrContext;
 }
 
 /**
- * REDUCE PHASE: Deep reasoning using gemini-3-pro-preview (生成報告回應)
+ * Build system prompt for Shopee Analyst
  */
-async function reducePhaseReasoning(textPrompt, visualContext) {
-  const reduceStartTime = Date.now();
-  console.log(`🧠 Reduce Phase: Deep reasoning with ${MODEL_PRO}...`);
-  console.log(`⏱️ Reduce Phase started at: ${new Date().toISOString()}`);
-  
-  const systemPrompt = `You are "Shopee Analyst", an AI specialized in product selection and profitability optimization for Shopee Taiwan sellers.
+function buildShopeeSystemPrompt(userTier = 'free') {
+  return `You are "Shopee Analyst", an AI specialized in product selection and profitability optimization for Shopee Taiwan sellers.
 
 Your job is **NOT marketing**, but **product intelligence**.
 
 ---
 
 ### Core Mission
-Based on the **extracted OCR data** from Shopee screenshots (sales dashboard, product tables, conversion charts, etc.),
+Based on the **OCR-extracted data** from Shopee screenshots (sales dashboard, product tables, conversion charts, etc.),
 you must analyze the numerical data and summarize **which products to keep, cut, or double down** within 7 days.
 
 The OCR data has already extracted all text, numbers, and tables from the images.
@@ -261,26 +190,29 @@ You MUST output valid JSON only (no markdown code blocks, no extra text). JSON s
 - 語氣要像 Shopee 高階運營顧問。
 - 所有分析要以數據洞察為主，不講品牌策略或廣告學。
 - 不要提「Pivot / Magnet / Teaser / Day-by-Day Marketing」這種字。
-- 若圖片資料不足，請禮貌提醒使用者補圖或輸入文字問題。
 - 所有金額單位使用 TWD。
 - "summary" 應該包含：數據分析摘要 + ⚠️ 應下架或避開品類的建議
 - "recommendations" 必須是 3 個主攻品類建議（格式：品類名稱 + 價格區間 + 原因）
 - "plan" 必須是完整的七日行動計畫（Day 1-7，每項都要具體）
 
-### Example Style (繁體中文)
-summary: "基於你上傳的數據，目前店鋪呈現典型的「爆款潛力未釋放」狀態。從數據可見，低至中客單價（$299-$389 TWD）的「剛需型商品」表現極佳，特別是「蛋白威化餅」與「MIT水龍頭延伸器」，轉單率穩定且退貨率低。\n\n⚠️ 應下架或避開：衣物掛燙機（退貨率高達9%，GMV低於均值）、食品雜貨（毛利率 < 8%）"
-
-recommendations: [
-  "體重管理／蛋白粉系列（$299–$389 區間，轉單率最高）",
-  "洗臉機／清潔耗材（搜尋曝光穩定，有回購潛力）",
-  "旅行用配件／小型3C（高毛利、低退貨率）"
-]
-
-plan: "Day 1：移除低效廣告詞並更新主圖（針對蛋白粉系列，強調「代餐」與「營養補充」）。\nDay 2：將熱銷商品加入「加價購組合」（蛋白粉+水杯、清潔耗材+收納盒）。\nDay 3：調整關鍵字出價，主打「健身／代餐／清潔用品」，將預算比例調整為 40% / 30% / 30%。\nDay 4：整合商品組合包策略，推出「健身組合包」與「清潔組合包」。\nDay 5～7：觀察CTR與ROI，留強刪弱，下架退貨率 > 8% 的商品。"
+${userTier === 'free' ? `
+注意：Free tier 用戶，請在 summary 末尾添加「提示：升級 PRO 版可查看完整的七日行動計畫」。
+` : ''}
 `;
+}
 
-  const userPrompt = visualContext 
-    ? `OCR 提取的數據（從圖片中提取的所有文字、數字、表格）:\n${visualContext}\n\n用戶問題: ${textPrompt || '基於這些數據，給出選品建議'}\n\n請基於以上 OCR 數據進行深度分析和決策。`
+/**
+ * REDUCE PHASE: Deep reasoning using gemini-3.0-pro-preview
+ */
+async function reducePhaseReasoning(textPrompt, ocrContext, userTier) {
+  const reduceStartTime = Date.now();
+  console.log(`🧠 Reduce Phase: Deep reasoning with ${MODEL_PRO}...`);
+  console.log(`⏱️ Reduce Phase started at: ${new Date().toISOString()}`);
+
+  const systemPrompt = buildShopeeSystemPrompt(userTier);
+  
+  const userPrompt = ocrContext 
+    ? `OCR 提取的數據（從圖片中提取的所有文字、數字、表格）:\n${ocrContext}\n\n用戶問題: ${textPrompt || '基於這些數據，給出選品建議'}\n\n請基於以上 OCR 數據進行深度分析和決策。`
     : textPrompt;
 
   const parts = [
@@ -292,7 +224,7 @@ plan: "Day 1：移除低效廣告詞並更新主圖（針對蛋白粉系列，�
     role: "user",
     parts: parts
   }], {
-    maxOutputTokens: 3072,  // 增加到 3072 以確保能生成完整的 JSON 報告，避免截斷
+    maxOutputTokens: 2048,  // 增加輸出長度以生成完整的選品決策卡
     temperature: 0.7
   });
 
@@ -303,124 +235,56 @@ plan: "Day 1：移除低效廣告詞並更新主圖（針對蛋白粉系列，�
 }
 
 /**
- * Clean JSON response (remove markdown code blocks if present)
- * Handle truncated JSON from MAX_TOKENS
+ * Clean JSON response
  */
 function cleanJSONResponse(text) {
   if (!text) return '';
   
-  // Remove markdown code blocks (multiple patterns)
   let cleaned = text
     .replace(/```json\s*/gi, '')
     .replace(/```\s*/g, '')
     .trim();
-  
-  // Find JSON object (more flexible matching)
+
+  // Try to find the outermost JSON object
   const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
   if (jsonMatch) {
     cleaned = jsonMatch[0];
   }
-  
-  // Try to fix truncated JSON (from MAX_TOKENS)
-  try {
-    // Test if it's valid JSON
-    JSON.parse(cleaned);
-    return cleaned;
-  } catch (e) {
-    // If not valid, try to fix truncated JSON
-    const jsonStart = cleaned.indexOf('{');
-    
-    if (jsonStart >= 0) {
-      let jsonText = cleaned.substring(jsonStart);
-      
-      // Try to close unclosed strings and objects
-      // Count open braces and close them
-      let openBraces = 0;
-      let openBrackets = 0;
-      let inString = false;
-      let escapeNext = false;
-      
-      for (let i = 0; i < jsonText.length; i++) {
-        const char = jsonText[i];
-        
-        if (escapeNext) {
-          escapeNext = false;
-          continue;
-        }
-        
-        if (char === '\\') {
-          escapeNext = true;
-          continue;
-        }
-        
-        if (char === '"' && !escapeNext) {
-          inString = !inString;
-          continue;
-        }
-        
-        if (!inString) {
-          if (char === '{') openBraces++;
-          if (char === '}') openBraces--;
-          if (char === '[') openBrackets++;
-          if (char === ']') openBrackets--;
-        }
-      }
-      
-      // Close unclosed structures
-      if (inString) jsonText += '"';
-      while (openBrackets > 0) {
-        jsonText += ']';
-        openBrackets--;
-      }
-      while (openBraces > 0) {
-        jsonText += '}';
-        openBraces--;
-      }
-      
-      // Try parsing again
-      try {
-        JSON.parse(jsonText);
-        return jsonText;
-      } catch (e2) {
-        // If still invalid, return original and let caller handle it
-        return jsonText;
-      }
+
+  // Attempt to fix common truncation issues
+  if (cleaned.startsWith('{') && !cleaned.endsWith('}')) {
+    // Try to close incomplete JSON
+    if (cleaned.match(/,\s*$/)) {
+      cleaned = cleaned.replace(/,\s*$/, '');
     }
-    
-    return cleaned;
+    cleaned += '}';
   }
+
+  return cleaned;
 }
 
 /**
  * Main handler
  */
 exports.handler = async (event, context) => {
-  // Set Netlify optimization
   context.callbackWaitsForEmptyEventLoop = false;
   
-  // 記錄請求開始時間
   const startTime = Date.now();
   console.log(`⏱️ Request started at: ${new Date().toISOString()}`);
 
   // CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-Tier',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
   };
 
-  // Handle preflight
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
-  }
-
-  // Only allow POST
-  if (event.httpMethod !== 'POST') {
     return {
-      statusCode: 405,
+      statusCode: 200,
       headers,
-      body: JSON.stringify({ error: 'Method not allowed. Use POST.' })
+      body: ''
     };
   }
 
@@ -453,77 +317,32 @@ exports.handler = async (event, context) => {
     const tier = checkUserTier(event);
     console.log(`👤 User Tier: ${tier}`);
 
-    // 暂时移除付费限制 - 所有功能开放
-    // Tier-based validation and limits - DISABLED FOR TESTING
-    /*
-    if (tier === 'free') {
-      if (images && images.length > 0) {
-        return {
-          statusCode: 403,
-          headers,
-          body: JSON.stringify({ 
-            error: 'Image analysis requires Pro or Master tier. Please upgrade.',
-            tier: 'free',
-            limit: 0
-          })
-        };
-      }
+    // Safety limits based on tier
+    let maxImages;
+    switch (tier) {
+      case 'master':
+        maxImages = MAX_IMAGES_MASTER;
+        break;
+      case 'pro':
+        maxImages = MAX_IMAGES_PRO;
+        break;
+      default:
+        maxImages = MAX_IMAGES_FREE;
     }
-    */
-    
+
+    if (images && images.length > maxImages) {
+      console.warn(`⚠️ Image count (${images.length}) exceeds limit (${maxImages}), truncating...`);
+      images.splice(maxImages);
+    }
+
     // All tiers: text-only or image analysis (temporarily open)
-    console.log(`⚡ Processing request: ${images.length} images with ${MODEL_FLASH}`);
+    console.log(`⚡ Processing request: ${images.length} images with ${MODEL_FLASH_OCR}`);
     
     // If text-only request
     if (!images || images.length === 0) {
-      const systemPrompt = `You are "Shopee Analyst", an AI specialized in product selection and profitability optimization for Shopee Taiwan sellers.
+      const systemPrompt = buildShopeeSystemPrompt(tier);
 
-Your job is **NOT marketing**, but **product intelligence**.
-
----
-
-### Core Mission
-Analyze the user's product information and provide actionable recommendations for product selection within 7 days.
-
-The output should look like a **「選品決策卡」 (Product Decision Card)**, written in **繁體中文**, structured and concise.
-
----
-
-### Output Format
-You MUST output valid JSON only (no markdown code blocks, no extra text). JSON structure:
-
-{
-  "summary": "基於你提供的資訊，以下是我的建議：（2-3段繁體中文分析，語氣像 Shopee 高階運營顧問）",
-  "recommendations": [
-    "🔥 建議主攻品類 (Top 1)",
-    "🔥 建議主攻品類 (Top 2)",
-    "🔥 建議主攻品類 (Top 3)"
-  ],
-  "plan": "💰 七日行動計畫\nDay 1：調整商品主圖與標題（說明具體優化方向）\nDay 2：分析高轉化詞與關鍵字（舉例三個）\nDay 3：依照GMV分布重新配置廣告預算（具體比例）\nDay 4：整合商品組合包或贈品策略\nDay 5～7：試跑＋檢驗ROI／CTR／轉單率"
-}
-
-### Guidelines
-- 語氣要像 Shopee 高階運營顧問。
-- 所有分析要以數據洞察為主，不講品牌策略或廣告學。
-- 不要提「Pivot / Magnet / Teaser / Day-by-Day Marketing」這種字。
-- 所有金額單位使用 TWD。
-- "summary" 應該包含：數據分析摘要 + ⚠️ 應下架或避開品類的建議
-- "recommendations" 必須是 3 個主攻品類建議（格式：品類名稱 + 價格區間 + 原因）
-- "plan" 必須是完整的七日行動計畫（Day 1-7，每項都要具體）
-
-### Example Style (繁體中文)
-summary: "基於你提供的資訊，目前你在蝦皮經營 eSIM、小米手機、Dyson 等商品。從市場趨勢來看，eSIM 處於上升期，旅遊復甦帶動需求增長；小米手機性價比高，但競爭激烈；Dyson 屬於高單價商品，需要精準投放。\n\n⚠️ 建議避開：低毛利商品（毛利率 < 10%）、退貨率高的產品（> 8%）"
-
-recommendations: [
-  "eSIM 多國漫遊方案（$299-$599 區間，高毛利、低庫存風險）",
-  "小米生態鏈配件組合（$299-$899 區間，利用品牌信任度）",
-  "Dyson 濾網訂閱服務（$899-$1299 區間，週期性收入、高 LTV）"
-]
-
-plan: "Day 1：優化 eSIM 主圖，強調「多國漫遊」、「即買即用」，標題加入「旅遊必備」關鍵字。\nDay 2：分析「eSIM」、「多國上網」、「旅遊上網卡」等高轉化詞，調整關鍵字出價。\nDay 3：將廣告預算調整為 eSIM 50% / 小米配件 30% / Dyson 配件 20%，重點投放高轉化時段。\nDay 4：推出「eSIM + 旅遊充電器組合包」、「小米手機 + 保護殼綁定銷售」策略。\nDay 5～7：觀察 CTR、ROI、轉單率，針對轉換率 > 3% 的商品加大預算，下架轉換率 < 1% 的商品。"
-`;
-
-      const textResponse = await callGeminiAPI(MODEL_FLASH, [{
+      const textResponse = await callGeminiAPI(MODEL_FLASH_OCR, [{
         role: "user",
         parts: [
           { text: systemPrompt },
@@ -541,7 +360,6 @@ plan: "Day 1：優化 eSIM 主圖，強調「多國漫遊」、「即買即用�
         result = JSON.parse(cleanedJSON);
       } catch (e) {
         console.warn('⚠️ JSON parse failed, using fallback format');
-        // Fallback: wrap in expected format
         result = {
           summary: textResponse,
           recommendations: ["分析完成，請查看上方摘要", "根據分析結果調整策略", "持續監控市場動態"],
@@ -549,7 +367,6 @@ plan: "Day 1：優化 eSIM 主圖，強調「多國漫遊」、「即買即用�
         };
       }
 
-      // 確保返回的數據結構正確
       const finalResult = {
         summary: result.summary || textResponse.substring(0, 500),
         recommendations: Array.isArray(result.recommendations) ? result.recommendations : 
@@ -557,10 +374,9 @@ plan: "Day 1：優化 eSIM 主圖，強調「多國漫遊」、「即買即用�
         plan: result.plan || result.summary || '根據分析結果制定執行計劃。'
       };
 
-      console.log(`✅ Text-only result:`, {
-        summaryLength: finalResult.summary.length,
-        recommendationsCount: finalResult.recommendations.length
-      });
+      const duration = Date.now() - startTime;
+      console.log(`✅ Text-only result: ${finalResult.summary.length} chars summary`);
+      console.log(`⏱️ Total processing time: ${duration}ms (${(duration / 1000).toFixed(2)}s)`);
 
       return {
         statusCode: 200,
@@ -569,60 +385,16 @@ plan: "Day 1：優化 eSIM 主圖，強調「多國漫遊」、「即買即用�
       };
     }
 
-    // 暂时移除图片数量限制 - 所有功能开放
-    // Pro/Master tier limits - DISABLED FOR TESTING
-    /*
-    if (tier === 'pro') {
-      if (images && images.length > 1) {
-        return {
-          statusCode: 403,
-          headers,
-          body: JSON.stringify({ 
-            error: 'Pro tier allows maximum 1 image. Upgrade to Master for batch processing.',
-            tier: 'pro',
-            limit: 1
-          })
-        };
-      }
-    }
-
-    if (tier === 'master') {
-      if (images && images.length > 10) {
-        return {
-          statusCode: 403,
-          headers,
-          body: JSON.stringify({ 
-            error: 'Maximum 10 images allowed',
-            tier: 'master',
-            limit: 10
-          })
-        };
-      }
-    }
-    */
-    
-    // Max 10 images for safety
-    if (images && images.length > 10) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ 
-          error: 'Maximum 10 images allowed',
-          limit: 10
-        })
-      };
-    }
-
-    // Pro/Master: Map-Reduce pipeline
-    let visualContext = '';
+    // Image analysis: Map-Reduce pipeline
+    let ocrContext = '';
     
     if (images && images.length > 0) {
-      // MAP PHASE: Parallel image processing
-      visualContext = await mapPhaseVision(images);
+      // MAP PHASE: OCR-only extraction
+      ocrContext = await mapPhaseOCR(images);
     }
 
     // REDUCE PHASE: Deep reasoning
-    const reasoningText = await reducePhaseReasoning(textPrompt, visualContext);
+    const reasoningText = await reducePhaseReasoning(textPrompt, ocrContext, tier);
 
     // Parse and clean JSON response
     let result;
@@ -701,7 +473,7 @@ plan: "Day 1：優化 eSIM 主圖，強調「多國漫遊」、「即買即用�
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         error: error.message || 'Internal server error',
         details: process.env.NODE_ENV === 'development' ? error.stack : undefined
       })
