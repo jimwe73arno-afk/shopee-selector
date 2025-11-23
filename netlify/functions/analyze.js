@@ -143,13 +143,32 @@ async function mapPhaseVision(images) {
   console.log(`📊 Map Phase: Processing ${images.length} images in parallel...`);
   console.log(`⏱️ Map Phase started at: ${new Date().toISOString()}`);
   
-  const visionPrompt = `請用繁體中文簡潔描述這張圖片。只提取關鍵數據（每項1-2句話）：
-- 價格帶範圍（如：$299-$389）
-- 主要商品類型（如：蛋白粉、清潔用品）
-- 關鍵銷售數據（GMV、轉換率、單價）
-- 需要關注的品類或商品
+  const visionPrompt = `你是一個 OCR 文字提取專家。請用繁體中文提取這張圖片中的所有**文字、數字、表格數據**。
 
-輸出要簡潔，專注於數據洞察。不要詳細描述視覺風格。`;
+**專注提取以下數據：**
+1. 價格資訊（單價、價格區間、折扣）
+2. 商品名稱和品類
+3. 銷售數據（GMV、訂單數、轉換率、ROI、CTR）
+4. 數字指標（庫存、銷量、廣告花費、點擊數）
+5. 日期和時間範圍
+6. 表格中的所有數值
+
+**輸出格式要求：**
+- 只輸出結構化的數據列表（不要描述視覺元素）
+- 每個數據項一行
+- 使用繁體中文
+- 保留原始數字和單位
+- 如果有表格，按行列列出所有數值
+
+範例輸出格式：
+價格帶: $299-$389
+商品類型: 蛋白威化餅
+GMV: 45,280 TWD
+轉換率: 3.2%
+訂單數: 156
+廣告花費: 12,500 TWD
+ROI: 2.8
+...（其他數據）`;
 
   const visionTasks = images.map((imgBase64, index) => {
     // Clean base64 string
@@ -177,8 +196,8 @@ async function mapPhaseVision(images) {
       role: "user",
       parts: parts
     }], {
-      maxOutputTokens: 2048,  // 增加到 2048 以確保能提取完整的圖片描述，避免只返回 fallback
-      temperature: 0.3
+      maxOutputTokens: 3072,  // OCR 模式需要更多 token 來提取所有文字和表格數據
+      temperature: 0.1  // 降低溫度以確保 OCR 準確性
     }).then(result => {
       const imageDuration = Date.now() - imageStartTime;
       console.log(`✅ Image ${index + 1} processed in ${imageDuration}ms (${result.length} chars)`);
@@ -215,8 +234,11 @@ Your job is **NOT marketing**, but **product intelligence**.
 ---
 
 ### Core Mission
-Given uploaded Shopee screenshots (sales dashboard, product tables, conversion charts, etc.),
-you must analyze and summarize **which products to keep, cut, or double down** within 7 days.
+Based on the **extracted OCR data** from Shopee screenshots (sales dashboard, product tables, conversion charts, etc.),
+you must analyze the numerical data and summarize **which products to keep, cut, or double down** within 7 days.
+
+The OCR data has already extracted all text, numbers, and tables from the images.
+Your job is to analyze these **structured data points** and provide actionable recommendations.
 
 The output should look like a **「選品決策卡」 (Product Decision Card)**, written in **繁體中文**, structured and concise.
 
@@ -258,7 +280,7 @@ plan: "Day 1：移除低效廣告詞並更新主圖（針對蛋白粉系列，�
 `;
 
   const userPrompt = visualContext 
-    ? `Visual Context Data:\n${visualContext}\n\nUser Question: ${textPrompt}`
+    ? `OCR 提取的數據（從圖片中提取的所有文字、數字、表格）:\n${visualContext}\n\n用戶問題: ${textPrompt || '基於這些數據，給出選品建議'}\n\n請基於以上 OCR 數據進行深度分析和決策。`
     : textPrompt;
 
   const parts = [
