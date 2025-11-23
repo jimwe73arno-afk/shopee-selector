@@ -11,7 +11,7 @@ const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models
 
 // Model endpoints
 const MODEL_FLASH = 'gemini-2.5-flash';  // Fast vision processing (Map phase)
-const MODEL_PRO = 'gemini-3.0-pro';      // Deep reasoning (Reduce phase) - 生成報告回應
+const MODEL_PRO = 'gemini-3-pro-preview';      // Deep reasoning (Reduce phase) - 生成報告回應
 
 /**
  * Check user tier from headers (JWT or custom header)
@@ -154,7 +154,7 @@ Output as structured text summary. Be concise but comprehensive.`;
 }
 
 /**
- * REDUCE PHASE: Deep reasoning using gemini-3.0-pro (生成報告回應)
+ * REDUCE PHASE: Deep reasoning using gemini-3-pro-preview (生成報告回應)
  */
 async function reducePhaseReasoning(textPrompt, visualContext) {
   console.log(`🧠 Reduce Phase: Deep reasoning with ${MODEL_PRO}...`);
