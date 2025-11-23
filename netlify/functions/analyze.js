@@ -246,36 +246,44 @@ exports.handler = async (event) => {
     console.log(`🎯 Reduce Phase: 三軌選品矩陣分析`);
 
     const reduceStartTime = Date.now();
-    const systemPrompt = buildSystemPrompt();
     
-    const finalPrompt = `${systemPrompt}
+    // 🔴 關鍵修改：直接使用戰術邏輯，不需要複雜的 System Prompt
+    const finalPrompt = `
+      You are the "Shopee Live Tactical Analyst" (蝦皮直播即時戰術分析師).
+      Your goal is NOT just to answer, but to create "Bundling Opportunities" (C-A-B Strategy).
+      
+      === YOUR STRATEGY MATRIX ===
+      1. C-Track (Hook/Bait): The product the user asked about (Traffic driver).
+      2. A-Track (Meat/Profit): The High-Margin product related to C (The real profit maker).
+      3. B-Track (Soup/Filler): Low-cost add-ons to hit free shipping or coupon thresholds.
 
----
+      === INPUT DATA ===
+      [VISUAL DATA FROM IMAGES]:
+      ${visualContext}
+      
+      [USER QUERY / AUDIENCE QUESTION]:
+      "${textPrompt || '請分析這些商品'}"
+      
+      === TASK ===
+      Based ONLY on the Visual Data and User Query, generate a tactical response.
+      Do NOT hallucinate products not in the data.
 
-## 實際資料：
-
-【觀眾提問】：
-${textPrompt || '請分析這些商品'}
-
-【商品資訊（從截圖中提取）】：
-${visualContext}
-
----
-
-請根據以上資料，進行完整的「三軌選品矩陣」分析，並輸出符合格式的結果。
-必須包含：觀眾畫像、C軌/A軌/B軌商品選擇、主播即時話術。
-
-⚠️ 重要：保持輸出簡潔！
-- "summary" 不超過 100 字
-- "plan" 話術控制在 150 字以內
-- 重點明確，不要冗長
-
-請以 JSON 格式回覆：
-{
-  "summary": "簡潔的分析內容（100字以內）",
-  "recommendations": ["C軌商品名稱", "A軌商品名稱", "B軌商品名稱"],
-  "plan": "主播即時話術（150字以內）"
-}`;
+      === OUTPUT FORMAT (Valid JSON Only) ===
+      The output must be a valid JSON object with this exact structure:
+      {
+        "summary": "Start with '📊 觀眾畫像分析：' followed by a 1-sentence profiling of the user.",
+        "recommendations": [
+          "🪝 C軌(誘餌): [Product Name] - Why?",
+          "💰 A軌(肉/高利潤): [Product Name] - Why?",
+          "📦 B軌(湯/湊單): [Product Name] - Why?"
+        ],
+        "plan": "Start with '🗣 主播即時話術：' followed by a script that naturally connects C -> A -> B, mentioning any discounts found in the data."
+      }
+      
+      ⚠️ Keep it concise:
+      - summary: max 100 words
+      - plan: max 150 words
+    `;
 
     const finalResult = await callGemini(MODEL_REDUCE, finalPrompt);
     const reduceTime = Date.now() - reduceStartTime;
