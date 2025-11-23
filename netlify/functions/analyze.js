@@ -618,12 +618,19 @@ plan: "Day 1：優化 eSIM 主圖，強調「多國漫遊」、「即買即用�
       plan: result.plan || result.summary || '根據分析結果制定執行計劃。'
     };
 
+    const duration = Date.now() - startTime;
     console.log(`✅ Success: ${tier} tier, ${images.length} images, ${finalResult.summary.length} chars summary`);
+    console.log(`⏱️ Total processing time: ${duration}ms (${(duration / 1000).toFixed(2)}s)`);
     console.log(`📊 Result structure:`, {
       summary: finalResult.summary.substring(0, 100) + '...',
       recommendationsCount: finalResult.recommendations.length,
       planLength: finalResult.plan.length
     });
+
+    // 如果處理時間超過 100 秒，記錄警告
+    if (duration > 100000) {
+      console.warn(`⚠️ Processing time exceeded 100s: ${(duration / 1000).toFixed(2)}s. Consider optimizing or reducing image count.`);
+    }
 
     return {
       statusCode: 200,

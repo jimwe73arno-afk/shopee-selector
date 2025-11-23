@@ -858,17 +858,36 @@
                 });
                 
                 console.log('📤 [圖片分析] 發送 API 請求...');
+                console.log('⏱️ [圖片分析] 請求開始時間:', new Date().toISOString());
                 
-                const response = await fetch('/.netlify/functions/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        textPrompt: query,
-                        images: base64Images
-                    })
-                });
+                // 創建 AbortController 用於超時控制（120 秒超時）
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => {
+                    controller.abort();
+                    console.error('❌ [圖片分析] 請求超時（120 秒）');
+                }, 120000); // 120 秒超時
                 
-                console.log('📥 [圖片分析] API 響應狀態:', response.status, response.statusText);
+                try {
+                    const response = await fetch('/.netlify/functions/analyze', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            textPrompt: query,
+                            images: base64Images
+                        }),
+                        signal: controller.signal
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    console.log('📥 [圖片分析] API 響應狀態:', response.status, response.statusText);
+                    console.log('⏱️ [圖片分析] 請求完成時間:', new Date().toISOString());
+                    
+                    if (!response.ok) {
+                        if (response.status === 504) {
+                            throw new Error('請求超時（504）。圖片分析需要較長時間，請稍後重試或減少圖片數量。');
+                        }
+                        throw new Error(`API 錯誤: ${response.status}`);
+                    }
                 
                 if (!response.ok) {
                     throw new Error(`API 錯誤: ${response.status}`);
@@ -1051,7 +1070,8 @@
                 console.error('❌ [圖片分析] 完整錯誤信息:', {
                     message: error.message,
                     stack: error.stack,
-                    error: error
+                    error: error,
+                    name: error.name
                 });
                 
                 const loadingEl = document.getElementById('shopee-loading');
@@ -1062,8 +1082,14 @@
                 if (resultsEl) resultsEl.classList.add('hidden');
                 if (emptyEl) emptyEl.classList.remove('hidden');
                 
-                const errorMsg = error.message || '未知錯誤';
-                showToast('圖片分析失敗: ' + errorMsg);
+                // 特殊處理超時錯誤
+                let errorMsg = error.message || '未知錯誤';
+                if (error.name === 'AbortError' || error.message.includes('超時') || error.message.includes('504')) {
+                    errorMsg = '請求超時。圖片分析需要較長時間，建議：\n1. 減少圖片數量（2-3 張）\n2. 稍後重試\n3. 如果持續超時，請聯繫客服';
+                    showToast('請求超時，請稍後重試或減少圖片數量', 5000);
+                } else {
+                    showToast('圖片分析失敗: ' + errorMsg);
+                }
             }
         }
 
