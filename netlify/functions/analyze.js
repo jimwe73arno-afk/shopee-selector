@@ -410,10 +410,23 @@ CRITICAL OUTPUT REQUIREMENTS:
         };
       }
 
+      // 確保返回的數據結構正確
+      const finalResult = {
+        summary: result.summary || textResponse.substring(0, 500),
+        recommendations: Array.isArray(result.recommendations) ? result.recommendations : 
+          (result.recommendations ? [result.recommendations] : ['分析完成，請查看上方摘要', '根據分析結果調整策略', '持續監控市場動態']),
+        plan: result.plan || result.summary || '根據分析結果制定執行計劃。'
+      };
+
+      console.log(`✅ Text-only result:`, {
+        summaryLength: finalResult.summary.length,
+        recommendationsCount: finalResult.recommendations.length
+      });
+
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify(result)
+        body: JSON.stringify(finalResult)
       };
     }
 
@@ -515,12 +528,25 @@ CRITICAL OUTPUT REQUIREMENTS:
       };
     }
 
-    console.log(`✅ Success: ${tier} tier, ${images.length} images, ${result.summary.length} chars summary`);
+    // 確保返回的數據結構正確
+    const finalResult = {
+      summary: result.summary || result.reasoningText || '分析完成，請查看建議。',
+      recommendations: Array.isArray(result.recommendations) ? result.recommendations : 
+        (result.recommendations ? [result.recommendations] : ['請查看上方分析結果']),
+      plan: result.plan || result.summary || '根據分析結果制定執行計劃。'
+    };
+
+    console.log(`✅ Success: ${tier} tier, ${images.length} images, ${finalResult.summary.length} chars summary`);
+    console.log(`📊 Result structure:`, {
+      summary: finalResult.summary.substring(0, 100) + '...',
+      recommendationsCount: finalResult.recommendations.length,
+      planLength: finalResult.plan.length
+    });
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify(result)
+      body: JSON.stringify(finalResult)
     };
 
   } catch (error) {
