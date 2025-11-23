@@ -154,7 +154,7 @@ async function mapPhaseVision(images) {
       role: "user",
       parts: parts
     }], {
-      maxOutputTokens: 2048,  // 減少到 2048 以加快處理速度，專注於關鍵數據
+      maxOutputTokens: 1080,  // 降到 1080 以加快處理速度，只提取關鍵數據
       temperature: 0.3
     }).then(result => {
       const imageDuration = Date.now() - imageStartTime;
@@ -247,7 +247,7 @@ plan: "Day 1：移除低效廣告詞並更新主圖（針對蛋白粉系列，�
     role: "user",
     parts: parts
   }], {
-    maxOutputTokens: 4096,  // 減少到 4096 以加快輸出速度，保持簡潔
+    maxOutputTokens: 1080,  // 降到 1080 以加快輸出速度，保持簡潔緊湊
     temperature: 0.7
   });
 
