@@ -116,17 +116,17 @@ async function callGeminiAPI(model, contents, generationConfig = {}) {
  * MAP PHASE: Process each image in parallel using gemini-2.5-flash
  */
 async function mapPhaseVision(images) {
+  const mapStartTime = Date.now();
   console.log(`📊 Map Phase: Processing ${images.length} images in parallel...`);
+  console.log(`⏱️ Map Phase started at: ${new Date().toISOString()}`);
   
-  const visionPrompt = `請用繁體中文詳細描述這張圖片。提取關鍵數據：
-- 價格信息（價格帶、單價範圍）
-- 銷售數字（GMV、訂單數、轉換率等）
-- 商品類型（品類、商品名稱）
-- 視覺風格（主圖風格、配色）
-- 競爭對手數據（如有）
-- 任何可見的數值指標
+  const visionPrompt = `請用繁體中文簡潔描述這張圖片。只提取關鍵數據（每項1-2句話）：
+- 價格帶範圍（如：$299-$389）
+- 主要商品類型（如：蛋白粉、清潔用品）
+- 關鍵銷售數據（GMV、轉換率、單價）
+- 需要關注的品類或商品
 
-輸出為結構化文字摘要。要簡潔但全面。使用繁體中文，專注於蝦皮電商相關的數據洞察。`;
+輸出要簡潔，專注於數據洞察。不要詳細描述視覺風格。`;
 
   const visionTasks = images.map((imgBase64, index) => {
     // Clean base64 string
@@ -149,14 +149,16 @@ async function mapPhaseVision(images) {
 
     console.log(`🔄 Processing image ${index + 1}/${images.length}...`);
     
+    const imageStartTime = Date.now();
     return callGeminiAPI(MODEL_FLASH, [{
       role: "user",
       parts: parts
     }], {
-      maxOutputTokens: 4096,  // 增加到 4096 以處理完整的圖片描述，避免 MAX_TOKENS 截斷
+      maxOutputTokens: 2048,  // 減少到 2048 以加快處理速度，專注於關鍵數據
       temperature: 0.3
     }).then(result => {
-      console.log(`✅ Image ${index + 1} processed (${result.length} chars)`);
+      const imageDuration = Date.now() - imageStartTime;
+      console.log(`✅ Image ${index + 1} processed in ${imageDuration}ms (${result.length} chars)`);
       return `[Image ${index + 1} Analysis]:\n${result}\n\n`;
     }).catch(error => {
       console.error(`❌ Image ${index + 1} failed:`, error.message);
@@ -168,8 +170,10 @@ async function mapPhaseVision(images) {
   // Execute all vision tasks in parallel
   const results = await Promise.all(visionTasks);
   const visualContext = results.join('\n');
+  const mapDuration = Date.now() - mapStartTime;
   
-  console.log(`✅ Map Phase complete. Total context: ${visualContext.length} chars`);
+  console.log(`✅ Map Phase complete in ${mapDuration}ms (${(mapDuration / 1000).toFixed(2)}s)`);
+  console.log(`📊 Total context: ${visualContext.length} chars`);
   return visualContext;
 }
 
@@ -177,7 +181,9 @@ async function mapPhaseVision(images) {
  * REDUCE PHASE: Deep reasoning using gemini-3-pro-preview (生成報告回應)
  */
 async function reducePhaseReasoning(textPrompt, visualContext) {
+  const reduceStartTime = Date.now();
   console.log(`🧠 Reduce Phase: Deep reasoning with ${MODEL_PRO}...`);
+  console.log(`⏱️ Reduce Phase started at: ${new Date().toISOString()}`);
   
   const systemPrompt = `You are "Shopee Analyst", an AI specialized in product selection and profitability optimization for Shopee Taiwan sellers.
 
@@ -241,11 +247,13 @@ plan: "Day 1：移除低效廣告詞並更新主圖（針對蛋白粉系列，�
     role: "user",
     parts: parts
   }], {
-    maxOutputTokens: 8192,  // 增加到 8192 以確保完整的繁體中文「選品決策卡」輸出，避免截斷
+    maxOutputTokens: 4096,  // 減少到 4096 以加快輸出速度，保持簡潔
     temperature: 0.7
   });
 
-  console.log(`✅ Reduce Phase complete. Response: ${reasoningText.length} chars`);
+  const reduceDuration = Date.now() - reduceStartTime;
+  console.log(`✅ Reduce Phase complete in ${reduceDuration}ms (${(reduceDuration / 1000).toFixed(2)}s)`);
+  console.log(`📊 Response length: ${reasoningText.length} chars`);
   return reasoningText;
 }
 
