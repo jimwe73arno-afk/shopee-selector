@@ -93,6 +93,15 @@ exports.handler = async (event, context) => {
 
     // Initialize Gemini client with v1 API
     const client = new GoogleGenerativeAI(GEMINI_API_KEY);
+    
+    // ⚠️ API Version Detection & Warning
+    // Check if we're using v1 API (not v1beta)
+    const clientVersion = GoogleGenerativeAI.toString().includes('v1beta') ? 'v1beta (OLD!)' : 'v1 (NEW)';
+    console.log(`🔍 SDK Version Check: ${clientVersion}`);
+    if (clientVersion.includes('v1beta')) {
+      console.error('❌ WARNING: Still using v1beta API! This means Netlify cache needs to be cleared!');
+      console.error('❌ Please go to Netlify Dashboard → Deploys → Clear cache and deploy site');
+    }
 
     // Parse request body
     let body;
@@ -143,6 +152,10 @@ exports.handler = async (event, context) => {
       const model = client.getGenerativeModel({ 
         model: 'gemini-1.5-flash'  // 暫時先用 1.5 確保連通性，避免 404
       });
+      
+      // Log API endpoint being used (for debugging)
+      console.log(`📡 Using model: gemini-1.5-flash`);
+      console.log(`📡 API endpoint should be: https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash`);
 
       const systemPrompt = buildSystemPrompt(tier);
       const prompt = `${systemPrompt}\n\n用戶問題: ${textPrompt}`;
@@ -201,6 +214,11 @@ exports.handler = async (event, context) => {
     const mapModel = client.getGenerativeModel({ 
       model: 'gemini-1.5-flash'  // 暫時先用 1.5 確保連通性，避免 404
     });
+    
+    // Log API endpoint being used (for debugging)
+    console.log(`📡 Map Phase: Using model gemini-1.5-flash`);
+    console.log(`📡 Expected endpoint: https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash`);
+    console.log(`⚠️ If you see v1beta in errors, Netlify cache needs clearing!`);
 
     const ocrPrompt = `請從圖片中擷取商品名稱、價格、分類、銷量、退貨率、評分。
 只輸出文字摘要，不要評論。
@@ -269,6 +287,11 @@ exports.handler = async (event, context) => {
       model: 'gemini-1.5-pro',  // 暫時先用 1.5 確保連通性，避免 404
       systemInstruction: buildSystemPrompt(tier)
     });
+    
+    // Log API endpoint being used (for debugging)
+    console.log(`📡 Reduce Phase: Using model gemini-1.5-pro`);
+    console.log(`📡 Expected endpoint: https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro`);
+    console.log(`⚠️ If you see v1beta in errors, Netlify cache needs clearing!`);
 
     const userPrompt = mergedText 
       ? `OCR 提取的數據（從圖片中提取的所有文字、數字、表格）:\n${mergedText}\n\n用戶問題: ${textPrompt || '基於這些數據，給出選品建議'}\n\n請基於以上 OCR 數據進行深度分析和決策。`
