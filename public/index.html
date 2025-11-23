@@ -814,28 +814,65 @@
                 
                 const data = await response.json();
                 
+                // 添加详细调试日志
+                console.log('📥 [圖片分析] API 響應數據:', data);
+                console.log('📊 [圖片分析] 數據結構:', {
+                    hasSummary: !!data.summary,
+                    hasRecommendations: !!data.recommendations,
+                    hasPlan: !!data.plan,
+                    recommendationsType: Array.isArray(data.recommendations) ? 'array' : typeof data.recommendations,
+                    recommendationsLength: Array.isArray(data.recommendations) ? data.recommendations.length : 0
+                });
+                
                 if (data.error) {
                     throw new Error(data.error || '分析失敗');
                 }
                 
                 // Hide loading
-                document.getElementById('shopee-loading').classList.add('hidden');
+                const loadingEl = document.getElementById('shopee-loading');
+                if (loadingEl) loadingEl.classList.add('hidden');
                 
-                // Show results in free results section
+                // Parse data with better fallback handling
                 let recommendations = [];
                 let extendedIdeas = '';
+                let summaryText = '';
                 
+                // 提取摘要
+                summaryText = data.summary || data.reasoningText || '';
+                console.log('📝 [圖片分析] 摘要長度:', summaryText.length);
+                
+                // 提取推薦 - 更健壯的解析
                 if (data.recommendations && Array.isArray(data.recommendations)) {
                     recommendations = data.recommendations;
-                } else if (data.summary) {
-                    recommendations = [{ item: "分析結果", reason: data.summary }];
+                    console.log('✅ [圖片分析] 推薦列表 (數組):', recommendations.length, '項');
+                } else if (typeof data.recommendations === 'string') {
+                    // 如果是字符串，嘗試分割
+                    recommendations = data.recommendations.split('\n').filter(r => r.trim()).map(r => ({ item: r.trim() }));
+                    console.log('⚠️ [圖片分析] 推薦是字符串，已轉換為數組');
+                } else if (summaryText) {
+                    // 從摘要生成推薦
+                    const summaryParts = summaryText.split(/[。！\n]/).filter(p => p.trim()).slice(0, 10);
+                    recommendations = summaryParts.map((part, idx) => ({
+                        item: `建議 ${idx + 1}`,
+                        reason: part.trim()
+                    }));
+                    console.log('⚠️ [圖片分析] 從摘要生成推薦:', recommendations.length, '項');
                 }
                 
+                // 提取計劃
                 if (data.plan) {
                     extendedIdeas = data.plan;
-                } else if (data.summary) {
-                    extendedIdeas = data.summary;
+                } else if (summaryText) {
+                    extendedIdeas = summaryText;
+                } else {
+                    extendedIdeas = '暫無延伸建議，請查看上方分析結果。';
                 }
+                
+                console.log('📊 [圖片分析] 解析後的數據:', {
+                    recommendations: recommendations.length,
+                    extendedIdeasLength: extendedIdeas.length,
+                    summaryLength: summaryText.length
+                });
                 
                 // Populate results
                 const top10List = document.getElementById('top-10-list');
