@@ -75,32 +75,55 @@ async function callGeminiAPI(model, contents, generationConfig = {}) {
   // 處理 MAX_TOKENS 情況（輸出被截斷，但可能仍有部分內容）
   if (!text && finishReason === 'MAX_TOKENS') {
     console.warn('⚠️ Response hit MAX_TOKENS limit. Trying to extract partial content...');
+    
     // 嘗試從所有 parts 中提取內容
     const allParts = candidate?.content?.parts || [];
-    const partialText = allParts.map(p => p.text || '').join('').trim();
+    let partialText = allParts.map(p => p.text || '').join('').trim();
     
-    if (partialText) {
+    if (partialText && partialText.length > 50) {
       console.log(`✅ Extracted partial response: ${partialText.length} chars`);
-      // 返回部分內容，不添加截斷提示（因為可能已經足夠）
       return partialText;
     }
     
     // 嘗試從完整的 response 中提取任何文本內容
-    const fullText = JSON.stringify(data).match(/"text":"([^"]*)"/);
-    if (fullText && fullText[1]) {
-      const extractedText = fullText[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
-      console.log(`✅ Extracted text from response: ${extractedText.length} chars`);
-      return extractedText;
+    const responseStr = JSON.stringify(data);
+    const textMatch = responseStr.match(/"text":"([^"]{50,}?)"/);
+    if (textMatch && textMatch[1]) {
+      partialText = textMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\u([0-9a-f]{4})/gi, (match, code) => String.fromCharCode(parseInt(code, 16)));
+      if (partialText.length > 50) {
+        console.log(`✅ Extracted text from response: ${partialText.length} chars`);
+        return partialText;
+      }
     }
     
-    // 如果還是沒有內容，返回一個提示信息而不是拋出錯誤
-    console.warn('⚠️ No partial content available, returning fallback message');
-    return '圖片內容較複雜，已盡可能提取關鍵信息。建議減少圖片數量或簡化請求。';
+    // 嘗試從 candidate 的其他字段提取
+    if (candidate?.content) {
+      const contentStr = JSON.stringify(candidate.content);
+      const contentMatch = contentStr.match(/"text":"([^"]{50,}?)"/);
+      if (contentMatch && contentMatch[1]) {
+        partialText = contentMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+        if (partialText.length > 50) {
+          console.log(`✅ Extracted text from candidate content: ${partialText.length} chars`);
+          return partialText;
+        }
+      }
+    }
+    
+    // 最後的 fallback：拋出錯誤而不是返回無意義的消息
+    console.error('❌ No extractable content from MAX_TOKENS response. Full response:', JSON.stringify(data, null, 2));
+    throw new Error('Response hit MAX_TOKENS limit and no extractable content available. Please reduce image complexity or increase maxOutputTokens.');
   }
   
   // 如果 finishReason 是 MAX_TOKENS 但已有 text，記錄警告但仍返回
   if (text && finishReason === 'MAX_TOKENS') {
     console.warn(`⚠️ Response truncated at MAX_TOKENS, but got ${text.length} chars. Content may be incomplete.`);
+    // 即使被截斷，如果有足夠的內容（>100 字符），仍然返回
+    if (text.length > 100) {
+      return text;
+    } else {
+      console.warn(`⚠️ Text too short (${text.length} chars), trying to extract more...`);
+      // 繼續嘗試提取更多內容
+    }
   }
   
   if (!text) {
@@ -154,7 +177,7 @@ async function mapPhaseVision(images) {
       role: "user",
       parts: parts
     }], {
-      maxOutputTokens: 1080,  // 降到 1080 以加快處理速度，只提取關鍵數據
+      maxOutputTokens: 2048,  // 增加到 2048 以確保能提取完整的圖片描述，避免只返回 fallback
       temperature: 0.3
     }).then(result => {
       const imageDuration = Date.now() - imageStartTime;
@@ -247,7 +270,7 @@ plan: "Day 1：移除低效廣告詞並更新主圖（針對蛋白粉系列，�
     role: "user",
     parts: parts
   }], {
-    maxOutputTokens: 1080,  // 降到 1080 以加快輸出速度，保持簡潔緊湊
+    maxOutputTokens: 3072,  // 增加到 3072 以確保能生成完整的 JSON 報告，避免截斷
     temperature: 0.7
   });
 
