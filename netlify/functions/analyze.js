@@ -1,21 +1,34 @@
 // netlify/functions/analyze.js
-// BrotherG AI - 最終修正版
-// 使用正確的模型名稱：gemini-1.5-flash 和 gemini-1.5-pro
+// BrotherG AI - "Gemini 2.5" Edition
+// Architecture: Raw Fetch (No SDK) + v1beta Endpoint
 
 const API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY;
 
-// ✅ 使用 v1beta（穩定版）
-const API_VERSION = "v1beta";
+// 策略：新模型 (2.5) 通常需要 v1beta 才能存取
+const API_VERSION = "v1beta"; 
 const BASE_URL = `https://generativelanguage.googleapis.com/${API_VERSION}/models`;
 
-// ✅ 正確的模型名稱（無 -002 後綴）
-const MODEL_FLASH = "gemini-1.5-flash";
-const MODEL_PRO = "gemini-1.5-pro";
+// 修正：切換至用戶指定的 2.5 系列
+const MODEL_MAP = "gemini-2.5-flash"; 
+const MODEL_REDUCE = "gemini-2.5-pro";
+
+// 診斷功能：列出所有可用模型 (如果失敗時執行)
+async function logAvailableModels() {
+  try {
+    const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${API_KEY}`;
+    const response = await fetch(listUrl);
+    const data = await response.json();
+    console.log("📋 [DIAGNOSTIC] Available Models:", 
+      data.models?.map(m => m.name) || "No models found");
+  } catch (e) {
+    console.error("⚠️ Failed to list models:", e.message);
+  }
+}
 
 async function callGemini(modelName, prompt, imageParts = []) {
   const url = `${BASE_URL}/${modelName}:generateContent?key=${API_KEY}`;
   
-  console.log(`🤖 呼叫: ${modelName}`);
+  console.log(`📡 Calling Gemini: ${modelName} (${API_VERSION})...`);
   console.log(`📡 Endpoint: ${url.replace(API_KEY, '***')}`);
 
   const contents = [
@@ -36,25 +49,30 @@ async function callGemini(modelName, prompt, imageParts = []) {
     body: JSON.stringify({
       contents,
       generationConfig: {
-        maxOutputTokens: 4096,
+        maxOutputTokens: 8192, // 2.5 系列通常支援更長的輸出，開大一點防止截斷
         temperature: 0.7
       }
     })
   });
 
   if (!response.ok) {
+    if (response.status === 404) {
+      console.error(`❌ Model ${modelName} not found. Running diagnostic...`);
+      await logAvailableModels();
+    }
     const errorText = await response.text();
-    console.error(`❌ API 錯誤 (${response.status}):`, errorText.substring(0, 500));
-    throw new Error(`API Error: ${response.status}`);
+    console.error(`❌ API Error Details:`, errorText.substring(0, 500));
+    throw new Error(`Gemini API Error (${response.status}): ${errorText.substring(0, 200)}`);
   }
 
   const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "無回應";
-  console.log(`✅ 成功 (${text.length} 字元)`);
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response text";
+  console.log(`✅ Success (${text.length} chars)`);
   return text;
 }
 
 exports.handler = async (event) => {
+  // CORS Headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -78,74 +96,71 @@ exports.handler = async (event) => {
     const body = JSON.parse(event.body || "{}");
     const { textPrompt, images = [] } = body;
 
-    console.log(`🚀 請求: ${images.length} 張圖片 (使用 ${API_VERSION})`);
+    console.log(`🚀 Request: ${images.length} images. Model: Gemini 2.5`);
 
-    const jsonStructure = `{
-  "summary": "分析內容",
-  "recommendations": ["建議1", "建議2"],
-  "plan": "執行計劃"
-}`;
+    const jsonStructure = `
+    {
+      "summary": "...",
+      "recommendations": ["...", "..."],
+      "plan": "..."
+    }
+    `;
 
-    // 純文字模式
+    // Branch A: Text Only
     if (!images || images.length === 0) {
-      console.log(`📝 純文字模式`);
-      
-      const result = await callGemini(
-        MODEL_FLASH,
-        `問題: ${textPrompt}\n\n請以 JSON 格式回覆: ${jsonStructure}`
-      );
-      
+      console.log(`📝 Text-only mode`);
+      const result = await callGemini(MODEL_MAP, 
+        `User Question: ${textPrompt}\n\nRespond in strictly valid JSON format: ${jsonStructure}`);
       const cleanJson = result.replace(/```json|```/g, "").trim();
       return { statusCode: 200, headers, body: cleanJson };
     }
 
-    // Map-Reduce 模式（限制 2 張圖片）
+    // Branch B: Map-Reduce (Images)
+    // 限制最多 2 張圖片
     const MAX_IMAGES = 2;
     const imagesToProcess = images.slice(0, MAX_IMAGES);
     
     if (images.length > MAX_IMAGES) {
-      console.log(`⚠️ 圖片數量 ${images.length} > ${MAX_IMAGES}，只處理前 ${MAX_IMAGES} 張`);
+      console.log(`⚠️ Image count ${images.length} > ${MAX_IMAGES}, processing first ${MAX_IMAGES} only`);
     }
     
-    console.log(`⚡ Map 階段: ${imagesToProcess.length} 張圖片`);
-
-    // Step 1: Map（並行處理）
+    console.log(`⚡ Map Phase: ${imagesToProcess.length} images`);
+    
+    // Step 1: Map
     const mapPromises = imagesToProcess.map(async (base64Str, index) => {
       try {
         const cleanBase64 = base64Str.replace(/^data:image\/\w+;base64,/, "");
-        const text = await callGemini(
-          MODEL_FLASH,
-          "提取關鍵數據：價格、銷量、產品類型。簡潔回答。",
+        const text = await callGemini(MODEL_MAP, 
+          "Extract key data (Price, Sales, Style). Be concise.", 
           [cleanBase64]
         );
-        console.log(`✅ 圖片 ${index + 1}/${imagesToProcess.length}`);
-        return `[圖片 ${index + 1}]: ${text}`;
+        console.log(`✅ Image ${index + 1}/${imagesToProcess.length} processed`);
+        return `[Image ${index + 1}]: ${text}`;
       } catch (e) {
-        console.error(`❌ 圖片 ${index + 1}:`, e.message);
-        return `[圖片 ${index + 1}]: 處理失敗`;
+        console.error(`❌ Image ${index + 1} failed:`, e.message);
+        return `[Image ${index + 1}]: Read Error`;
       }
     });
 
     const mapResults = await Promise.all(mapPromises);
-    const visualContext = mapResults.join("\n\n");
+    const visualContext = mapResults.join("\n");
 
-    console.log(`🎯 Reduce 階段`);
+    // Step 2: Reduce
+    console.log(`🎯 Reduce Phase: Deep reasoning`);
+    
+    const finalPrompt = `
+      You are BrotherG, an E-commerce Expert.
+      Visual Data: ${visualContext}
+      User Query: ${textPrompt || 'Please analyze this data'}
+      
+      Analyze this and provide a strategy.
+      Output MUST be valid JSON: ${jsonStructure}
+    `;
 
-    // Step 2: Reduce（深度分析）
-    const finalPrompt = `你是 BrotherG，蝦皮電商專家。
-
-視覺數據:
-${visualContext}
-
-用戶問題: ${textPrompt || "請分析這些數據"}
-
-請分析並提供策略。
-必須以 JSON 格式回覆: ${jsonStructure}`;
-
-    const finalResult = await callGemini(MODEL_PRO, finalPrompt);
+    const finalResult = await callGemini(MODEL_REDUCE, finalPrompt);
     const cleanFinalJson = finalResult.replace(/```json|```/g, "").trim();
 
-    console.log(`✅ 分析完成 (${cleanFinalJson.length} 字元)`);
+    console.log(`✅ Complete (${cleanFinalJson.length} chars)`);
 
     return {
       statusCode: 200,
@@ -154,14 +169,14 @@ ${visualContext}
     };
 
   } catch (error) {
-    console.error("🔥 錯誤:", error);
+    console.error("🔥 Server Error:", error);
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({ 
-        summary: "系統錯誤",
-        recommendations: ["請稍後再試", error.message],
-        plan: "Error"
+        summary: "系統繁忙", 
+        recommendations: ["請檢查模型權限", `錯誤: ${error.message}`], 
+        plan: "System Error" 
       })
     };
   }
