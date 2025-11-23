@@ -1,251 +1,183 @@
-// netlify/functions/analyze.js
-// CommonJS Netlify Function for Gemini 3.0 Pro Shopee Analysis
+const GEMINI_API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || '';
+const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-// Node 18+ has native fetch, but we'll use globalThis.fetch for compatibility
-const fetch = globalThis.fetch;
+// 🎯 兩段式策略
+const MODEL_FAST = 'gemini-2.5-flash';        // 階段1: 快速讀圖
+const MODEL_PRO = 'gemini-3-pro-preview';     // 階段2: 深度分析
 
-const API_KEY =
-  process.env.GOOGLE_GENERATIVE_AI_API_KEY ||
-  process.env.GEMINI_API_KEY ||
-  '';
-
-/**
- * CORS headers for all responses
- */
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Content-Type': 'application/json',
-};
-
-/**
- * Netlify Function Handler
- */
-exports.handler = async (event) => {
-  // Handle preflight OPTIONS request
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: '',
-    };
-  }
-
-  // Only allow POST
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers: corsHeaders,
-      body: JSON.stringify({
-        ok: false,
-        error: 'Method Not Allowed',
-      }),
-    };
-  }
-
-  // Check API key
-  if (!API_KEY) {
-    return {
-      statusCode: 500,
-      headers: corsHeaders,
-      body: JSON.stringify({
-        ok: false,
-        error: 'Missing Gemini API key',
-      }),
-    };
-  }
-
-  try {
-    // Parse request body
-    const body = JSON.parse(event.body || '{}');
-
-    // Extract fields from frontend
-    const {
-      mode = 'text',
-      messages = [],
-      images = [],
-      model3 = 'gemini-3.0-pro-preview',
-      model15 = 'gemini-1.5-flash',
-    } = body;
-
-    // Build prompt based on mode
-    let promptText = '';
-    
-    if (mode === 'image') {
-      promptText = `Shopee 選品分析：
-
-根據提供的圖片與文字描述，進行深度分析並給出：
-1. 商品市場定位
-2. 競爭優勢分析
-3. 定價策略建議
-4. 7 日實戰行動計畫
-
-請以專業、精簡、可執行的方式呈現。`;
-    } else {
-      promptText = `Shopee 選品分析：
-
-根據賣家的商品描述與需求，整理出：
-1. 推薦的商品方向（TOP 3）
-2. 每個方向的利潤風險評估
-3. 競爭程度分析
-4. 7 日行動計畫（包含上架、定價、行銷策略）
-
-請以 JSON 格式回應，包含：
-- summary: 總體分析摘要
-- recommendations: 推薦商品清單與理由
-- plan: 7 日執行計畫`;
-    }
-
-    // Combine messages if provided
-    let combinedText = promptText;
-    if (messages && messages.length > 0) {
-      combinedText += '\n\n賣家描述：\n' + messages.join('\n');
-    }
-
-    // Build request parts
-    const parts = [{ text: combinedText }];
-
-    // Add images if provided
-    if (images && images.length > 0 && mode === 'image') {
-      images.forEach((imgBase64) => {
-        // Clean base64 string
-        const cleanBase64 = imgBase64.replace(/^data:image\/\w+;base64,/, '');
-        
-        // Detect mime type
-        let mimeType = 'image/jpeg';
-        if (imgBase64.includes('data:image/png')) {
-          mimeType = 'image/png';
-        } else if (imgBase64.includes('data:image/webp')) {
-          mimeType = 'image/webp';
-        }
-
-        parts.push({
-          inlineData: {
-            mimeType: mimeType,
-            data: cleanBase64,
-          },
-        });
-      });
-    }
-
-    // Build Gemini API payload
-    const payload = {
-      contents: [
-        {
-          role: 'user',
-          parts: parts,
-        },
-      ],
+async function callGemini(model, contents) {
+  const url = `${GEMINI_ENDPOINT}/${model}:generateContent?key=${GEMINI_API_KEY}`;
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents,
       generationConfig: {
         temperature: 0.7,
         topP: 0.8,
         topK: 40,
-        maxOutputTokens: 4096,
-      },
-    };
-
-    // Determine model: use 3.0 Pro for image analysis, 1.5 Flash for text
-    const modelName = mode === 'image' ? model3 : model15;
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(API_KEY)}`;
-
-    console.log(`🤖 Calling Gemini API: ${modelName}, mode: ${mode}, images: ${images.length}`);
-
-    // Call Gemini API
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Gemini API error:', errorText);
-      
-      return {
-        statusCode: 500,
-        headers: corsHeaders,
-        body: JSON.stringify({
-          ok: false,
-          error: 'Gemini API error',
-          debug: {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorText.substring(0, 200), // Limit error text length
-          },
-        }),
-      };
-    }
-
-    const data = await response.json();
-    
-    // Extract text from response
-    const text =
-      data?.candidates?.[0]?.content?.parts
-        ?.map((p) => p.text || '')
-        .join('\n') || '';
-
-    if (!text) {
-      return {
-        statusCode: 500,
-        headers: corsHeaders,
-        body: JSON.stringify({
-          ok: false,
-          error: 'Empty response from Gemini API',
-          debug: data,
-        }),
-      };
-    }
-
-    // Try to parse as JSON, fallback to plain text
-    let parsedResult = null;
-    try {
-      // Try to extract JSON from markdown code blocks if present
-      const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        parsedResult = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+        maxOutputTokens: 4096
       }
-    } catch (e) {
-      // Not JSON, use as plain text
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`${model} error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
+exports.handler = async (event, context) => {
+  context.callbackWaitsForEmptyEventLoop = false;
+
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Content-Type': 'application/json'
+  };
+
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers, body: '' };
+  }
+
+  if (event.httpMethod === 'GET') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ error: 'Method Not Allowed' })
+    };
+  }
+
+  try {
+    if (!GEMINI_API_KEY) {
+      throw new Error('Missing API Key');
     }
 
-    // Build response
-    const result = {
-      ok: true,
-      summary: parsedResult?.summary || text,
-      recommendations: parsedResult?.recommendations || null,
-      plan: parsedResult?.plan || null,
-      debug: {
-        modelUsed: modelName,
-        mode: mode,
-        imageCount: images.length,
-        rawResponseLength: text.length,
-      },
-    };
+    const body = JSON.parse(event.body || '{}');
+    const images = body.images || [];
+    const prompt = body.prompt || '';
+    const systemPrompt = body.systemPrompt || '';
 
-    console.log(`✅ Success: ${modelName}, response length: ${text.length}`);
+    if (images.length === 0 && !prompt) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: '請提供圖片或文字' })
+      };
+    }
+
+    const hasImages = images.length > 0;
+    console.log(`📊 模式: ${hasImages ? '兩段式圖片分析' : '文字分析'}`);
+    console.log(`📷 圖片數: ${images.length}`);
+
+    const startTime = Date.now();
+    let finalResult = '';
+
+    if (hasImages) {
+      // ========================================
+      // 🎯 兩段式處理：快速 + 深度
+      // ========================================
+      
+      // 階段 1: 用 2.5 Flash 快速讀圖提取數據
+      console.log(`⚡ 階段1: ${MODEL_FAST} 快速讀圖...`);
+      
+      const parts1 = [];
+      
+      // 組合提示詞
+      let combinedPrompt = systemPrompt ? systemPrompt + '\n\n' + prompt : prompt;
+      parts1.push({ 
+        text: combinedPrompt + '\n\n請快速提取圖片中的所有關鍵數據和信息。' 
+      });
+
+      // 加入圖片
+      images.slice(0, 6).forEach((img) => {
+        const cleanBase64 = img.replace(/^data:image\/\w+;base64,/, '');
+        let mimeType = 'image/jpeg';
+        if (img.includes('data:image/png')) mimeType = 'image/png';
+        else if (img.includes('data:image/webp')) mimeType = 'image/webp';
+
+        parts1.push({
+          inlineData: {
+            mimeType: mimeType,
+            data: cleanBase64
+          }
+        });
+      });
+
+      const stage1Result = await callGemini(MODEL_FAST, [{
+        role: "user",
+        parts: parts1
+      }]);
+
+      const stage1Time = Date.now() - startTime;
+      console.log(`✅ 階段1完成 (${stage1Time}ms, ${stage1Result.length}字元)`);
+
+      // 階段 2: 用 3.0 Pro 深度分析（基於階段1的結果）
+      console.log(`🎯 階段2: ${MODEL_PRO} 深度分析...`);
+      
+      const stage2Prompt = `你是專業的蝦皮選品顧問。
+
+以下是從圖片中提取的數據：
+${stage1Result}
+
+請根據這些數據，提供專業的選品策略建議。`;
+
+      const stage2Result = await callGemini(MODEL_PRO, [{
+        role: "user",
+        parts: [{ text: stage2Prompt }]
+      }]);
+
+      const stage2Time = Date.now() - startTime - stage1Time;
+      console.log(`✅ 階段2完成 (${stage2Time}ms)`);
+
+      finalResult = stage2Result;
+
+    } else {
+      // 純文字：直接用 2.5 Flash
+      console.log(`⚡ 文字分析: ${MODEL_FAST}`);
+      
+      let combinedPrompt = systemPrompt ? systemPrompt + '\n\n' + prompt : prompt;
+      
+      finalResult = await callGemini(MODEL_FAST, [{
+        role: "user",
+        parts: [{ text: combinedPrompt }]
+      }]);
+    }
+
+    const totalTime = Date.now() - startTime;
+    console.log(`✅ 總時間: ${totalTime}ms`);
 
     return {
       statusCode: 200,
-      headers: corsHeaders,
-      body: JSON.stringify(result),
+      headers,
+      body: JSON.stringify({
+        ok: true,
+        result: finalResult,
+        summary: hasImages ? '兩段式分析完成' : '文字分析完成',
+        recommendations: finalResult,
+        plan: finalResult,
+        debug: {
+          modelUsed: hasImages ? `${MODEL_FAST} → ${MODEL_PRO}` : MODEL_FAST,
+          imageCount: images.length,
+          responseTime: `${totalTime}ms`
+        }
+      })
     };
 
-  } catch (err) {
-    console.error('❌ Function error:', err);
-    
+  } catch (error) {
+    console.error('❌ Error:', error);
     return {
       statusCode: 500,
-      headers: corsHeaders,
+      headers,
       body: JSON.stringify({
         ok: false,
-        error: err.message || 'Unknown server error',
-        debug: process.env.NODE_ENV === 'development' ? {
-          stack: err.stack,
-        } : undefined,
-      }),
+        error: error.message
+      })
     };
   }
 };

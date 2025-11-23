@@ -2,9 +2,10 @@
   functions = "netlify/functions"
   publish = "public"
 
+# ✅ 正確的語法
 [functions]
+  directory = "netlify/functions"
   node_bundler = "esbuild"
-  timeout = 60
 
 [[redirects]]
   from = "/api/*"
