@@ -138,7 +138,7 @@ exports.handler = async (event, context) => {
 
     // If text-only request
     if (!processedImages || processedImages.length === 0) {
-      console.log(`⚡ Text-only request with gemini-3.0-flash`);
+      console.log(`⚡ Text-only request with gemini-1.5-flash`);
       
       const model = client.getGenerativeModel({ 
         model: 'gemini-1.5-flash'  // 暫時先用 1.5 確保連通性，避免 404
