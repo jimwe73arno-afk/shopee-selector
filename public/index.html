@@ -874,43 +874,95 @@
                     summaryLength: summaryText.length
                 });
                 
-                // Populate results
+                // Populate Top 10 List
                 const top10List = document.getElementById('top-10-list');
-                if (top10List) {
+                if (!top10List) {
+                    console.error('❌ [圖片分析] 找不到 top-10-list 元素');
+                } else {
                     top10List.innerHTML = '';
-                    recommendations.slice(0, 10).forEach((rec, index) => {
-                        const item = typeof rec === 'string' ? rec : (rec.item || rec || `建議 ${index + 1}`);
-                        const reason = typeof rec === 'string' ? '' : (rec.reason || '');
-                        
-                        top10List.innerHTML += `
-                            <li class="flex items-start text-sm border-b border-blue-100 pb-2">
-                                <span class="font-mono font-bold text-aiBlue w-6 flex-shrink-0">#${index + 1}</span>
-                                <div>
-                                    <span class="font-bold text-textMain">${item}</span>
-                                    ${reason ? `<span class="text-textSub">: ${reason}</span>` : ''}
-                                </div>
-                            </li>
-                        `;
-                    });
+                    
+                    // 如果沒有推薦，從摘要生成列表
+                    if (recommendations.length === 0 && summaryText) {
+                        console.log('⚠️ [圖片分析] 沒有推薦列表，從摘要生成');
+                        const summaryParts = summaryText.split(/[。！\n]/).filter(p => p.trim()).slice(0, 10);
+                        if (summaryParts.length === 0) {
+                            summaryParts.push(summaryText.substring(0, 200));
+                        }
+                        summaryParts.forEach((part, index) => {
+                            top10List.innerHTML += `
+                                <li class="flex items-start text-sm border-b border-blue-100 pb-2">
+                                    <span class="font-mono font-bold text-aiBlue w-6 flex-shrink-0">#${index + 1}</span>
+                                    <div>
+                                        <span class="text-textSub">${part.trim()}${part.endsWith('。') ? '' : '。'}</span>
+                                    </div>
+                                </li>
+                            `;
+                        });
+                    } else {
+                        // 顯示推薦列表
+                        recommendations.slice(0, 10).forEach((rec, index) => {
+                            const item = typeof rec === 'string' ? rec : (rec.item || rec || `建議 ${index + 1}`);
+                            const reason = typeof rec === 'string' ? '' : (rec.reason || '');
+                            
+                            top10List.innerHTML += `
+                                <li class="flex items-start text-sm border-b border-blue-100 pb-2">
+                                    <span class="font-mono font-bold text-aiBlue w-6 flex-shrink-0">#${index + 1}</span>
+                                    <div>
+                                        <span class="font-bold text-textMain">${item}</span>
+                                        ${reason ? `<span class="text-textSub">: ${reason}</span>` : ''}
+                                    </div>
+                                </li>
+                            `;
+                        });
+                    }
+                    console.log('✅ [圖片分析] Top 10 List 已填充，共', recommendations.length || 0, '項');
                 }
                 
+                // Populate extended ideas
                 const extendedIdeasEl = document.getElementById('extended-ideas');
-                if (extendedIdeasEl) {
-                    extendedIdeasEl.innerText = extendedIdeas || data.summary || '暫無延伸建議';
+                if (!extendedIdeasEl) {
+                    console.error('❌ [圖片分析] 找不到 extended-ideas 元素');
+                } else {
+                    extendedIdeasEl.innerText = extendedIdeas || summaryText || '暫無延伸建議';
+                    console.log('✅ [圖片分析] Extended Ideas 已填充，長度:', extendedIdeas.length);
                 }
                 
-                // Show results
-                document.getElementById('shopee-results').classList.remove('hidden');
-                document.getElementById('shopee-paid-results').classList.add('hidden');
+                // 確保隱藏空狀態和顯示結果
+                const emptyEl = document.getElementById('shopee-empty');
+                const resultsEl = document.getElementById('shopee-results');
+                const paidResultsEl = document.getElementById('shopee-paid-results');
                 
-                showToast('圖片分析完成！');
+                if (emptyEl) emptyEl.classList.add('hidden');
+                if (paidResultsEl) paidResultsEl.classList.add('hidden');
+                
+                if (!resultsEl) {
+                    console.error('❌ [圖片分析] 找不到 shopee-results 元素');
+                } else {
+                    resultsEl.classList.remove('hidden');
+                    console.log('✅ [圖片分析] 顯示結果區域');
+                }
+                
+                showToast('圖片分析報告已成功生成！');
+                console.log('✅ [圖片分析] 分析完成並顯示結果');
                 
             } catch (error) {
-                console.error('圖片分析錯誤:', error);
-                document.getElementById('shopee-loading').classList.add('hidden');
-                document.getElementById('shopee-results').classList.add('hidden');
-                document.getElementById('shopee-empty').classList.remove('hidden');
-                showToast('分析失敗: ' + error.message);
+                console.error('❌ [圖片分析] 錯誤:', error);
+                console.error('❌ [圖片分析] 完整錯誤信息:', {
+                    message: error.message,
+                    stack: error.stack,
+                    error: error
+                });
+                
+                const loadingEl = document.getElementById('shopee-loading');
+                const resultsEl = document.getElementById('shopee-results');
+                const emptyEl = document.getElementById('shopee-empty');
+                
+                if (loadingEl) loadingEl.classList.add('hidden');
+                if (resultsEl) resultsEl.classList.add('hidden');
+                if (emptyEl) emptyEl.classList.remove('hidden');
+                
+                const errorMsg = error.message || '未知錯誤';
+                showToast('圖片分析失敗: ' + errorMsg);
             }
         }
 
