@@ -218,26 +218,21 @@ exports.handler = async (event) => {
     
     console.log(`⚡ Map Phase: ${imagesToProcess.length} 張圖片（OCR 提取商品資訊）`);
 
-    // Step 1: Map - 從截圖中提取商品資訊
+    // Step 1: Map - 從截圖中提取商品資訊（極簡化 OCR）
     const mapStartTime = Date.now();
     const mapPromises = imagesToProcess.map(async (base64Str, index) => {
       try {
         const cleanBase64 = base64Str.replace(/^data:image\/\w+;base64,/, "");
-        const ocrPrompt = `請從這張蝦皮後台截圖中提取以下資訊：
-- 商品名稱
-- 價格、折扣標示
-- 數據指標（點擊數、銷量、轉化率，如果有）
-- 分潤比例（如果有）
-- 商品分類/類型
-
-請用繁體中文，條列式輸出，簡潔明確。`;
+        
+        // 🔴 極簡化指令 (OCR Mode) - 只提取原始數據，不要句子
+        const ocrPrompt = `FAST OCR: Return ONLY raw numbers (Price, Sales, CTR) and Product Name. No sentences.`;
         
         const text = await callGemini(MODEL_MAP, ocrPrompt, [cleanBase64]);
         console.log(`✅ 圖片 ${index + 1}/${imagesToProcess.length} OCR完成`);
-        return `[截圖 ${index + 1} 商品資訊]:\n${text}`;
+        return `[Image ${index + 1}]: ${text}`;
       } catch (e) {
         console.error(`❌ 圖片 ${index + 1}:`, e.message);
-        return `[截圖 ${index + 1}]: 讀取失敗`;
+        return `[Image ${index + 1}]: Read Error`;
       }
     });
 
@@ -270,11 +265,16 @@ ${visualContext}
 請根據以上資料，進行完整的「三軌選品矩陣」分析，並輸出符合格式的結果。
 必須包含：觀眾畫像、C軌/A軌/B軌商品選擇、主播即時話術。
 
+⚠️ 重要：保持輸出簡潔！
+- "summary" 不超過 100 字
+- "plan" 話術控制在 150 字以內
+- 重點明確，不要冗長
+
 請以 JSON 格式回覆：
 {
-  "summary": "完整的分析內容（包含觀眾畫像、三軌策略、話術的完整文字）",
+  "summary": "簡潔的分析內容（100字以內）",
   "recommendations": ["C軌商品名稱", "A軌商品名稱", "B軌商品名稱"],
-  "plan": "主播即時話術（完整的口播稿）"
+  "plan": "主播即時話術（150字以內）"
 }`;
 
     const finalResult = await callGemini(MODEL_REDUCE, finalPrompt);
