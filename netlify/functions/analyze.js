@@ -1,17 +1,16 @@
 /**
  * BrotherG AI - Shopee Analyst
- * v3.0-SafeMap Architecture: OCR-First Map-Reduce
+ * v3.0-Stable-MapReduce Architecture
  * 
- * Map Phase: gemini-1.5-flash-latest (OCR-only, 512 tokens)
- * Reduce Phase: gemini-3.0-pro-preview (Deep reasoning, 1024 tokens)
+ * Map Phase: gemini-3.0-flash (OCR-only, 512 tokens)
+ * Reduce Phase: gemini-3.0-pro (Deep reasoning, 1024 tokens)
+ * 
+ * Stable multi-image processing without MAX_TOKENS issues
  */
 
-const GEMINI_API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || '';
-const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// Model endpoints
-const MODEL_FLASH_OCR = 'gemini-1.5-flash-latest';  // OCR-only (Map phase) - 更穩定的視覺處理
-const MODEL_PRO = 'gemini-3.0-pro-preview';         // Deep reasoning (Reduce phase)
+const GEMINI_API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
 
 // Safety limits
 const MAX_IMAGES_FREE = 2;
@@ -33,148 +32,13 @@ function checkUserTier(event) {
 }
 
 /**
- * Call Gemini API using native fetch
- */
-async function callGeminiAPI(model, contents, config = {}) {
-  if (!GEMINI_API_KEY) {
-    throw new Error('Missing GOOGLE_GENERATIVE_AI_API_KEY');
-  }
-
-  const url = `${GEMINI_ENDPOINT}/${model}:generateContent?key=${GEMINI_API_KEY}`;
-  
-  const requestBody = {
-    contents: contents,
-    generationConfig: {
-      maxOutputTokens: config.maxOutputTokens || 1024,
-      temperature: config.temperature !== undefined ? config.temperature : 0.7,
-    }
-  };
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(requestBody)
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    console.error(`❌ Gemini API error (${response.status}):`, errorData);
-    throw new Error(`Gemini API error (${response.status}): ${JSON.stringify(errorData)}`);
-  }
-
-  const data = await response.json();
-  const candidate = data.candidates?.[0];
-  const text = candidate?.content?.parts?.[0]?.text || '';
-  const finishReason = candidate?.finishReason;
-
-  if (!text) {
-    console.error('❌ Empty response from Gemini API. Full response:', JSON.stringify(data, null, 2));
-    throw new Error(`Empty response from Gemini API. Finish reason: ${finishReason || 'unknown'}`);
-  }
-
-  if (finishReason === 'MAX_TOKENS') {
-    console.warn(`⚠️ Response truncated at MAX_TOKENS, but got ${text.length} chars.`);
-  }
-
-  console.log(`✅ Gemini response: ${text.length} chars, finishReason: ${finishReason || 'normal'}`);
-  return text;
-}
-
-/**
- * MAP PHASE: OCR-only extraction using gemini-1.5-flash-latest
- */
-async function mapPhaseOCR(images) {
-  const mapStartTime = Date.now();
-  console.log(`📊 Map Phase (OCR): Processing ${images.length} images in parallel...`);
-  console.log(`⏱️ Map Phase started at: ${new Date().toISOString()}`);
-
-  const ocrPrompt = `你是一位資料助理。
-請只從圖片中「提取可讀文字」：商品名稱、價格、分類、銷量、退貨率、評分等。
-不要做策略，不要總結，直接輸出純文字表格摘要。
-使用繁體中文，格式如下：
-
-商品名稱: ...
-價格: ...
-銷量: ...
-轉換率: ...
-（其他數據）
-
-只提取數據，不要分析。`;
-
-  const ocrTasks = images.map((imgBase64, index) => {
-    const imageStartTime = Date.now();
-    
-    // Clean base64 string
-    const cleanBase64 = imgBase64.replace(/^data:image\/\w+;base64,/, '');
-    
-    // Detect mime type
-    let mimeType = 'image/jpeg';
-    if (imgBase64.includes('data:image/png')) mimeType = 'image/png';
-    else if (imgBase64.includes('data:image/webp')) mimeType = 'image/webp';
-
-    const parts = [
-      { text: ocrPrompt },
-      {
-        inlineData: {
-          mimeType: mimeType,
-          data: cleanBase64
-        }
-      }
-    ];
-
-    console.log(`🔄 OCR processing image ${index + 1}/${images.length}...`);
-
-    return callGeminiAPI(MODEL_FLASH_OCR, [{
-      role: "user",
-      parts: parts
-    }], {
-      maxOutputTokens: 512,  // OCR 模式只需要少量 token 輸出結構化數據
-      temperature: 0.1  // 降低溫度確保 OCR 準確性
-    }).then(result => {
-      const imageDuration = Date.now() - imageStartTime;
-      console.log(`✅ Image ${index + 1} OCR completed in ${imageDuration}ms (${result.length} chars)`);
-      return `[Image ${index + 1} OCR Data]:\n${result}\n\n`;
-    }).catch(error => {
-      console.error(`❌ Image ${index + 1} OCR failed:`, error.message);
-      return `[Image ${index + 1} OCR Data]: 提取失敗 - ${error.message}\n\n`;
-    });
-  });
-
-  // Execute all OCR tasks in parallel
-  const results = await Promise.all(ocrTasks);
-  const ocrContext = results.join('\n');
-  const mapDuration = Date.now() - mapStartTime;
-
-  console.log(`✅ Map Phase (OCR) complete in ${mapDuration}ms (${(mapDuration / 1000).toFixed(2)}s)`);
-  console.log(`📊 Total OCR context: ${ocrContext.length} chars`);
-  return ocrContext;
-}
-
-/**
  * Build system prompt for Shopee Analyst
  */
-function buildShopeeSystemPrompt(userTier = 'free') {
-  return `You are "Shopee Analyst", an AI specialized in product selection and profitability optimization for Shopee Taiwan sellers.
+function buildSystemPrompt(tier = 'free') {
+  return `你是 BrotherG.AI 的 Shopee 選品分析師。
+請閱讀 OCR 後的資料，輸出一份「選品決策卡」，使用繁體中文。
 
-Your job is **NOT marketing**, but **product intelligence**.
-
----
-
-### Core Mission
-Based on the **OCR-extracted data** from Shopee screenshots (sales dashboard, product tables, conversion charts, etc.),
-you must analyze the numerical data and summarize **which products to keep, cut, or double down** within 7 days.
-
-The OCR data has already extracted all text, numbers, and tables from the images.
-Your job is to analyze these **structured data points** and provide actionable recommendations.
-
-The output should look like a **「選品決策卡」 (Product Decision Card)**, written in **繁體中文**, structured and concise.
-
----
-
-### Output Format
-You MUST output valid JSON only (no markdown code blocks, no extra text). JSON structure:
+輸出格式必須是有效的 JSON（不要 markdown 代碼塊）：
 
 {
   "summary": "基於你上傳的數據，以下是我的建議：（2-3段繁體中文分析，語氣像 Shopee 高階運營顧問）",
@@ -183,7 +47,7 @@ You MUST output valid JSON only (no markdown code blocks, no extra text). JSON s
     "🔥 建議主攻品類 (Top 2)",
     "🔥 建議主攻品類 (Top 3)"
   ],
-  "plan": "💰 七日行動計畫\nDay 1：調整商品主圖與標題（說明具體優化方向）\nDay 2：分析高轉化詞與關鍵字（舉例三個）\nDay 3：依照GMV分布重新配置廣告預算（具體比例）\nDay 4：整合商品組合包或贈品策略\nDay 5～7：試跑＋檢驗ROI／CTR／轉單率"
+  "plan": "💰 七日行動計畫\\nDay 1：調整商品主圖與標題（說明具體優化方向）\\nDay 2：分析高轉化詞與關鍵字（舉例三個）\\nDay 3：依照GMV分布重新配置廣告預算（具體比例）\\nDay 4：整合商品組合包或贈品策略\\nDay 5～7：試跑＋檢驗ROI／CTR／轉單率"
 }
 
 ### Guidelines
@@ -195,72 +59,7 @@ You MUST output valid JSON only (no markdown code blocks, no extra text). JSON s
 - "recommendations" 必須是 3 個主攻品類建議（格式：品類名稱 + 價格區間 + 原因）
 - "plan" 必須是完整的七日行動計畫（Day 1-7，每項都要具體）
 
-${userTier === 'free' ? `
-注意：Free tier 用戶，請在 summary 末尾添加「提示：升級 PRO 版可查看完整的七日行動計畫」。
-` : ''}
-`;
-}
-
-/**
- * REDUCE PHASE: Deep reasoning using gemini-3.0-pro-preview
- */
-async function reducePhaseReasoning(textPrompt, ocrContext, userTier) {
-  const reduceStartTime = Date.now();
-  console.log(`🧠 Reduce Phase: Deep reasoning with ${MODEL_PRO}...`);
-  console.log(`⏱️ Reduce Phase started at: ${new Date().toISOString()}`);
-
-  const systemPrompt = buildShopeeSystemPrompt(userTier);
-  
-  const userPrompt = ocrContext 
-    ? `OCR 提取的數據（從圖片中提取的所有文字、數字、表格）:\n${ocrContext}\n\n用戶問題: ${textPrompt || '基於這些數據，給出選品建議'}\n\n請基於以上 OCR 數據進行深度分析和決策。`
-    : textPrompt;
-
-  const parts = [
-    { text: systemPrompt },
-    { text: userPrompt }
-  ];
-
-  const reasoningText = await callGeminiAPI(MODEL_PRO, [{
-    role: "user",
-    parts: parts
-  }], {
-    maxOutputTokens: 2048,  // 增加輸出長度以生成完整的選品決策卡
-    temperature: 0.7
-  });
-
-  const reduceDuration = Date.now() - reduceStartTime;
-  console.log(`✅ Reduce Phase complete in ${reduceDuration}ms (${(reduceDuration / 1000).toFixed(2)}s)`);
-  console.log(`📊 Response length: ${reasoningText.length} chars`);
-  return reasoningText;
-}
-
-/**
- * Clean JSON response
- */
-function cleanJSONResponse(text) {
-  if (!text) return '';
-  
-  let cleaned = text
-    .replace(/```json\s*/gi, '')
-    .replace(/```\s*/g, '')
-    .trim();
-
-  // Try to find the outermost JSON object
-  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    cleaned = jsonMatch[0];
-  }
-
-  // Attempt to fix common truncation issues
-  if (cleaned.startsWith('{') && !cleaned.endsWith('}')) {
-    // Try to close incomplete JSON
-    if (cleaned.match(/,\s*$/)) {
-      cleaned = cleaned.replace(/,\s*$/, '');
-    }
-    cleaned += '}';
-  }
-
-  return cleaned;
+${tier === 'free' ? '注意：Free tier 用戶，請在 summary 末尾添加「提示：升級 PRO 版可查看完整的七日行動計畫」。' : ''}`;
 }
 
 /**
@@ -293,6 +92,9 @@ exports.handler = async (event, context) => {
     if (!GEMINI_API_KEY) {
       throw new Error('Missing GOOGLE_GENERATIVE_AI_API_KEY environment variable');
     }
+
+    // Initialize Gemini client
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
     // Parse request body
     let body;
@@ -330,141 +132,230 @@ exports.handler = async (event, context) => {
         maxImages = MAX_IMAGES_FREE;
     }
 
+    let processedImages = images;
     if (images && images.length > maxImages) {
       console.warn(`⚠️ Image count (${images.length}) exceeds limit (${maxImages}), truncating...`);
-      images.splice(maxImages);
+      processedImages = images.slice(0, maxImages);
     }
 
-    // All tiers: text-only or image analysis (temporarily open)
-    console.log(`⚡ Processing request: ${images.length} images with ${MODEL_FLASH_OCR}`);
-    
     // If text-only request
-    if (!images || images.length === 0) {
-      const systemPrompt = buildShopeeSystemPrompt(tier);
-
-      const textResponse = await callGeminiAPI(MODEL_FLASH_OCR, [{
-        role: "user",
-        parts: [
-          { text: systemPrompt },
-          { text: textPrompt }
-        ]
-      }], {
-        maxOutputTokens: 2048,
-        temperature: 0.7
+    if (!processedImages || processedImages.length === 0) {
+      console.log(`⚡ Text-only request with ${MODEL_FLASH}`);
+      
+      const model = genAI.getGenerativeModel({ 
+        model: 'gemini-3.0-flash'
       });
 
-      // Try to parse as JSON, fallback to plain text
-      let result;
+      const systemPrompt = buildSystemPrompt(tier);
+      const prompt = `${systemPrompt}\n\n用戶問題: ${textPrompt}`;
+
+      const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          maxOutputTokens: 2048,
+          temperature: 0.7
+        }
+      });
+
+      const textResponse = result.response.text();
+
+      // Try to parse as JSON
+      let finalResult;
       try {
-        const cleanedJSON = cleanJSONResponse(textResponse);
-        result = JSON.parse(cleanedJSON);
+        const cleanedJSON = textResponse.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+        const jsonMatch = cleanedJSON.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          finalResult = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('No JSON found');
+        }
       } catch (e) {
         console.warn('⚠️ JSON parse failed, using fallback format');
-        result = {
+        finalResult = {
           summary: textResponse,
           recommendations: ["分析完成，請查看上方摘要", "根據分析結果調整策略", "持續監控市場動態"],
           plan: "根據分析結果制定執行計劃。建議先從核心建議開始實施。"
         };
       }
 
-      const finalResult = {
-        summary: result.summary || textResponse.substring(0, 500),
-        recommendations: Array.isArray(result.recommendations) ? result.recommendations : 
-          (result.recommendations ? [result.recommendations] : ['分析完成，請查看上方摘要', '根據分析結果調整策略', '持續監控市場動態']),
-        plan: result.plan || result.summary || '根據分析結果制定執行計劃。'
-      };
-
       const duration = Date.now() - startTime;
-      console.log(`✅ Text-only result: ${finalResult.summary.length} chars summary`);
-      console.log(`⏱️ Total processing time: ${duration}ms (${(duration / 1000).toFixed(2)}s)`);
+      console.log(`✅ Text-only result: ${finalResult.summary?.length || 0} chars`);
+      console.log(`⏱️ Total time: ${duration}ms (${(duration / 1000).toFixed(2)}s)`);
 
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify(finalResult)
+        body: JSON.stringify({
+          summary: finalResult.summary || textResponse,
+          recommendations: Array.isArray(finalResult.recommendations) ? finalResult.recommendations : ['分析完成，請查看上方摘要'],
+          plan: finalResult.plan || textResponse
+        })
       };
     }
 
     // Image analysis: Map-Reduce pipeline
-    let ocrContext = '';
+    console.log(`⚡ Processing ${processedImages.length} images with Map-Reduce architecture`);
+
+    // ========== Map Phase: OCR-only extraction (Gemini 3.0 Flash) ==========
+    const mapStartTime = Date.now();
+    console.log(`📊 Map Phase: OCR extraction with gemini-3.0-flash...`);
     
-    if (images && images.length > 0) {
-      // MAP PHASE: OCR-only extraction
-      ocrContext = await mapPhaseOCR(images);
+    const mapModel = genAI.getGenerativeModel({ 
+      model: 'gemini-3.0-flash'
+    });
+
+    const ocrPrompt = `你是一位資料助理。請僅從圖片中擷取文字資料，
+例如商品名稱、價格、分類、銷量、退貨率、評分等。
+不要分析、不要建議，只輸出純文字摘要。
+使用繁體中文，格式如下：
+
+商品名稱: ...
+價格: ...
+銷量: ...
+轉換率: ...
+（其他數據）
+
+只提取數據，不要分析。`;
+
+    const ocrResults = [];
+    for (let i = 0; i < processedImages.length; i++) {
+      try {
+        const imageStartTime = Date.now();
+        
+        // Clean base64 string
+        const cleanBase64 = processedImages[i].replace(/^data:image\/\w+;base64,/, '');
+        
+        // Detect mime type
+        let mimeType = 'image/jpeg';
+        if (processedImages[i].includes('data:image/png')) mimeType = 'image/png';
+        else if (processedImages[i].includes('data:image/webp')) mimeType = 'image/webp';
+
+        const result = await mapModel.generateContent({
+          contents: [{
+            role: 'user',
+            parts: [
+              { text: ocrPrompt },
+              { 
+                inlineData: { 
+                  mimeType: mimeType,
+                  data: cleanBase64
+                } 
+              }
+            ]
+          }],
+          generationConfig: {
+            maxOutputTokens: 512,  // OCR 只需要少量輸出
+            temperature: 0.2  // 降低溫度確保 OCR 準確性
+          }
+        });
+
+        const text = result.response.text();
+        const imageDuration = Date.now() - imageStartTime;
+        console.log(`✅ Image ${i + 1}/${processedImages.length} OCR completed in ${imageDuration}ms (${text.length} chars)`);
+        ocrResults.push(text);
+      } catch (err) {
+        console.error(`❌ Image ${i + 1} OCR failed:`, err.message);
+        ocrResults.push(`[Image ${i + 1} OCR Data]: 提取失敗 - ${err.message}`);
+      }
     }
 
-    // REDUCE PHASE: Deep reasoning
-    const reasoningText = await reducePhaseReasoning(textPrompt, ocrContext, tier);
+    const mergedText = ocrResults.join('\n---\n');
+    const mapDuration = Date.now() - mapStartTime;
+    console.log(`✅ Map Phase complete in ${mapDuration}ms (${(mapDuration / 1000).toFixed(2)}s)`);
+    console.log(`📊 Total OCR context: ${mergedText.length} chars`);
 
-    // Parse and clean JSON response
-    let result;
-    try {
-      const cleanedJSON = cleanJSONResponse(reasoningText);
-      result = JSON.parse(cleanedJSON);
-      
-      // Validate required fields
-      if (!result.summary && !result.recommendations && !result.plan) {
-        throw new Error('JSON missing required fields');
+    // ========== Reduce Phase: Deep reasoning (Gemini 3.0 Pro) ==========
+    const reduceStartTime = Date.now();
+    console.log(`🧠 Reduce Phase: Deep reasoning with gemini-3.0-pro...`);
+
+    const reduceModel = genAI.getGenerativeModel({
+      model: 'gemini-3.0-pro',
+      systemInstruction: {
+        parts: [{ text: buildSystemPrompt(tier) }]
       }
+    });
+
+    const userPrompt = mergedText 
+      ? `OCR 提取的數據（從圖片中提取的所有文字、數字、表格）:\n${mergedText}\n\n用戶問題: ${textPrompt || '基於這些數據，給出選品建議'}\n\n請基於以上 OCR 數據進行深度分析和決策。`
+      : textPrompt;
+
+    const reduceResult = await reduceModel.generateContent({
+      contents: [{ 
+        role: 'user', 
+        parts: [{ text: userPrompt }] 
+      }],
+      generationConfig: {
+        maxOutputTokens: 2048,  // 生成完整的選品決策卡
+        temperature: 0.7
+      }
+    });
+
+    const output = reduceResult.response.text();
+    const reduceDuration = Date.now() - reduceStartTime;
+    console.log(`✅ Reduce Phase complete in ${reduceDuration}ms (${(reduceDuration / 1000).toFixed(2)}s)`);
+    console.log(`📊 Response length: ${output.length} chars`);
+
+    // Parse JSON response
+    let finalResult;
+    try {
+      // Clean JSON response
+      let cleanedJSON = output.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+      
+      // Try to find JSON object
+      const jsonMatch = cleanedJSON.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        cleanedJSON = jsonMatch[0];
+      }
+
+      // Attempt to fix incomplete JSON
+      if (cleanedJSON.startsWith('{') && !cleanedJSON.endsWith('}')) {
+        cleanedJSON = cleanedJSON.replace(/,\s*$/, '') + '}';
+      }
+
+      finalResult = JSON.parse(cleanedJSON);
     } catch (e) {
       console.error('❌ JSON parsing failed:', e.message);
-      console.error('Raw response (first 500 chars):', reasoningText.substring(0, 500));
+      console.error('Raw response (first 500 chars):', output.substring(0, 500));
       
-      // Try to extract partial JSON fields even if parsing fails
-      const summaryMatch = reasoningText.match(/"summary"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
-      const recommendationsMatch = reasoningText.match(/"recommendations"\s*:\s*\[(.*?)\]/s);
-      const planMatch = reasoningText.match(/"plan"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
+      // Fallback: extract fields using regex
+      const summaryMatch = output.match(/"summary"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
+      const recommendationsMatch = output.match(/"recommendations"\s*:\s*\[(.*?)\]/s);
+      const planMatch = output.match(/"plan"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
       
-      result = {
-        summary: summaryMatch ? summaryMatch[1].replace(/\\"/g, '"') : reasoningText.substring(0, 500) + '...',
+      finalResult = {
+        summary: summaryMatch ? summaryMatch[1].replace(/\\"/g, '"') : output.substring(0, 500) + '...',
         recommendations: recommendationsMatch ? 
           recommendationsMatch[1].split(',').map(r => r.trim().replace(/^"|"$/g, '').replace(/\\"/g, '"')).filter(r => r) :
           ["請查看上方摘要了解詳細分析", "根據分析結果調整策略", "持續監控市場動態"],
         plan: planMatch ? planMatch[1].replace(/\\"/g, '"') : "請根據上方摘要制定執行計劃。"
       };
-      
-      // If we still have a decent summary, use it
-      if (!result.summary || result.summary.length < 50) {
-        result.summary = reasoningText.substring(0, 800) || "分析完成，請查看建議。";
-      }
     }
 
-    // Validate result structure
-    if (!result.summary || !result.recommendations || !result.plan) {
-      console.warn('⚠️ Result missing required fields, using fallback');
-      result = {
-        summary: result.summary || reasoningText,
-        recommendations: Array.isArray(result.recommendations) ? result.recommendations : ["Action required", "Review data", "Execute plan"],
-        plan: result.plan || "Please review the summary and recommendations above."
-      };
-    }
-
-    // 確保返回的數據結構正確
-    const finalResult = {
-      summary: result.summary || result.reasoningText || '分析完成，請查看建議。',
-      recommendations: Array.isArray(result.recommendations) ? result.recommendations : 
-        (result.recommendations ? [result.recommendations] : ['請查看上方分析結果']),
-      plan: result.plan || result.summary || '根據分析結果制定執行計劃。'
+    // Ensure result structure
+    const responseResult = {
+      summary: finalResult.summary || output.substring(0, 500) || '分析完成，請查看建議。',
+      recommendations: Array.isArray(finalResult.recommendations) ? finalResult.recommendations : 
+        (finalResult.recommendations ? [finalResult.recommendations] : ['請查看上方分析結果']),
+      plan: finalResult.plan || output || '根據分析結果制定執行計劃。'
     };
 
     const duration = Date.now() - startTime;
-    console.log(`✅ Success: ${tier} tier, ${images.length} images, ${finalResult.summary.length} chars summary`);
+    console.log(`✅ Success: ${tier} tier, ${processedImages.length} images, ${responseResult.summary.length} chars summary`);
     console.log(`⏱️ Total processing time: ${duration}ms (${(duration / 1000).toFixed(2)}s)`);
     console.log(`📊 Result structure:`, {
-      summary: finalResult.summary.substring(0, 100) + '...',
-      recommendationsCount: finalResult.recommendations.length,
-      planLength: finalResult.plan.length
+      summary: responseResult.summary.substring(0, 100) + '...',
+      recommendationsCount: responseResult.recommendations.length,
+      planLength: responseResult.plan.length
     });
 
-    // 如果處理時間超過 100 秒，記錄警告
     if (duration > 100000) {
-      console.warn(`⚠️ Processing time exceeded 100s: ${(duration / 1000).toFixed(2)}s. Consider optimizing or reducing image count.`);
+      console.warn(`⚠️ Processing time exceeded 100s: ${(duration / 1000).toFixed(2)}s`);
     }
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify(finalResult)
+      body: JSON.stringify(responseResult)
     };
 
   } catch (error) {
