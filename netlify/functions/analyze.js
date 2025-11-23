@@ -1,27 +1,25 @@
-// BrotherG AI - Raw Fetch Implementation (No SDK)
-// 完全繞過 SDK，直接 HTTP 請求
+// BrotherG AI - Raw Fetch (修正版)
+// v1beta 不支援 -latest 後綴
 
 const API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
 
-// ✅ 手動控制 API 版本和模型
 const API_VERSION = "v1beta";
 const BASE_URL = `https://generativelanguage.googleapis.com/${API_VERSION}/models`;
 
-// 可用的模型列表
+// ✅ v1beta 可用的模型（不要加 -latest）
 const MODELS = {
-  FLASH: "gemini-1.5-flash-latest",
-  PRO: "gemini-1.5-pro-latest"
+  FLASH: "gemini-1.5-flash",
+  PRO: "gemini-1.5-pro"
 };
 
 async function callGemini(modelName, prompt, imageParts = []) {
   const url = `${BASE_URL}/${modelName}:generateContent?key=${API_KEY}`;
   
-  console.log(`🤖 直接調用: ${modelName}`);
-  console.log(`📡 API Endpoint: ${url.replace(API_KEY, '***')}`);
+  console.log(`🤖 調用: ${modelName}`);
+  console.log(`📡 Endpoint: ${url.replace(API_KEY, '***')}`);
   
   const parts = [];
   
-  // 先加圖片
   if (imageParts.length > 0) {
     parts.push(...imageParts.map(img => ({
       inline_data: { 
@@ -31,7 +29,6 @@ async function callGemini(modelName, prompt, imageParts = []) {
     })));
   }
   
-  // 再加文字
   parts.push({ text: prompt });
 
   const contents = [{
@@ -53,19 +50,18 @@ async function callGemini(modelName, prompt, imageParts = []) {
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`❌ API 錯誤 (${response.status}):`, errorText);
-    throw new Error(`API Error: ${response.status} - ${errorText.substring(0, 200)}`);
+    console.error(`❌ API 錯誤 (${response.status}):`, errorText.substring(0, 500));
+    throw new Error(`API Error: ${response.status}`);
   }
 
   const data = await response.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "無回應";
   
-  console.log(`✅ 回應長度: ${text.length} 字元`);
+  console.log(`✅ 成功 (${text.length} 字元)`);
   return text;
 }
 
 exports.handler = async (event) => {
-  // CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -89,23 +85,21 @@ exports.handler = async (event) => {
     const body = JSON.parse(event.body || '{}');
     const { textPrompt, images = [] } = body;
 
-    console.log(`📊 收到請求: ${images.length} 張圖片`);
+    console.log(`📊 請求: ${images.length} 張圖片`);
 
     const jsonStructure = `{
-  "summary": "詳細分析...",
-  "recommendations": ["建議1", "建議2", "建議3"],
-  "plan": "7天執行計劃..."
+  "summary": "分析內容",
+  "recommendations": ["建議1", "建議2"],
+  "plan": "執行計劃"
 }`;
 
-    // ==========================================
-    // 分支 A: 純文字
-    // ==========================================
+    // 純文字模式
     if (!images || images.length === 0) {
-      console.log(`📝 純文字模式`);
+      console.log(`📝 純文字`);
       
       const result = await callGemini(
         MODELS.FLASH,
-        `用戶問題: ${textPrompt}\n\n請以嚴格的 JSON 格式回覆: ${jsonStructure}`
+        `問題: ${textPrompt}\n\n以 JSON 格式回覆: ${jsonStructure}`
       );
       
       const cleanJson = result.replace(/```json|```/g, '').trim();
@@ -117,52 +111,45 @@ exports.handler = async (event) => {
       };
     }
 
-    // ==========================================
-    // 分支 B: Map-Reduce (圖片)
-    // ==========================================
-    
-    // 限制最多 2 張圖片（解決超時問題）
+    // Map-Reduce 模式
     const MAX_IMAGES = 2;
     const imagesToProcess = images.slice(0, MAX_IMAGES);
     
     if (images.length > MAX_IMAGES) {
-      console.log(`⚠️ 圖片數量 ${images.length} 超過限制 ${MAX_IMAGES}，只處理前 ${MAX_IMAGES} 張`);
+      console.log(`⚠️ 圖片數量 ${images.length} > ${MAX_IMAGES}，只處理前 ${MAX_IMAGES} 張`);
     }
     
-    console.log(`⚡ Map 階段: ${imagesToProcess.length} 張圖片`);
+    console.log(`⚡ Map: ${imagesToProcess.length} 張`);
 
-    // Step 1: Map (並行處理圖片)
     const mapPromises = imagesToProcess.map(async (base64Str, index) => {
       try {
         const cleanBase64 = base64Str.replace(/^data:image\/\w+;base64,/, '');
         const text = await callGemini(
           MODELS.FLASH,
-          '提取關鍵數據：價格、銷量、產品類型。簡潔回答。',
+          '提取關鍵數據：價格、銷量、類型。',
           [cleanBase64]
         );
-        console.log(`✅ 圖片 ${index + 1} 完成`);
-        return `[圖片 ${index + 1}]: ${text}`;
+        console.log(`✅ 圖 ${index + 1}`);
+        return `[圖 ${index + 1}]: ${text}`;
       } catch (e) {
-        console.error(`❌ 圖片 ${index + 1} 失敗:`, e.message);
-        return `[圖片 ${index + 1}]: 讀取失敗`;
+        console.error(`❌ 圖 ${index + 1}:`, e.message);
+        return `[圖 ${index + 1}]: 失敗`;
       }
     });
 
     const mapResults = await Promise.all(mapPromises);
     const visualContext = mapResults.join('\n\n');
 
-    console.log(`🎯 Reduce 階段`);
+    console.log(`🎯 Reduce`);
 
-    // Step 2: Reduce (深度分析)
-    const finalPrompt = `你是 BrotherG，蝦皮電商專家。
+    const finalPrompt = `你是蝦皮顧問。
 
-視覺數據:
+數據:
 ${visualContext}
 
-用戶問題: ${textPrompt || '請分析這些數據'}
+問題: ${textPrompt || '請分析'}
 
-請分析並提供策略。
-輸出必須是有效的 JSON: ${jsonStructure}`;
+JSON 回覆: ${jsonStructure}`;
 
     const finalResult = await callGemini(MODELS.PRO, finalPrompt);
     const cleanFinalJson = finalResult.replace(/```json|```/g, '').trim();
@@ -181,8 +168,8 @@ ${visualContext}
       statusCode: 500,
       headers,
       body: JSON.stringify({ 
-        summary: '系統錯誤',
-        recommendations: ['請檢查 API Key', error.message],
+        summary: '錯誤',
+        recommendations: [error.message],
         plan: 'Error'
       })
     };
