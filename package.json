@@ -1,0 +1,23 @@
+{
+  "name": "brotherg-shopee-analyzer",
+  "version": "1.0.0",
+  "description": "BrotherG AI - Shopee Analyst with Map-Reduce Architecture",
+  "main": "netlify/functions/analyze.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "netlify",
+    "gemini",
+    "shopee",
+    "ai"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {},
+  "_note": "Using native fetch() API (Node 18+) - no additional dependencies required",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+
