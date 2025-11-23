@@ -1,406 +1,189 @@
-/**
- * BrotherG.AI Shopee Analyzer | Gemini 3.0 Stable Multi-Image Version
- * v3.0-Stable-MapReduce Architecture
- * 
- * Map Phase: gemini-3.0-flash (OCR-only, 512 tokens)
- * Reduce Phase: gemini-3.0-pro (Deep reasoning, 1024 tokens)
- */
+// BrotherG AI - Raw Fetch Implementation (No SDK)
+// 完全繞過 SDK，直接 HTTP 請求
 
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
 
-const GEMINI_API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
+// ✅ 手動控制 API 版本和模型
+const API_VERSION = "v1beta";
+const BASE_URL = `https://generativelanguage.googleapis.com/${API_VERSION}/models`;
 
-// Safety limits
-const MAX_IMAGES_FREE = 2;
-const MAX_IMAGES_PRO = 2;
-const MAX_IMAGES_MASTER = 5;
+// 可用的模型列表
+const MODELS = {
+  FLASH: "gemini-1.5-flash-latest",
+  PRO: "gemini-1.5-pro-latest"
+};
 
-/**
- * Check user tier from headers
- */
-function checkUserTier(event) {
-  const authHeader = event.headers.authorization || event.headers['x-user-tier'] || '';
-  if (authHeader.includes('master') || authHeader === 'master') {
-    return 'master';
-  }
-  if (authHeader.includes('pro') || authHeader === 'pro') {
-    return 'pro';
-  }
-  return 'free';
-}
-
-/**
- * Build system prompt for Shopee Analyst
- */
-function buildSystemPrompt(tier = 'free') {
-  return `你是 BrotherG.AI 的 Shopee 選品決策分析師。
-請根據以下商品數據與圖片摘要，輸出繁體中文報告。
-
-輸出格式必須是有效的 JSON（不要 markdown 代碼塊）：
-
-{
-  "summary": "基於你上傳的數據，以下是我的建議：（2-3段繁體中文分析，語氣像 Shopee 高階運營顧問）",
-  "recommendations": [
-    "🔥 建議主攻品類 (Top 1)",
-    "🔥 建議主攻品類 (Top 2)",
-    "🔥 建議主攻品類 (Top 3)"
-  ],
-  "plan": "💰 七日行動計畫\\nDay 1：調整商品主圖與標題（說明具體優化方向）\\nDay 2：分析高轉化詞與關鍵字（舉例三個）\\nDay 3：依照GMV分布重新配置廣告預算（具體比例）\\nDay 4：整合商品組合包或贈品策略\\nDay 5～7：試跑＋檢驗ROI／CTR／轉單率"
-}
-
-### Guidelines
-- 語氣要像 Shopee 高階運營顧問。
-- 所有分析要以數據洞察為主，不講品牌策略或廣告學。
-- 不要提「Pivot / Magnet / Teaser / Day-by-Day Marketing」這種字。
-- 所有金額單位使用 TWD。
-- "summary" 應該包含：數據分析摘要 + ⚠️ 應下架或避開品類的建議
-- "recommendations" 必須是 3 個主攻品類建議（格式：品類名稱 + 價格區間 + 原因）
-- "plan" 必須是完整的七日行動計畫（Day 1-7，每項都要具體）
-
-${tier === 'free' ? '注意：Free tier 用戶，請在 summary 末尾添加「提示：升級 PRO 版可查看完整的七日行動計畫」。' : ''}`;
-}
-
-/**
- * Main handler
- */
-exports.handler = async (event, context) => {
-  context.callbackWaitsForEmptyEventLoop = false;
+async function callGemini(modelName, prompt, imageParts = []) {
+  const url = `${BASE_URL}/${modelName}:generateContent?key=${API_KEY}`;
   
-  const startTime = Date.now();
-  console.log(`⏱️ Request started at: ${new Date().toISOString()}`);
+  console.log(`🤖 直接調用: ${modelName}`);
+  console.log(`📡 API Endpoint: ${url.replace(API_KEY, '***')}`);
+  
+  const parts = [];
+  
+  // 先加圖片
+  if (imageParts.length > 0) {
+    parts.push(...imageParts.map(img => ({
+      inline_data: { 
+        mime_type: "image/jpeg", 
+        data: img 
+      }
+    })));
+  }
+  
+  // 再加文字
+  parts.push({ text: prompt });
 
+  const contents = [{
+    role: "user",
+    parts: parts
+  }];
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents,
+      generationConfig: {
+        maxOutputTokens: 4096,
+        temperature: 0.7
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`❌ API 錯誤 (${response.status}):`, errorText);
+    throw new Error(`API Error: ${response.status} - ${errorText.substring(0, 200)}`);
+  }
+
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "無回應";
+  
+  console.log(`✅ 回應長度: ${text.length} 字元`);
+  return text;
+}
+
+exports.handler = async (event) => {
   // CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/json'
   };
 
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers,
-      body: ''
-    };
+    return { statusCode: 200, headers, body: '' };
+  }
+
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, headers, body: 'Method Not Allowed' };
   }
 
   try {
-    // Validate API key
-    if (!GEMINI_API_KEY) {
-      throw new Error('Missing GOOGLE_GENERATIVE_AI_API_KEY environment variable');
+    if (!API_KEY) {
+      throw new Error('Missing API Key');
     }
 
-    // Initialize Gemini client with v1 API
-    const client = new GoogleGenerativeAI(GEMINI_API_KEY);
-    
-    // ⚠️ API Version Detection & Warning
-    // Check if we're using v1 API (not v1beta)
-    const clientVersion = GoogleGenerativeAI.toString().includes('v1beta') ? 'v1beta (OLD!)' : 'v1 (NEW)';
-    console.log(`🔍 SDK Version Check: ${clientVersion}`);
-    if (clientVersion.includes('v1beta')) {
-      console.error('❌ WARNING: Still using v1beta API! This means Netlify cache needs to be cleared!');
-      console.error('❌ Please go to Netlify Dashboard → Deploys → Clear cache and deploy site');
-    }
+    const body = JSON.parse(event.body || '{}');
+    const { textPrompt, images = [] } = body;
 
-    // Parse request body
-    let body;
-    try {
-      body = JSON.parse(event.body || '{}');
-    } catch (e) {
-      throw new Error('Invalid JSON in request body');
-    }
+    console.log(`📊 收到請求: ${images.length} 張圖片`);
 
-    const { textPrompt = '', images = [] } = body;
+    const jsonStructure = `{
+  "summary": "詳細分析...",
+  "recommendations": ["建議1", "建議2", "建議3"],
+  "plan": "7天執行計劃..."
+}`;
 
-    // Validate input
-    if (!textPrompt && (!images || images.length === 0)) {
-      return {
-        statusCode: 400,
+    // ==========================================
+    // 分支 A: 純文字
+    // ==========================================
+    if (!images || images.length === 0) {
+      console.log(`📝 純文字模式`);
+      
+      const result = await callGemini(
+        MODELS.FLASH,
+        `用戶問題: ${textPrompt}\n\n請以嚴格的 JSON 格式回覆: ${jsonStructure}`
+      );
+      
+      const cleanJson = result.replace(/```json|```/g, '').trim();
+      
+      return { 
+        statusCode: 200, 
         headers,
-        body: JSON.stringify({ error: 'Please provide textPrompt or images' })
+        body: cleanJson 
       };
     }
 
-    // Check user tier
-    const tier = checkUserTier(event);
-    console.log(`👤 User Tier: ${tier}`);
-
-    // Safety limits based on tier
-    let maxImages;
-    switch (tier) {
-      case 'master':
-        maxImages = MAX_IMAGES_MASTER;
-        break;
-      case 'pro':
-        maxImages = MAX_IMAGES_PRO;
-        break;
-      default:
-        maxImages = MAX_IMAGES_FREE;
+    // ==========================================
+    // 分支 B: Map-Reduce (圖片)
+    // ==========================================
+    
+    // 限制最多 2 張圖片（解決超時問題）
+    const MAX_IMAGES = 2;
+    const imagesToProcess = images.slice(0, MAX_IMAGES);
+    
+    if (images.length > MAX_IMAGES) {
+      console.log(`⚠️ 圖片數量 ${images.length} 超過限制 ${MAX_IMAGES}，只處理前 ${MAX_IMAGES} 張`);
     }
+    
+    console.log(`⚡ Map 階段: ${imagesToProcess.length} 張圖片`);
 
-    let processedImages = images;
-    if (images && images.length > maxImages) {
-      console.warn(`⚠️ Image count (${images.length}) exceeds limit (${maxImages}), truncating...`);
-      processedImages = images.slice(0, maxImages);
-    }
-
-    // If text-only request
-    if (!processedImages || processedImages.length === 0) {
-      console.log(`⚡ Text-only request with gemini-1.5-flash`);
-      
-      const model = client.getGenerativeModel({ 
-        model: 'gemini-1.5-flash'  // 暫時先用 1.5 確保連通性，避免 404
-      });
-      
-      // Log API endpoint being used (for debugging)
-      console.log(`📡 Using model: gemini-1.5-flash`);
-      console.log(`📡 API endpoint should be: https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash`);
-
-      const systemPrompt = buildSystemPrompt(tier);
-      const prompt = `${systemPrompt}\n\n用戶問題: ${textPrompt}`;
-
-      const result = await model.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          maxOutputTokens: 2048,
-          temperature: 0.7
-        }
-      });
-
-      const textResponse = result.response.text();
-
-      // Try to parse as JSON
-      let finalResult;
+    // Step 1: Map (並行處理圖片)
+    const mapPromises = imagesToProcess.map(async (base64Str, index) => {
       try {
-        const cleanedJSON = textResponse.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-        const jsonMatch = cleanedJSON.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          finalResult = JSON.parse(jsonMatch[0]);
-        } else {
-          throw new Error('No JSON found');
-        }
+        const cleanBase64 = base64Str.replace(/^data:image\/\w+;base64,/, '');
+        const text = await callGemini(
+          MODELS.FLASH,
+          '提取關鍵數據：價格、銷量、產品類型。簡潔回答。',
+          [cleanBase64]
+        );
+        console.log(`✅ 圖片 ${index + 1} 完成`);
+        return `[圖片 ${index + 1}]: ${text}`;
       } catch (e) {
-        console.warn('⚠️ JSON parse failed, using fallback format');
-        finalResult = {
-          summary: textResponse,
-          recommendations: ["分析完成，請查看上方摘要", "根據分析結果調整策略", "持續監控市場動態"],
-          plan: "根據分析結果制定執行計劃。建議先從核心建議開始實施。"
-        };
-      }
-
-      const duration = Date.now() - startTime;
-      console.log(`✅ Text-only result: ${finalResult.summary?.length || 0} chars`);
-      console.log(`⏱️ Total time: ${duration}ms (${(duration / 1000).toFixed(2)}s)`);
-
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-          summary: finalResult.summary || textResponse,
-          recommendations: Array.isArray(finalResult.recommendations) ? finalResult.recommendations : ['分析完成，請查看上方摘要'],
-          plan: finalResult.plan || textResponse
-        })
-      };
-    }
-
-    // Image analysis: Map-Reduce pipeline
-    console.log(`⚡ Processing ${processedImages.length} images with Map-Reduce architecture`);
-
-    // ========== Map Phase: OCR-only extraction (Gemini 1.5 Flash) ==========
-    const mapStartTime = Date.now();
-    console.log(`📊 Map Phase: OCR extraction with gemini-1.5-flash...`);
-    
-    const mapModel = client.getGenerativeModel({ 
-      model: 'gemini-1.5-flash'  // 暫時先用 1.5 確保連通性，避免 404
-    });
-    
-    // Log API endpoint being used (for debugging)
-    console.log(`📡 Map Phase: Using model gemini-1.5-flash`);
-    console.log(`📡 Expected endpoint: https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash`);
-    console.log(`⚠️ If you see v1beta in errors, Netlify cache needs clearing!`);
-
-    const ocrPrompt = `請從圖片中擷取商品名稱、價格、分類、銷量、退貨率、評分。
-只輸出文字摘要，不要評論。
-使用繁體中文，格式如下：
-
-商品名稱: ...
-價格: ...
-銷量: ...
-轉換率: ...
-（其他數據）
-
-只提取數據，不要分析。`;
-
-    const ocrResults = [];
-    for (let i = 0; i < processedImages.length; i++) {
-      try {
-        const imageStartTime = Date.now();
-        
-        // Clean base64 string
-        const cleanBase64 = processedImages[i].replace(/^data:image\/\w+;base64,/, '');
-        
-        // Detect mime type
-        let mimeType = 'image/jpeg';
-        if (processedImages[i].includes('data:image/png')) mimeType = 'image/png';
-        else if (processedImages[i].includes('data:image/webp')) mimeType = 'image/webp';
-
-        const result = await mapModel.generateContent({
-          contents: [{
-            role: 'user',
-            parts: [
-              { text: ocrPrompt },
-              { 
-                inlineData: { 
-                  mimeType: mimeType,
-                  data: cleanBase64
-                } 
-              }
-            ]
-          }],
-          generationConfig: {
-            maxOutputTokens: 512,  // OCR 只需要少量輸出
-            temperature: 0.2  // 降低溫度確保 OCR 準確性
-          }
-        });
-
-        const text = result.response.text();
-        const imageDuration = Date.now() - imageStartTime;
-        console.log(`✅ Image ${i + 1}/${processedImages.length} OCR completed in ${imageDuration}ms (${text.length} chars)`);
-        ocrResults.push(text);
-      } catch (err) {
-        console.error(`❌ Image ${i + 1} OCR failed:`, err.message);
-        // Check if error is due to v1beta API
-        if (err.message && err.message.includes('v1beta')) {
-          console.error('🚨 CRITICAL: Still using v1beta API! Please clear Netlify cache!');
-        }
-        if (err.message && err.message.includes('404')) {
-          console.error('🚨 CRITICAL: 404 error - model not found. Check if using correct API version.');
-        }
-        ocrResults.push(`[Image ${i + 1} OCR Data]: 提取失敗 - ${err.message}`);
-      }
-    }
-
-    const mergedText = ocrResults.join('\n---\n');
-    const mapDuration = Date.now() - mapStartTime;
-    console.log(`✅ Map Phase complete in ${mapDuration}ms (${(mapDuration / 1000).toFixed(2)}s)`);
-    console.log(`📊 Total OCR context: ${mergedText.length} chars`);
-
-    // ========== Reduce Phase: Deep reasoning (Gemini 3.0 Pro) ==========
-    const reduceStartTime = Date.now();
-    console.log(`🧠 Reduce Phase: Deep reasoning with gemini-3.0-pro...`);
-
-    const reduceModel = client.getGenerativeModel({
-      model: 'gemini-1.5-pro',  // 暫時先用 1.5 確保連通性，避免 404
-      systemInstruction: buildSystemPrompt(tier)
-    });
-    
-    // Log API endpoint being used (for debugging)
-    console.log(`📡 Reduce Phase: Using model gemini-1.5-pro`);
-    console.log(`📡 Expected endpoint: https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro`);
-    console.log(`⚠️ If you see v1beta in errors, Netlify cache needs clearing!`);
-
-    const userPrompt = mergedText 
-      ? `OCR 提取的數據（從圖片中提取的所有文字、數字、表格）:\n${mergedText}\n\n用戶問題: ${textPrompt || '基於這些數據，給出選品建議'}\n\n請基於以上 OCR 數據進行深度分析和決策。`
-      : textPrompt;
-
-    const reduceResult = await reduceModel.generateContent({
-      contents: [{ 
-        role: 'user', 
-        parts: [{ text: userPrompt }] 
-      }],
-      generationConfig: {
-        maxOutputTokens: 2048,  // 生成完整的選品決策卡
-        temperature: 0.7
+        console.error(`❌ 圖片 ${index + 1} 失敗:`, e.message);
+        return `[圖片 ${index + 1}]: 讀取失敗`;
       }
     });
 
-    const output = reduceResult.response.text();
-    const reduceDuration = Date.now() - reduceStartTime;
-    console.log(`✅ Reduce Phase complete in ${reduceDuration}ms (${(reduceDuration / 1000).toFixed(2)}s)`);
-    console.log(`📊 Response length: ${output.length} chars`);
+    const mapResults = await Promise.all(mapPromises);
+    const visualContext = mapResults.join('\n\n');
 
-    // Parse JSON response
-    let finalResult;
-    try {
-      // Clean JSON response
-      let cleanedJSON = output.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-      
-      // Try to find JSON object
-      const jsonMatch = cleanedJSON.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        cleanedJSON = jsonMatch[0];
-      }
+    console.log(`🎯 Reduce 階段`);
 
-      // Attempt to fix incomplete JSON
-      if (cleanedJSON.startsWith('{') && !cleanedJSON.endsWith('}')) {
-        cleanedJSON = cleanedJSON.replace(/,\s*$/, '') + '}';
-      }
+    // Step 2: Reduce (深度分析)
+    const finalPrompt = `你是 BrotherG，蝦皮電商專家。
 
-      finalResult = JSON.parse(cleanedJSON);
-    } catch (e) {
-      console.error('❌ JSON parsing failed:', e.message);
-      console.error('Raw response (first 500 chars):', output.substring(0, 500));
-      
-      // Fallback: extract fields using regex
-      const summaryMatch = output.match(/"summary"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
-      const recommendationsMatch = output.match(/"recommendations"\s*:\s*\[(.*?)\]/s);
-      const planMatch = output.match(/"plan"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
-      
-      finalResult = {
-        summary: summaryMatch ? summaryMatch[1].replace(/\\"/g, '"') : output.substring(0, 500) + '...',
-        recommendations: recommendationsMatch ? 
-          recommendationsMatch[1].split(',').map(r => r.trim().replace(/^"|"$/g, '').replace(/\\"/g, '"')).filter(r => r) :
-          ["請查看上方摘要了解詳細分析", "根據分析結果調整策略", "持續監控市場動態"],
-        plan: planMatch ? planMatch[1].replace(/\\"/g, '"') : "請根據上方摘要制定執行計劃。"
-      };
-    }
+視覺數據:
+${visualContext}
 
-    // Ensure result structure
-    const responseResult = {
-      summary: finalResult.summary || output.substring(0, 500) || '分析完成，請查看建議。',
-      recommendations: Array.isArray(finalResult.recommendations) ? finalResult.recommendations : 
-        (finalResult.recommendations ? [finalResult.recommendations] : ['請查看上方分析結果']),
-      plan: finalResult.plan || output || '根據分析結果制定執行計劃。'
-    };
+用戶問題: ${textPrompt || '請分析這些數據'}
 
-    const duration = Date.now() - startTime;
-    console.log(`✅ Success: ${tier} tier, ${processedImages.length} images, ${responseResult.summary.length} chars summary`);
-    console.log(`⏱️ Total processing time: ${duration}ms (${(duration / 1000).toFixed(2)}s)`);
-    console.log(`📊 Result structure:`, {
-      summary: responseResult.summary.substring(0, 100) + '...',
-      recommendationsCount: responseResult.recommendations.length,
-      planLength: responseResult.plan.length
-    });
+請分析並提供策略。
+輸出必須是有效的 JSON: ${jsonStructure}`;
 
-    if (duration > 100000) {
-      console.warn(`⚠️ Processing time exceeded 100s: ${(duration / 1000).toFixed(2)}s`);
-    }
+    const finalResult = await callGemini(MODELS.PRO, finalPrompt);
+    const cleanFinalJson = finalResult.replace(/```json|```/g, '').trim();
+
+    console.log(`✅ 完成`);
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify(responseResult)
+      body: cleanFinalJson
     };
 
-    } catch (error) {
-    console.error('❌ Error:', error);
-    
-    // Check if error is related to v1beta API
-    const errorMsg = error.message || '';
-    if (errorMsg.includes('v1beta') || errorMsg.includes('404')) {
-      console.error('🚨 CRITICAL ERROR DETECTED:');
-      console.error('🚨 This error suggests Netlify is still using cached old SDK version');
-      console.error('🚨 SOLUTION: Go to Netlify Dashboard → Deploys → Clear cache and deploy site');
-    }
-    
+  } catch (error) {
+    console.error('🔥 錯誤:', error);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({
-        error: error.message || 'Internal server error',
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-        hint: errorMsg.includes('v1beta') ? 'Please clear Netlify cache and redeploy' : undefined
+      body: JSON.stringify({ 
+        summary: '系統錯誤',
+        recommendations: ['請檢查 API Key', error.message],
+        plan: 'Error'
       })
     };
   }
