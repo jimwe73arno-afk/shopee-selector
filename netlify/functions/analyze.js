@@ -207,9 +207,9 @@ exports.handler = async (event, context) => {
     // Image analysis: Map-Reduce pipeline
     console.log(`⚡ Processing ${processedImages.length} images with Map-Reduce architecture`);
 
-    // ========== Map Phase: OCR-only extraction (Gemini 3.0 Flash) ==========
+    // ========== Map Phase: OCR-only extraction (Gemini 1.5 Flash) ==========
     const mapStartTime = Date.now();
-    console.log(`📊 Map Phase: OCR extraction with gemini-3.0-flash...`);
+    console.log(`📊 Map Phase: OCR extraction with gemini-1.5-flash...`);
     
     const mapModel = client.getGenerativeModel({ 
       model: 'gemini-1.5-flash'  // 暫時先用 1.5 確保連通性，避免 404
@@ -270,6 +270,13 @@ exports.handler = async (event, context) => {
         ocrResults.push(text);
       } catch (err) {
         console.error(`❌ Image ${i + 1} OCR failed:`, err.message);
+        // Check if error is due to v1beta API
+        if (err.message && err.message.includes('v1beta')) {
+          console.error('🚨 CRITICAL: Still using v1beta API! Please clear Netlify cache!');
+        }
+        if (err.message && err.message.includes('404')) {
+          console.error('🚨 CRITICAL: 404 error - model not found. Check if using correct API version.');
+        }
         ocrResults.push(`[Image ${i + 1} OCR Data]: 提取失敗 - ${err.message}`);
       }
     }
@@ -376,15 +383,24 @@ exports.handler = async (event, context) => {
       body: JSON.stringify(responseResult)
     };
 
-  } catch (error) {
+    } catch (error) {
     console.error('❌ Error:', error);
+    
+    // Check if error is related to v1beta API
+    const errorMsg = error.message || '';
+    if (errorMsg.includes('v1beta') || errorMsg.includes('404')) {
+      console.error('🚨 CRITICAL ERROR DETECTED:');
+      console.error('🚨 This error suggests Netlify is still using cached old SDK version');
+      console.error('🚨 SOLUTION: Go to Netlify Dashboard → Deploys → Clear cache and deploy site');
+    }
     
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
         error: error.message || 'Internal server error',
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+        hint: errorMsg.includes('v1beta') ? 'Please clear Netlify cache and redeploy' : undefined
       })
     };
   }
