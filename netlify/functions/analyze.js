@@ -10,7 +10,7 @@ const GEMINI_API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.G
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 // Model endpoints
-const MODEL_FLASH = 'gemini-1.5-flash';  // Fast vision processing (Map phase)
+const MODEL_FLASH = 'gemini-2.5-flash';  // Fast vision processing (Map phase)
 const MODEL_PRO = 'gemini-1.5-pro';      // Deep reasoning (Reduce phase)
 
 /**
@@ -75,7 +75,7 @@ async function callGeminiAPI(model, contents, generationConfig = {}) {
 }
 
 /**
- * MAP PHASE: Process each image in parallel using gemini-1.5-flash
+ * MAP PHASE: Process each image in parallel using gemini-2.5-flash
  */
 async function mapPhaseVision(images) {
   console.log(`📊 Map Phase: Processing ${images.length} images in parallel...`);
