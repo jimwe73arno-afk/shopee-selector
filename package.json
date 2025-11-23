@@ -15,9 +15,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@google/generative-ai": "^0.21.0",
-    "ecpay_aio_nodejs": "^1.2.2",
-    "google-genai": "^1.0.0"
+    "@google/generative-ai": "^0.24.1",
+    "ecpay_aio_nodejs": "^1.2.2"
   },
   "_note": "Using native fetch() API (Node 18+) - no additional dependencies required",
   "engines": {
