@@ -6,7 +6,7 @@
  * Reduce Phase: gemini-3.0-pro (Deep reasoning, 1024 tokens)
  */
 
-const { GoogleGenerativeAI } = require('google-genai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const GEMINI_API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
 
@@ -91,10 +91,8 @@ exports.handler = async (event, context) => {
       throw new Error('Missing GOOGLE_GENERATIVE_AI_API_KEY environment variable');
     }
 
-    // Initialize Gemini client
-    const client = new GoogleGenerativeAI({
-      apiKey: GEMINI_API_KEY
-    });
+    // Initialize Gemini client with v1 API
+    const client = new GoogleGenerativeAI(GEMINI_API_KEY);
 
     // Parse request body
     let body;
@@ -143,7 +141,7 @@ exports.handler = async (event, context) => {
       console.log(`⚡ Text-only request with gemini-3.0-flash`);
       
       const model = client.getGenerativeModel({ 
-        model: 'gemini-3.0-flash'
+        model: 'gemini-1.5-flash'  // 暫時先用 1.5 確保連通性，避免 404
       });
 
       const systemPrompt = buildSystemPrompt(tier);
@@ -201,7 +199,7 @@ exports.handler = async (event, context) => {
     console.log(`📊 Map Phase: OCR extraction with gemini-3.0-flash...`);
     
     const mapModel = client.getGenerativeModel({ 
-      model: 'gemini-3.0-flash'
+      model: 'gemini-1.5-flash'  // 暫時先用 1.5 確保連通性，避免 404
     });
 
     const ocrPrompt = `請從圖片中擷取商品名稱、價格、分類、銷量、退貨率、評分。
@@ -268,7 +266,7 @@ exports.handler = async (event, context) => {
     console.log(`🧠 Reduce Phase: Deep reasoning with gemini-3.0-pro...`);
 
     const reduceModel = client.getGenerativeModel({
-      model: 'gemini-3.0-pro',
+      model: 'gemini-1.5-pro',  // 暫時先用 1.5 確保連通性，避免 404
       systemInstruction: buildSystemPrompt(tier)
     });
 
