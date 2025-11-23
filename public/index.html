@@ -187,10 +187,10 @@
                             <!-- === Paid Mode Content === -->
                             <div id="shopee-input-paid" class="hidden">
                                 
-                                <div class="opacity-40 pointer-events-none mb-4">
+                                <div class="mb-4">
                                     <div class="flex justify-between items-center mb-4">
-                                        <label class="text-xs font-bold text-textSub mb-1 block tracking-widest">UPLOAD REPORTS (MAX 10)</label>
-                                        <span class="font-mono text-[10px] text-red-500 border border-red-200 px-2 py-0.5 rounded bg-red-50 font-bold">PRO REQUIRED</span>
+                                        <label class="text-xs font-bold text-aiBlue mb-1 block tracking-widest">UPLOAD REPORTS (MAX 10)</label>
+                                        <span class="font-mono text-[10px] text-green-500 border border-green-200 px-2 py-0.5 rounded bg-green-50 font-bold">已開放</span>
                                     </div>
                                     
                                     <label for="shopee-image-upload" class="custom-file-upload p-6 flex flex-col items-center justify-center h-32 cursor-pointer rounded-lg mb-4">
@@ -200,16 +200,16 @@
                                         <input type="file" id="shopee-image-upload" multiple accept="image/*" class="hidden">
                                     </label>
 
-                                    <label class="text-xs font-bold text-textSub mb-2 block tracking-widest">YOUR QUERY</label>
-                                    <textarea rows="2" placeholder="例如：看完圖，接下來 7 天我該怎麼選品？" 
-                                        class="w-full cyber-input p-3 text-base rounded-lg placeholder-gray-400 resize-none border-l-4 border-l-textSub"></textarea>
+                                    <label class="text-xs font-bold text-aiBlue mb-2 block tracking-widest">YOUR QUERY</label>
+                                    <textarea id="shopee-image-query" rows="2" placeholder="例如：看完圖，接下來 7 天我該怎麼選品？" 
+                                        class="w-full cyber-input p-3 text-base rounded-lg placeholder-gray-400 resize-none border-l-4 border-l-aiBlue"></textarea>
                                 </div>
 
-                                <button onclick="showToast('請於右側選擇方案進行升級')" class="w-full mt-4 bg-gray-300 text-white font-display font-bold py-4 tracking-widest uppercase text-lg relative rounded-lg flex justify-center items-center gap-2 cursor-not-allowed">
-                                    <i class="fa-solid fa-crown text-gray-100"></i> 請選擇方案
+                                <button onclick="runShopeeImageAnalysis()" class="w-full mt-4 bg-textMain text-white font-display font-bold py-4 hover:bg-aiBlue transition-all duration-300 tracking-widest uppercase text-lg relative overflow-hidden shadow-lg rounded-lg">
+                                    開始圖片分析
                                 </button>
                                 <p class="text-[10px] text-textSub mt-2 text-center font-mono">
-                                    (請於右側選擇方案)
+                                    (目前所有功能已開放，可直接使用)
                                 </p>
                             </div>
                         </div>
@@ -692,6 +692,138 @@
                     stack: error.stack,
                     error: error
                 });
+            }
+        }
+
+        // --- Image Upload Handler ---
+        let uploadedImages = [];
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const imageUpload = document.getElementById('shopee-image-upload');
+            if (imageUpload) {
+                imageUpload.addEventListener('change', function(e) {
+                    uploadedImages = [];
+                    const files = Array.from(e.target.files).slice(0, 10);
+                    const preview = document.getElementById('image-preview');
+                    if (preview) preview.innerHTML = '';
+                    
+                    files.forEach((file, index) => {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            uploadedImages.push(e.target.result);
+                            
+                            // Show preview
+                            if (preview) {
+                                const img = document.createElement('img');
+                                img.src = e.target.result;
+                                img.className = 'w-full h-20 object-cover rounded border border-border';
+                                preview.appendChild(img);
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                });
+            }
+        });
+
+        // --- Image Analysis Function ---
+        async function runShopeeImageAnalysis() {
+            if (uploadedImages.length === 0) {
+                return showToast('請先上傳圖片');
+            }
+            
+            const query = document.getElementById('shopee-image-query')?.value || '分析這些圖片並給出選品建議';
+            
+            // Show loading
+            document.getElementById('shopee-empty').classList.add('hidden');
+            document.getElementById('shopee-results').classList.add('hidden');
+            document.getElementById('shopee-paid-results').classList.add('hidden');
+            document.getElementById('shopee-loading').classList.remove('hidden');
+            
+            showToast('開始進行圖片分析...');
+            
+            try {
+                // Convert images to base64 array
+                const base64Images = uploadedImages.map(img => {
+                    // Remove data:image/xxx;base64, prefix if exists
+                    return img.includes(',') ? img.split(',')[1] : img;
+                });
+                
+                const response = await fetch('/.netlify/functions/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        textPrompt: query,
+                        images: base64Images
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API 錯誤: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error || '分析失敗');
+                }
+                
+                // Hide loading
+                document.getElementById('shopee-loading').classList.add('hidden');
+                
+                // Show results in free results section
+                let recommendations = [];
+                let extendedIdeas = '';
+                
+                if (data.recommendations && Array.isArray(data.recommendations)) {
+                    recommendations = data.recommendations;
+                } else if (data.summary) {
+                    recommendations = [{ item: "分析結果", reason: data.summary }];
+                }
+                
+                if (data.plan) {
+                    extendedIdeas = data.plan;
+                } else if (data.summary) {
+                    extendedIdeas = data.summary;
+                }
+                
+                // Populate results
+                const top10List = document.getElementById('top-10-list');
+                if (top10List) {
+                    top10List.innerHTML = '';
+                    recommendations.slice(0, 10).forEach((rec, index) => {
+                        const item = typeof rec === 'string' ? rec : (rec.item || rec || `建議 ${index + 1}`);
+                        const reason = typeof rec === 'string' ? '' : (rec.reason || '');
+                        
+                        top10List.innerHTML += `
+                            <li class="flex items-start text-sm border-b border-blue-100 pb-2">
+                                <span class="font-mono font-bold text-aiBlue w-6 flex-shrink-0">#${index + 1}</span>
+                                <div>
+                                    <span class="font-bold text-textMain">${item}</span>
+                                    ${reason ? `<span class="text-textSub">: ${reason}</span>` : ''}
+                                </div>
+                            </li>
+                        `;
+                    });
+                }
+                
+                const extendedIdeasEl = document.getElementById('extended-ideas');
+                if (extendedIdeasEl) {
+                    extendedIdeasEl.innerText = extendedIdeas || data.summary || '暫無延伸建議';
+                }
+                
+                // Show results
+                document.getElementById('shopee-results').classList.remove('hidden');
+                document.getElementById('shopee-paid-results').classList.add('hidden');
+                
+                showToast('圖片分析完成！');
+                
+            } catch (error) {
+                console.error('圖片分析錯誤:', error);
+                document.getElementById('shopee-loading').classList.add('hidden');
+                document.getElementById('shopee-results').classList.add('hidden');
+                document.getElementById('shopee-empty').classList.remove('hidden');
+                showToast('分析失敗: ' + error.message);
             }
         }
 

@@ -187,16 +187,39 @@ CRITICAL OUTPUT REQUIREMENTS:
  * Clean JSON response (remove markdown code blocks if present)
  */
 function cleanJSONResponse(text) {
-  // Remove markdown code blocks
-  let cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+  if (!text) return '';
   
-  // Find JSON object
+  // Remove markdown code blocks (multiple patterns)
+  let cleaned = text
+    .replace(/```json\s*/gi, '')
+    .replace(/```\s*/g, '')
+    .replace(/^[^{]*/, '') // Remove everything before first {
+    .replace(/[^}]*$/, '}') // Remove everything after last }
+    .trim();
+  
+  // Find JSON object (more flexible matching)
   const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
   if (jsonMatch) {
-    return jsonMatch[0];
+    cleaned = jsonMatch[0];
   }
   
-  return cleaned;
+  // Try to fix common JSON issues
+  try {
+    // Test if it's valid JSON
+    JSON.parse(cleaned);
+    return cleaned;
+  } catch (e) {
+    // If not valid, try to extract JSON more aggressively
+    // Look for JSON-like structure
+    const jsonStart = cleaned.indexOf('{');
+    const jsonEnd = cleaned.lastIndexOf('}');
+    
+    if (jsonStart >= 0 && jsonEnd > jsonStart) {
+      cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+    }
+    
+    return cleaned;
+  }
 }
 
 /**
