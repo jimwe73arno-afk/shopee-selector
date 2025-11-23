@@ -994,18 +994,57 @@
                 const resultsEl = document.getElementById('shopee-results');
                 const paidResultsEl = document.getElementById('shopee-paid-results');
                 
-                if (emptyEl) emptyEl.classList.add('hidden');
-                if (paidResultsEl) paidResultsEl.classList.add('hidden');
+                console.log('🔍 [圖片分析] 檢查 DOM 元素:', {
+                    hasEmpty: !!emptyEl,
+                    hasResults: !!resultsEl,
+                    hasPaidResults: !!paidResultsEl
+                });
                 
+                // 強制隱藏其他區域
+                if (emptyEl) {
+                    emptyEl.classList.add('hidden');
+                    console.log('✅ [圖片分析] 已隱藏空狀態');
+                }
+                if (paidResultsEl) {
+                    paidResultsEl.classList.add('hidden');
+                    console.log('✅ [圖片分析] 已隱藏付費結果區域');
+                }
+                
+                // 強制顯示結果區域
                 if (!resultsEl) {
-                    console.error('❌ [圖片分析] 找不到 shopee-results 元素');
+                    console.error('❌ [圖片分析] 找不到 shopee-results 元素！');
+                    // 嘗試查找所有可能的結果容器
+                    const allDivs = document.querySelectorAll('[id*="result"], [id*="shopee"]');
+                    console.error('🔍 找到的相關元素:', Array.from(allDivs).map(el => el.id));
                 } else {
+                    // 強制移除 hidden 類並確保顯示
                     resultsEl.classList.remove('hidden');
-                    console.log('✅ [圖片分析] 顯示結果區域');
+                    resultsEl.style.display = 'flex'; // 強制顯示
+                    resultsEl.style.visibility = 'visible';
+                    resultsEl.style.opacity = '1';
+                    
+                    // 滾動到結果區域
+                    resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    
+                    console.log('✅ [圖片分析] 結果區域已顯示');
+                    console.log('✅ [圖片分析] resultsEl 類名:', resultsEl.className);
+                    console.log('✅ [圖片分析] resultsEl 樣式:', {
+                        display: window.getComputedStyle(resultsEl).display,
+                        visibility: window.getComputedStyle(resultsEl).visibility,
+                        opacity: window.getComputedStyle(resultsEl).opacity
+                    });
                 }
                 
                 showToast('圖片分析報告已成功生成！');
                 console.log('✅ [圖片分析] 分析完成並顯示結果');
+                
+                // 延遲檢查一次，確保顯示
+                setTimeout(() => {
+                    if (resultsEl && window.getComputedStyle(resultsEl).display === 'none') {
+                        console.error('⚠️ [圖片分析] 結果區域被 CSS 隱藏，強制顯示');
+                        resultsEl.style.display = 'flex';
+                    }
+                }, 100);
                 
             } catch (error) {
                 console.error('❌ [圖片分析] 錯誤:', error);
