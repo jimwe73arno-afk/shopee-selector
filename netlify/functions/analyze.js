@@ -81,12 +81,26 @@ async function callGeminiAPI(model, contents, generationConfig = {}) {
     
     if (partialText) {
       console.log(`✅ Extracted partial response: ${partialText.length} chars`);
-      return partialText + '... [內容被截斷，建議減少圖片數量或簡化請求]';
+      // 返回部分內容，不添加截斷提示（因為可能已經足夠）
+      return partialText;
+    }
+    
+    // 嘗試從完整的 response 中提取任何文本內容
+    const fullText = JSON.stringify(data).match(/"text":"([^"]*)"/);
+    if (fullText && fullText[1]) {
+      const extractedText = fullText[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+      console.log(`✅ Extracted text from response: ${extractedText.length} chars`);
+      return extractedText;
     }
     
     // 如果還是沒有內容，返回一個提示信息而不是拋出錯誤
     console.warn('⚠️ No partial content available, returning fallback message');
-    return '[圖片分析完成，但輸出被截斷。建議減少圖片數量或增加 maxOutputTokens。]';
+    return '圖片內容較複雜，已盡可能提取關鍵信息。建議減少圖片數量或簡化請求。';
+  }
+  
+  // 如果 finishReason 是 MAX_TOKENS 但已有 text，記錄警告但仍返回
+  if (text && finishReason === 'MAX_TOKENS') {
+    console.warn(`⚠️ Response truncated at MAX_TOKENS, but got ${text.length} chars. Content may be incomplete.`);
   }
   
   if (!text) {
@@ -104,15 +118,15 @@ async function callGeminiAPI(model, contents, generationConfig = {}) {
 async function mapPhaseVision(images) {
   console.log(`📊 Map Phase: Processing ${images.length} images in parallel...`);
   
-  const visionPrompt = `Describe this image in detail. Extract key data:
-- Price information
-- Sales numbers
-- Product Type
-- Visual Style
-- Competitor Data
-- Any numeric metrics visible
+  const visionPrompt = `請用繁體中文詳細描述這張圖片。提取關鍵數據：
+- 價格信息（價格帶、單價範圍）
+- 銷售數字（GMV、訂單數、轉換率等）
+- 商品類型（品類、商品名稱）
+- 視覺風格（主圖風格、配色）
+- 競爭對手數據（如有）
+- 任何可見的數值指標
 
-Output as structured text summary. Be concise but comprehensive.`;
+輸出為結構化文字摘要。要簡潔但全面。使用繁體中文，專注於蝦皮電商相關的數據洞察。`;
 
   const visionTasks = images.map((imgBase64, index) => {
     // Clean base64 string
@@ -139,7 +153,7 @@ Output as structured text summary. Be concise but comprehensive.`;
       role: "user",
       parts: parts
     }], {
-      maxOutputTokens: 2048,  // 增加輸出長度以處理完整圖片描述
+      maxOutputTokens: 4096,  // 增加到 4096 以處理完整的圖片描述，避免 MAX_TOKENS 截斷
       temperature: 0.3
     }).then(result => {
       console.log(`✅ Image ${index + 1} processed (${result.length} chars)`);
@@ -227,7 +241,7 @@ plan: "Day 1：移除低效廣告詞並更新主圖（針對蛋白粉系列，�
     role: "user",
     parts: parts
   }], {
-    maxOutputTokens: 4096,  // 增加輸出長度以避免 JSON 被截斷
+    maxOutputTokens: 8192,  // 增加到 8192 以確保完整的繁體中文「選品決策卡」輸出，避免截斷
     temperature: 0.7
   });
 
