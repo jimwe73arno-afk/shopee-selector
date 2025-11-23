@@ -344,6 +344,10 @@ function cleanJSONResponse(text) {
 exports.handler = async (event, context) => {
   // Set Netlify optimization
   context.callbackWaitsForEmptyEventLoop = false;
+  
+  // 記錄請求開始時間
+  const startTime = Date.now();
+  console.log(`⏱️ Request started at: ${new Date().toISOString()}`);
 
   // CORS headers
   const headers = {

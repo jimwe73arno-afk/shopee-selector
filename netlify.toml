@@ -5,6 +5,10 @@
 
 [functions]
   node_bundler = "esbuild"
+  timeout = 120  # 增加到 120 秒以處理複雜的圖片分析（Map-Reduce 架構需要更長時間）
+
+[functions."*"]
+  timeout = 120  # Pro 版本的超時設置（如果有 Pro 帳戶）
 
 [[redirects]]
   from = "/api/*"
