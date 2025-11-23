@@ -1,22 +1,21 @@
 // netlify/functions/analyze.js
-// BrotherG AI - "Production Stable" Version
-// Fix: Uses 'v1' endpoint and specific '002' model versions to prevent 404s
+// BrotherG AI - 最終修正版
+// 使用正確的模型名稱：gemini-1.5-flash 和 gemini-1.5-pro
 
 const API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY;
 
-// 修正 1: 切換到 v1 正式版 (Stable)
-const API_VERSION = "v1"; 
+// ✅ 使用 v1beta（穩定版）
+const API_VERSION = "v1beta";
 const BASE_URL = `https://generativelanguage.googleapis.com/${API_VERSION}/models`;
 
-// 修正 2: 使用 "002" 最新穩定版 (這是 Google 目前推薦的 Production 版本)
-const MODEL_MAP = "gemini-1.5-flash-002"; 
-const MODEL_REDUCE = "gemini-1.5-pro-002";
+// ✅ 正確的模型名稱（無 -002 後綴）
+const MODEL_FLASH = "gemini-1.5-flash";
+const MODEL_PRO = "gemini-1.5-pro";
 
-// Helper function to call Google API directly
 async function callGemini(modelName, prompt, imageParts = []) {
   const url = `${BASE_URL}/${modelName}:generateContent?key=${API_KEY}`;
   
-  console.log(`📡 Calling Gemini (${API_VERSION}): ${modelName}...`);
+  console.log(`🤖 呼叫: ${modelName}`);
   console.log(`📡 Endpoint: ${url.replace(API_KEY, '***')}`);
 
   const contents = [
@@ -37,7 +36,7 @@ async function callGemini(modelName, prompt, imageParts = []) {
     body: JSON.stringify({
       contents,
       generationConfig: {
-        maxOutputTokens: 4096, 
+        maxOutputTokens: 4096,
         temperature: 0.7
       }
     })
@@ -45,18 +44,17 @@ async function callGemini(modelName, prompt, imageParts = []) {
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`❌ API Error Details:`, errorText.substring(0, 500));
-    throw new Error(`Gemini API Error (${response.status}): ${errorText.substring(0, 200)}`);
+    console.error(`❌ API 錯誤 (${response.status}):`, errorText.substring(0, 500));
+    throw new Error(`API Error: ${response.status}`);
   }
 
   const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response text";
-  console.log(`✅ Success (${text.length} chars)`);
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "無回應";
+  console.log(`✅ 成功 (${text.length} 字元)`);
   return text;
 }
 
 exports.handler = async (event) => {
-  // CORS Headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -80,71 +78,74 @@ exports.handler = async (event) => {
     const body = JSON.parse(event.body || "{}");
     const { textPrompt, images = [] } = body;
 
-    console.log(`🚀 Request: ${images.length} images. Using v1 Stable API.`);
+    console.log(`🚀 請求: ${images.length} 張圖片 (使用 ${API_VERSION})`);
 
-    const jsonStructure = `
-    {
-      "summary": "...",
-      "recommendations": ["...", "..."],
-      "plan": "..."
-    }
-    `;
+    const jsonStructure = `{
+  "summary": "分析內容",
+  "recommendations": ["建議1", "建議2"],
+  "plan": "執行計劃"
+}`;
 
-    // Branch A: Text Only
+    // 純文字模式
     if (!images || images.length === 0) {
-      console.log(`📝 Text-only mode`);
-      const result = await callGemini(MODEL_MAP, 
-        `User Question: ${textPrompt}\n\nRespond in strictly valid JSON format: ${jsonStructure}`);
+      console.log(`📝 純文字模式`);
+      
+      const result = await callGemini(
+        MODEL_FLASH,
+        `問題: ${textPrompt}\n\n請以 JSON 格式回覆: ${jsonStructure}`
+      );
+      
       const cleanJson = result.replace(/```json|```/g, "").trim();
       return { statusCode: 200, headers, body: cleanJson };
     }
 
-    // Branch B: Map-Reduce (Images)
-    
-    // Step 1: Map (限制最多 2 張)
+    // Map-Reduce 模式（限制 2 張圖片）
     const MAX_IMAGES = 2;
     const imagesToProcess = images.slice(0, MAX_IMAGES);
     
     if (images.length > MAX_IMAGES) {
-      console.log(`⚠️ Image count ${images.length} > ${MAX_IMAGES}, processing first ${MAX_IMAGES} only`);
+      console.log(`⚠️ 圖片數量 ${images.length} > ${MAX_IMAGES}，只處理前 ${MAX_IMAGES} 張`);
     }
     
-    console.log(`⚡ Map Phase: ${imagesToProcess.length} images`);
-    
+    console.log(`⚡ Map 階段: ${imagesToProcess.length} 張圖片`);
+
+    // Step 1: Map（並行處理）
     const mapPromises = imagesToProcess.map(async (base64Str, index) => {
       try {
         const cleanBase64 = base64Str.replace(/^data:image\/\w+;base64,/, "");
-        const text = await callGemini(MODEL_MAP, 
-          "Extract key data (Price, Sales, Style). Be concise.", 
+        const text = await callGemini(
+          MODEL_FLASH,
+          "提取關鍵數據：價格、銷量、產品類型。簡潔回答。",
           [cleanBase64]
         );
-        console.log(`✅ Image ${index + 1}/${imagesToProcess.length} processed`);
-        return `[Image ${index + 1}]: ${text}`;
+        console.log(`✅ 圖片 ${index + 1}/${imagesToProcess.length}`);
+        return `[圖片 ${index + 1}]: ${text}`;
       } catch (e) {
-        console.error(`❌ Image ${index + 1} failed:`, e.message);
-        return `[Image ${index + 1}]: Error reading image`;
+        console.error(`❌ 圖片 ${index + 1}:`, e.message);
+        return `[圖片 ${index + 1}]: 處理失敗`;
       }
     });
 
     const mapResults = await Promise.all(mapPromises);
-    const visualContext = mapResults.join("\n");
+    const visualContext = mapResults.join("\n\n");
 
-    // Step 2: Reduce
-    console.log(`🎯 Reduce Phase: Deep reasoning`);
-    
-    const finalPrompt = `
-      You are BrotherG, an E-commerce Expert.
-      Visual Data: ${visualContext}
-      User Query: ${textPrompt || 'Please analyze this data'}
-      
-      Analyze this and provide a strategy.
-      Output MUST be valid JSON: ${jsonStructure}
-    `;
+    console.log(`🎯 Reduce 階段`);
 
-    const finalResult = await callGemini(MODEL_REDUCE, finalPrompt);
+    // Step 2: Reduce（深度分析）
+    const finalPrompt = `你是 BrotherG，蝦皮電商專家。
+
+視覺數據:
+${visualContext}
+
+用戶問題: ${textPrompt || "請分析這些數據"}
+
+請分析並提供策略。
+必須以 JSON 格式回覆: ${jsonStructure}`;
+
+    const finalResult = await callGemini(MODEL_PRO, finalPrompt);
     const cleanFinalJson = finalResult.replace(/```json|```/g, "").trim();
 
-    console.log(`✅ Complete: ${cleanFinalJson.length} chars`);
+    console.log(`✅ 分析完成 (${cleanFinalJson.length} 字元)`);
 
     return {
       statusCode: 200,
@@ -153,14 +154,14 @@ exports.handler = async (event) => {
     };
 
   } catch (error) {
-    console.error("🔥 Server Error:", error);
+    console.error("🔥 錯誤:", error);
     return {
-      statusCode: 200, // 回傳 200 讓前端能顯示錯誤訊息
+      statusCode: 200,
       headers,
       body: JSON.stringify({ 
-        summary: "系統與 Google 連線時發生小插曲", 
-        recommendations: ["請稍後再試", "API Key 權限可能需要檢查", `錯誤: ${error.message}`], 
-        plan: "System Error" 
+        summary: "系統錯誤",
+        recommendations: ["請稍後再試", error.message],
+        plan: "Error"
       })
     };
   }
