@@ -140,7 +140,7 @@ exports.handler = async (event, context) => {
 
     // If text-only request
     if (!processedImages || processedImages.length === 0) {
-      console.log(`⚡ Text-only request with ${MODEL_FLASH}`);
+      console.log(`⚡ Text-only request with gemini-3.0-flash`);
       
       const model = genAI.getGenerativeModel({ 
         model: 'gemini-3.0-flash'
