@@ -11,7 +11,7 @@ const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models
 
 // Model endpoints
 const MODEL_FLASH = 'gemini-2.5-flash';  // Fast vision processing (Map phase)
-const MODEL_PRO = 'gemini-1.5-pro';      // Deep reasoning (Reduce phase)
+const MODEL_PRO = 'gemini-3.0-pro';      // Deep reasoning (Reduce phase) - 生成報告回應
 
 /**
  * Check user tier from headers (JWT or custom header)
@@ -68,14 +68,28 @@ async function callGeminiAPI(model, contents, generationConfig = {}) {
   const data = await response.json();
   console.log(`✅ Gemini API response received, candidates: ${data.candidates?.length || 0}`);
   
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const candidate = data.candidates?.[0];
+  const text = candidate?.content?.parts?.[0]?.text || '';
+  const finishReason = candidate?.finishReason;
+  
+  // 處理 MAX_TOKENS 情況（輸出被截斷，但可能仍有部分內容）
+  if (!text && finishReason === 'MAX_TOKENS') {
+    console.warn('⚠️ Response hit MAX_TOKENS limit. Trying to extract partial content...');
+    // 嘗試從其他字段提取內容
+    const partialText = candidate?.content?.parts?.find(p => p.text)?.text || '';
+    if (partialText) {
+      console.log(`✅ Extracted partial response: ${partialText.length} chars`);
+      return partialText;
+    }
+    throw new Error('Response hit MAX_TOKENS limit and no partial content available. Please reduce input size or increase maxOutputTokens.');
+  }
   
   if (!text) {
     console.error('❌ Empty response from Gemini API. Full response:', JSON.stringify(data, null, 2));
-    throw new Error('Empty response from Gemini API. Please check the API key and model name.');
+    throw new Error(`Empty response from Gemini API. Finish reason: ${finishReason || 'unknown'}`);
   }
   
-  console.log(`✅ Gemini response text length: ${text.length} chars`);
+  console.log(`✅ Gemini response text length: ${text.length} chars, finishReason: ${finishReason || 'normal'}`);
   return text;
 }
 
@@ -120,7 +134,7 @@ Output as structured text summary. Be concise but comprehensive.`;
       role: "user",
       parts: parts
     }], {
-      maxOutputTokens: 1024,  // Concise for speed
+      maxOutputTokens: 2048,  // 增加輸出長度以處理完整圖片描述
       temperature: 0.3
     }).then(result => {
       console.log(`✅ Image ${index + 1} processed (${result.length} chars)`);
@@ -140,7 +154,7 @@ Output as structured text summary. Be concise but comprehensive.`;
 }
 
 /**
- * REDUCE PHASE: Deep reasoning using gemini-1.5-pro
+ * REDUCE PHASE: Deep reasoning using gemini-3.0-pro (生成報告回應)
  */
 async function reducePhaseReasoning(textPrompt, visualContext) {
   console.log(`🧠 Reduce Phase: Deep reasoning with ${MODEL_PRO}...`);
