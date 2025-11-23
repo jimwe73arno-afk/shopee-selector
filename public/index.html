@@ -646,7 +646,7 @@
 
             try {
                 // Call backend API
-                const response = await fetch('/.netlify/functions/analyze', {
+                const response = await fetch('/api/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -954,7 +954,7 @@
                     console.error('❌ [圖片分析] 請求超時（120 秒）');
                 }, 120000); // 120 秒超時
                 
-                const response = await fetch('/.netlify/functions/analyze', {
+                const response = await fetch('/api/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
