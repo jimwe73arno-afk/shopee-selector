@@ -381,43 +381,100 @@
         // --- Shopee Mode Switch Logic ---
         function switchShopeeMode(mode) {
             shopeeMode = mode;
+            console.log(`🔄 [切換模式] 切換到: ${mode}`);
+            
             const tabFree = document.getElementById('tab-free');
             const tabPaid = document.getElementById('tab-paid');
             const inputFree = document.getElementById('shopee-input-free');
             const inputPaid = document.getElementById('shopee-input-paid');
             const resultsDiv = document.getElementById('shopee-results');
             const paidResultsDiv = document.getElementById('shopee-paid-results');
+            const emptyEl = document.getElementById('shopee-empty');
+            
+            console.log('🔍 [切換模式] DOM 元素檢查:', {
+                tabFree: !!tabFree,
+                tabPaid: !!tabPaid,
+                inputFree: !!inputFree,
+                inputPaid: !!inputPaid,
+                resultsDiv: !!resultsDiv,
+                paidResultsDiv: !!paidResultsDiv,
+                emptyEl: !!emptyEl
+            });
             
             if (mode === 'free') {
-                tabFree.classList.add('border-aiBlue', 'text-aiBlue');
-                tabPaid.classList.remove('border-aiBlue', 'text-aiBlue');
-                tabPaid.classList.add('border-transparent');
-
-                inputFree.classList.remove('hidden');
-                inputPaid.classList.add('hidden');
-
-                resultsDiv.classList.remove('hidden');
-                paidResultsDiv.classList.add('hidden');
+                // 免費版標籤樣式
+                if (tabFree) {
+                    tabFree.classList.add('border-aiBlue', 'text-aiBlue');
+                }
+                if (tabPaid) {
+                    tabPaid.classList.remove('border-aiBlue', 'text-aiBlue');
+                    tabPaid.classList.add('border-transparent');
+                }
                 
-                // Reset result view to empty state
-                document.getElementById('shopee-results').classList.add('hidden');
-                document.getElementById('shopee-empty').classList.remove('hidden');
-
+                // 免費版輸入區域
+                if (inputFree) {
+                    inputFree.classList.remove('hidden');
+                    console.log('✅ [切換模式] 免費版輸入區域已顯示');
+                }
+                if (inputPaid) {
+                    inputPaid.classList.add('hidden');
+                }
+                
+                // 免費版結果區域
+                if (resultsDiv) {
+                    resultsDiv.classList.add('hidden');
+                }
+                if (paidResultsDiv) {
+                    paidResultsDiv.classList.add('hidden');
+                }
+                if (emptyEl) {
+                    emptyEl.classList.remove('hidden');
+                }
+                
                 showToast('已切換至免費版 (文字分析)');
-
+                
             } else { // paid
-                tabPaid.classList.add('border-aiBlue', 'text-aiBlue');
-                tabFree.classList.remove('border-aiBlue', 'text-aiBlue');
-                tabFree.classList.add('border-transparent');
+                // 付費版標籤樣式
+                if (tabPaid) {
+                    tabPaid.classList.add('border-aiBlue', 'text-aiBlue');
+                }
+                if (tabFree) {
+                    tabFree.classList.remove('border-aiBlue', 'text-aiBlue');
+                    tabFree.classList.add('border-transparent');
+                }
 
-                inputPaid.classList.remove('hidden');
-                inputFree.classList.add('hidden');
+                // 付費版輸入區域 - 強制顯示
+                if (inputPaid) {
+                    inputPaid.classList.remove('hidden');
+                    // 強制設置樣式確保可見
+                    inputPaid.style.display = 'block';
+                    inputPaid.style.visibility = 'visible';
+                    inputPaid.style.opacity = '1';
+                    console.log('✅ [切換模式] 付費版輸入區域已顯示');
+                    console.log('🔍 [切換模式] inputPaid 樣式:', {
+                        display: window.getComputedStyle(inputPaid).display,
+                        visibility: window.getComputedStyle(inputPaid).visibility,
+                        opacity: window.getComputedStyle(inputPaid).opacity
+                    });
+                } else {
+                    console.error('❌ [切換模式] 找不到 inputPaid 元素！');
+                }
+                
+                if (inputFree) {
+                    inputFree.classList.add('hidden');
+                }
 
-                // 付费版：隐藏结果区域，显示定价表在右侧
-                resultsDiv.classList.add('hidden');
-                paidResultsDiv.classList.remove('hidden');
-
-                document.getElementById('shopee-empty').classList.add('hidden');
+                // 付費版結果區域（定價表）
+                if (resultsDiv) {
+                    resultsDiv.classList.add('hidden');
+                }
+                if (paidResultsDiv) {
+                    paidResultsDiv.classList.remove('hidden');
+                    console.log('✅ [切換模式] 定價表已顯示');
+                }
+                if (emptyEl) {
+                    emptyEl.classList.add('hidden');
+                }
                 
                 // Reset Plans on Switch
                 resetPlans();
