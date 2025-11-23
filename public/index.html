@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BrotherGAi | Pure Singularity</title>
+    <title>Shopee Analyst | BrotherG AI</title>
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -62,7 +62,7 @@
         ::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 2px; }
         ::-webkit-scrollbar-thumb:hover { background: #00A0E9; }
 
-        /* Pure Background (No Grid) */
+        /* Pure Background */
         .cosmos-bg {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -73,111 +73,14 @@
             pointer-events: none;
         }
 
-        /* Core Card Design - Horizontal Layout */
+        /* Core Card Design */
         .core-card {
             background: #FFFFFF;
             border: 1px solid #E2E8F0;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
-            display: flex;
-            flex-direction: row; 
-            align-items: stretch;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-        
-        /* Card Hover */
-        .core-card:hover {
-            border-color: #00A0E9;
-            transform: translateY(-4px);
-            box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.05), 0 0 0 1px #00A0E9 inset;
-            z-index: 10;
-        }
-
-        /* Sweep Flash Effect */
-        .core-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: -100%;
-            width: 50%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(0, 160, 233, 0.1), transparent);
-            transform: skewX(-25deg);
-            transition: left 0.7s ease-in-out;
-            pointer-events: none;
-            z-index: 2;
-        }
-        .core-card:hover::before {
-            left: 200%;
-            transition: left 0.7s ease-in-out;
-        }
-        
-        /* Icon Box */
-        .core-card .icon-box {
-            transition: all 0.3s;
-            border-right: 1px solid #E2E8F0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 8rem;
-            flex-shrink: 0;
-            background: #F8FAFC;
-            position: relative;
-            z-index: 1;
-        }
-        .core-card:hover .icon-box {
-            background: #F0F9FF;
-            border-right-color: #00A0E9;
-        }
-        .core-card:hover .icon-glow {
-            color: #00A0E9;
-            transform: scale(1.1);
-            transition: all 0.3s;
-        }
-
-        /* Shockwave Effect */
-        .shockwave-container {
-            position: absolute;
-            top: 50%; left: 50%;
-            width: 150%; padding-top: 150%;
-            background: radial-gradient(circle, rgba(0, 160, 233, 0.4) 0%, transparent 70%);
-            transform: translate(-50%, -50%) scale(0);
-            border-radius: 50%;
-            opacity: 0;
-        }
-        .core-card:active .shockwave-effect {
-            animation: shockwave 0.4s ease-out;
-        }
-
-        /* Charge Bar */
-        .charge-track {
-            position: absolute;
-            bottom: 0; left: 0;
-            width: 100%; height: 2px;
-            background: #E2E8F0;
-            overflow: hidden;
-            z-index: 3;
-        }
-        .charge-bar {
-            width: 0%;
-            height: 100%;
-            background: #00A0E9;
-            transition: width 0.4s ease-out;
-            position: relative;
-        }
-        .core-card:hover .charge-bar {
-            width: 100%;
-        }
-        .charge-bar::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
-            transform: translateX(-100%);
-            animation: charge-flow 1s infinite;
-        }
-        @keyframes charge-flow {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
         }
 
         /* Inputs */
@@ -192,18 +95,6 @@
             border-color: #00A0E9;
             box-shadow: 0 0 0 4px rgba(0, 160, 233, 0.1);
             outline: none;
-        }
-
-        /* Tech Corners */
-        .tech-corner {
-            position: absolute;
-            width: 6px; height: 6px;
-            border: 1px solid #CBD5E1;
-            transition: all 0.3s;
-            z-index: 3;
-        }
-        .core-card:hover .tech-corner {
-            border-color: #00A0E9;
         }
 
         /* Custom file input style */
@@ -232,36 +123,6 @@
 
     <div class="cosmos-bg"></div>
 
-    <!-- Left Sidebar (White) -->
-    <aside class="w-20 bg-white/90 backdrop-blur-md border-r border-border flex flex-col items-center py-8 z-30 flex-shrink-0">
-        <!-- Logo -->
-        <div class="w-12 h-12 mb-16 cursor-pointer relative group" onclick="navigateTo('home')">
-            <!-- Placeholder for BrotheGaiblue.png -->
-            <div class="w-full h-full bg-aiBlue rounded-full flex items-center justify-center text-white text-xl font-bold font-display">G</div>
-        </div>
-
-        <!-- Icons -->
-        <nav class="flex-1 flex flex-col space-y-10 w-full items-center">
-            <button onclick="navigateTo('home')" class="group relative w-12 h-12 flex items-center justify-center transition-all">
-                <i class="fa-solid fa-rocket text-xl text-gray-400 group-hover:text-aiBlue transition-colors transform group-hover:-rotate-45 duration-300"></i>
-            </button>
-            
-            <button class="group relative w-12 h-12 flex items-center justify-center transition-all">
-                <i class="fa-solid fa-layer-group text-xl text-gray-400 group-hover:text-aiBlue transition-colors"></i>
-            </button>
-
-            <button class="group relative w-12 h-12 flex items-center justify-center transition-all">
-                <i class="fa-solid fa-gear text-xl text-gray-400 group-hover:text-aiBlue transition-colors"></i>
-            </button>
-        </nav>
-
-        <!-- Status -->
-        <div class="flex flex-col items-center space-y-2">
-            <div class="text-[8px] font-mono text-aiBlue tracking-widest font-bold">ON</div>
-            <div class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-        </div>
-    </aside>
-
     <!-- Main View -->
     <main class="flex-1 relative overflow-hidden flex flex-col">
         
@@ -276,158 +137,17 @@
                     <span class="text-aiBlue animate-pulse">●</span>
                     <span>SYSTEM READY</span>
                 </div>
-                <div class="border border-border px-3 py-1 rounded text-aiBlue bg-blue-50 font-bold">V.6.4 Interaction</div>
+                <div class="border border-border px-3 py-1 rounded text-aiBlue bg-blue-50 font-bold">Shopee Analyst</div>
             </div>
         </header>
 
         <!-- Viewport -->
         <div class="flex-1 overflow-y-auto scroll-smooth p-8 md:p-16 flex flex-col">
-
-            <!-- === VIEW: CORE SELECTOR (HOME) === -->
-            <div id="view-home" class="flex-1 flex flex-col justify-center max-w-7xl mx-auto w-full fade-in">
-                
-                <div class="mb-20 relative pl-4 border-l-4 border-aiBlue">
-                    <h1 class="text-6xl md:text-8xl font-display font-bold text-textMain mb-4 tracking-tight leading-none uppercase">
-                        Unleash <span class="text-transparent bg-clip-text bg-gradient-to-r from-aiBlue to-blue-600">Potential</span>
-                    </h1>
-                    <p class="text-xl text-textSub font-light max-w-xl leading-relaxed">
-                        Instant, intelligent tools designed to empower your daily decisions.
-                    </p>
-                </div>
-
-                <!-- Module Grid (2 Columns) -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
-                    
-                    <!-- Module 1: Shopee -->
-                    <div onclick="navigateTo('shopee')" class="core-card h-40 cursor-pointer group">
-                        <div class="shockwave-container"><div class="shockwave-effect"></div></div>
-                        <div class="tech-corner top-0 left-0 border-t border-l"></div>
-                        <div class="tech-corner bottom-0 right-0 border-b border-r"></div>
-
-                        <!-- Icon Left -->
-                        <div class="icon-box">
-                            <i class="fa-solid fa-bag-shopping text-4xl text-gray-400 icon-glow"></i>
-                        </div>
-
-                        <!-- Content Right -->
-                        <div class="flex-1 p-6 flex flex-col justify-between relative z-10">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <h2 class="text-2xl font-display font-bold text-textMain mb-1 group-hover:text-aiBlue transition-colors tracking-wide">Shopee Analyst</h2>
-                                    <p class="text-sm text-textSub font-medium">Find winning products instantly.</p>
-                                </div>
-                                <span class="font-mono text-[10px] text-aiBlue border border-aiBlue/30 px-2 py-0.5 bg-blue-50 font-bold">PRO</span>
-                            </div>
-                            
-                            <div class="flex justify-between items-end">
-                                <span class="font-mono text-xs text-textSub group-hover:text-textMain transition-colors font-bold">STATUS: ACTIVE</span>
-                                <i class="fa-solid fa-arrow-right text-gray-400 group-hover:text-aiBlue group-hover:translate-x-1 transition-all"></i>
-                            </div>
-                        </div>
-
-                        <!-- Charge Bar -->
-                        <div class="charge-track">
-                            <div class="charge-bar"></div>
-                        </div>
-                    </div>
-
-                    <!-- Module 2: Landlord -->
-                    <div onclick="navigateTo('landlord')" class="core-card h-40 cursor-pointer group">
-                        <div class="shockwave-container"><div class="shockwave-effect"></div></div>
-                        <div class="tech-corner top-0 left-0 border-t border-l"></div>
-                        <div class="tech-corner bottom-0 right-0 border-b border-r"></div>
-
-                        <div class="icon-box">
-                            <i class="fa-solid fa-house-shield text-4xl text-gray-400 icon-glow"></i>
-                        </div>
-
-                        <div class="flex-1 p-6 flex flex-col justify-between relative z-10">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <h2 class="text-2xl font-display font-bold text-textMain mb-1 group-hover:text-aiBlue transition-colors tracking-wide">Landlord Shield</h2>
-                                    <p class="text-sm text-textSub font-medium">Secure your rental income.</p>
-                                </div>
-                                <span class="font-mono text-[10px] text-aiBlue border border-aiBlue/30 px-2 py-0.5 bg-blue-50 font-bold">PRO</span>
-                            </div>
-                            
-                            <div class="flex justify-between items-end">
-                                <span class="font-mono text-xs text-textSub group-hover:text-textMain transition-colors font-bold">STATUS: ACTIVE</span>
-                                <i class="fa-solid fa-arrow-right text-gray-400 group-hover:text-aiBlue group-hover:translate-x-1 transition-all"></i>
-                            </div>
-                        </div>
-
-                        <!-- Charge Bar -->
-                        <div class="charge-track">
-                            <div class="charge-bar"></div>
-                        </div>
-                    </div>
-
-                    <!-- Module 3: Travel -->
-                    <div onclick="showToast('Module Updating...')" class="core-card h-40 cursor-pointer group opacity-60 hover:opacity-100 border-dashed hover:border-solid hover:border-aiBlue">
-                        <div class="shockwave-container"><div class="shockwave-effect"></div></div>
-                        
-                        <div class="icon-box">
-                            <i class="fa-solid fa-plane-departure text-4xl text-gray-400 group-hover:text-aiBlue transition-colors"></i>
-                        </div>
-
-                        <div class="flex-1 p-6 flex flex-col justify-between relative z-10">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <h2 class="text-2xl font-display font-bold text-gray-400 mb-1 group-hover:text-textMain transition-colors">Travel Planner</h2>
-                                    <p class="text-sm text-textSub font-medium">Your perfect journey, optimized.</p>
-                                </div>
-                                <i class="fa-solid fa-lock text-gray-400"></i>
-                            </div>
-                            <div class="font-mono text-xs text-aiBlue bg-blue-50 px-2 py-1 rounded self-start border border-aiBlue/20 font-bold">
-                                COMING SOON
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Module 4: Tesla -->
-                    <div onclick="showToast('Connecting...')" class="core-card h-40 cursor-pointer group opacity-60 hover:opacity-100 border-dashed hover:border-solid hover:border-aiBlue">
-                        <div class="shockwave-container"><div class="shockwave-effect"></div></div>
-                        
-                        <div class="icon-box">
-                            <!-- Custom Model X Falcon Wing SVG Icon -->
-                            <svg class="w-12 h-12 text-gray-400 group-hover:text-aiBlue transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                <!-- Car Body Base -->
-                                <path d="M5 17h14" />
-                                <path d="M6 17l1.5-5h9l1.5 5" />
-                                <!-- Left Falcon Wing -->
-                                <path d="M7.5 12 L3 5" />
-                                <path d="M3 5 L9 7" />
-                                <!-- Right Falcon Wing -->
-                                <path d="M16.5 12 L21 5" />
-                                <path d="M21 5 L15 7" />
-                                <!-- Wheels -->
-                                <circle cx="7" cy="17" r="1.5" />
-                                <circle cx="17" cy="17" r="1.5" />
-                            </svg>
-                        </div>
-
-                        <div class="flex-1 p-6 flex flex-col justify-between relative z-10">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <h2 class="text-2xl font-display font-bold text-gray-400 mb-1 group-hover:text-textMain transition-colors">Choose Your Tesla</h2>
-                                    <p class="text-sm text-textSub font-medium">Find your dream configuration.</p>
-                                </div>
-                                <i class="fa-solid fa-lock text-gray-400"></i>
-                            </div>
-                            <div class="font-mono text-xs text-aiBlue bg-blue-50 px-2 py-1 rounded self-start border border-aiBlue/20 font-bold">
-                                COMING SOON
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            <!-- === VIEW: SHOPEE INTERFACE === -->
-            <div id="view-shopee" class="hidden h-full flex flex-col max-w-7xl mx-auto w-full fade-in">
+            <!-- === SHOPEE INTERFACE === -->
+            <div class="h-full flex flex-col max-w-7xl mx-auto w-full">
                 <!-- Nav Bar -->
                 <div class="flex items-center space-x-4 mb-10">
-                    <button onclick="navigateTo('home')" class="w-10 h-10 border border-gray-300 flex items-center justify-center text-textSub hover:bg-blue-50 hover:text-aiBlue hover:border-aiBlue transition-all bg-white shadow-sm rounded-lg">
+                    <button onclick="window.location.href='https://brotherg.ai'" class="w-10 h-10 border border-gray-300 flex items-center justify-center text-textSub hover:bg-blue-50 hover:text-aiBlue hover:border-aiBlue transition-all bg-white shadow-sm rounded-lg">
                         <i class="fa-solid fa-angle-left"></i>
                     </button>
                     <div class="h-px flex-1 bg-gradient-to-r from-aiBlue/50 to-transparent"></div>
@@ -451,7 +171,7 @@
                         <!-- Input Card -->
                         <div class="core-card flex-col p-6 h-auto rounded-b-xl" style="display: flex; flex-direction: column;">
                             
-                            <!-- === Free Mode Content (Single Step) === -->
+                            <!-- === Free Mode Content === -->
                             <div id="shopee-input-free">
                                 <div>
                                     <label class="text-xs font-bold text-aiBlue mb-2 block tracking-widest">WHAT ARE YOU SELLING? (請提供細節)</label>
@@ -464,7 +184,7 @@
                                 </div>
                             </div>
                             
-                            <!-- === Paid Mode Content (Redirect) === -->
+                            <!-- === Paid Mode Content === -->
                             <div id="shopee-input-paid" class="hidden">
                                 
                                 <div class="opacity-40 pointer-events-none mb-4">
@@ -485,7 +205,6 @@
                                         class="w-full cyber-input p-3 text-base rounded-lg placeholder-gray-400 resize-none border-l-4 border-l-textSub"></textarea>
                                 </div>
 
-                                <!-- Upgrade Button (Generic for Mobile view if needed, but mainly controlled by Right Panel) -->
                                 <button onclick="showToast('請於右側選擇方案進行升級')" class="w-full mt-4 bg-gray-300 text-white font-display font-bold py-4 tracking-widest uppercase text-lg relative rounded-lg flex justify-center items-center gap-2 cursor-not-allowed">
                                     <i class="fa-solid fa-crown text-gray-100"></i> 請選擇方案
                                 </button>
@@ -506,13 +225,13 @@
                             <div class="text-xs font-mono text-aiBlue mt-4 border border-aiBlue px-4 py-1 font-bold rounded-full">FETCHING MARKET DATA</div>
                         </div>
 
-                        <!-- Empty State (Shown in Free Mode) -->
+                        <!-- Empty State -->
                         <div id="shopee-empty" class="flex-1 flex flex-col items-center justify-center opacity-40">
                             <i class="fa-solid fa-magnifying-glass-chart text-8xl mb-8 text-aiBlue animate-pulse"></i>
                             <p class="font-mono text-sm tracking-[0.3em] text-textSub font-bold">等待選品輸入</p>
                         </div>
 
-                        <!-- Results (Free Version Structure) -->
+                        <!-- Results (Free Version) -->
                         <div id="shopee-results" class="hidden h-full flex flex-col w-full">
                             
                             <!-- Header -->
@@ -531,20 +250,18 @@
                                 </ul>
                             </div>
 
-                            <!-- 90 Extended Ideas -->
+                            <!-- Extended Ideas -->
                             <div class="mb-8 p-6 bg-panel border border-border rounded-lg">
                                 <p class="text-[10px] text-textSub font-bold uppercase mb-4 tracking-widest flex items-center">
-                                    <i class="fa-solid fa-atom mr-2"></i> 90 個延伸測試組合/類別
+                                    <i class="fa-solid fa-atom mr-2"></i> 延伸測試組合/類別
                                 </p>
                                 <p id="extended-ideas" class="text-sm text-textSub leading-relaxed">
-                                    <span class="font-bold text-textMain">類別延伸:</span> 旅遊配件、智慧家居小型裝置、Dyson 副廠配件；
-                                    <span class="font-bold text-textMain">價位區間:</span> 瞄準中高價位客群 (NT$ 5,000+) 的升級款產品；
-                                    <span class="font-bold text-textMain">組合建議:</span> eSIM + 旅遊充電器套組，小米手機 + 品牌保護殼綁定銷售。
+                                    <!-- Populated by API response -->
                                 </p>
                             </div>
                         </div>
                         
-                        <!-- Pricing Table (Shown in Paid Mode) -->
+                        <!-- Pricing Table (Paid Mode) -->
                         <div id="shopee-paid-results" class="hidden h-full flex flex-col w-full">
                             <div class="mb-6 flex justify-between items-end border-b border-border pb-4">
                                 <div>
@@ -635,94 +352,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- === VIEW: LANDLORD SHIELD === (Unchanged) -->
-            <div id="view-landlord" class="hidden h-full flex flex-col max-w-7xl mx-auto w-full fade-in">
-                <!-- Nav Bar -->
-                <div class="flex items-center space-x-4 mb-10">
-                    <button onclick="navigateTo('home')" class="w-10 h-10 border border-gray-300 flex items-center justify-center text-textSub hover:bg-blue-50 hover:text-aiBlue hover:border-aiBlue transition-all bg-white shadow-sm">
-                        <i class="fa-solid fa-angle-left"></i>
-                    </button>
-                    <div class="h-px flex-1 bg-gradient-to-r from-aiBlue/50 to-transparent"></div>
-                    <div class="font-mono text-xs text-aiBlue tracking-widest shadow-sm px-3 py-1 border border-aiBlue rounded bg-blue-50 font-bold">LANDLORD SHIELD</div>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
-                    <!-- Input -->
-                    <div class="lg:col-span-4 space-y-6">
-                        <div class="core-card flex-col p-8 space-y-6 h-auto" style="display: flex; flex-direction: column;">
-                            <div class="space-y-2">
-                                <label class="text-[10px] font-bold text-aiBlue tracking-widest">TENANT NAME</label>
-                                <input type="text" id="landlord-name" class="w-full cyber-input p-3 text-textMain rounded-none border-l-2 border-l-aiBlue">
-                            </div>
-                            <div class="space-y-2">
-                                <label class="text-[10px] font-bold text-aiBlue tracking-widest">MONTHLY INCOME</label>
-                                <input type="number" id="landlord-income" value="50000" class="w-full cyber-input p-3 text-textMain rounded-none border-l-2 border-l-aiBlue">
-                            </div>
-                            <div class="space-y-2">
-                                <label class="text-[10px] font-bold text-aiBlue tracking-widest">HISTORY</label>
-                                <select id="landlord-history" class="w-full cyber-input p-3 text-textMain cursor-pointer rounded-none border-l-2 border-l-aiBlue">
-                                    <option value="good">Excellent (No Issues)</option>
-                                    <option value="fair">Average (Minor Issues)</option>
-                                    <option value="poor">Poor (Eviction Record)</option>
-                                </select>
-                            </div>
-                            <button onclick="runLandlordAnalysis()" class="w-full mt-6 bg-textMain text-white font-display font-bold py-4 hover:bg-aiBlue hover:shadow-lg transition-all duration-300 tracking-widest text-lg uppercase">
-                                Check Tenant
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Output -->
-                    <div class="lg:col-span-8 core-card flex-col p-8 relative flex items-center justify-center" style="display: flex; flex-direction: column;">
-                        
-                        <div id="landlord-loading" class="hidden absolute inset-0 bg-white/95 z-20 flex flex-col items-center justify-center">
-                            <div class="w-24 h-24 border-4 border-gray-200 border-t-textMain rounded-full animate-spin mb-6"></div>
-                            <p class="font-mono text-textMain text-sm tracking-[0.2em] animate-pulse font-bold">CALCULATING RISK...</p>
-                        </div>
-
-                        <div id="landlord-empty" class="opacity-40 text-center">
-                            <i class="fa-solid fa-user-shield text-8xl mb-8 text-textSub"></i>
-                            <p class="font-mono text-sm tracking-[0.3em] text-textSub font-bold">READY TO SCREEN</p>
-                        </div>
-
-                        <div id="landlord-results" class="hidden w-full max-w-lg text-center fade-in">
-                            <div id="landlord-badge" class="inline-block px-8 py-2 border border-aiBlue font-mono text-xs font-bold tracking-[0.3em] mb-10 shadow-sm bg-blue-50 text-aiBlue">
-                                --
-                            </div>
-                            
-                            <div class="flex justify-center items-center space-x-16 mb-16">
-                                <div class="relative">
-                                    <svg class="w-56 h-56 transform -rotate-90">
-                                        <circle cx="112" cy="112" r="90" stroke="#E2E8F0" stroke-width="6" fill="transparent" />
-                                        <circle id="risk-circle" cx="112" cy="112" r="90" stroke="#00A0E9" stroke-width="6" fill="transparent" stroke-dasharray="565" stroke-dashoffset="565" class="transition-all duration-1000" />
-                                    </svg>
-                                    <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                        <span id="landlord-score" class="text-7xl font-display font-bold text-textMain">0</span>
-                                        <span class="text-[10px] font-mono text-textSub uppercase mt-2 tracking-widest font-bold">Safety Score</span>
-                                    </div>
-                                </div>
-                                
-                                <div class="text-left space-y-8">
-                                    <div>
-                                        <p class="text-[10px] font-mono text-aiBlue uppercase tracking-wider mb-1 font-bold">Deposit</p>
-                                        <p class="text-5xl font-display font-bold text-textMain" id="landlord-deposit">--</p>
-                                    </div>
-                                    <div>
-                                        <p class="text-[10px] font-mono text-aiBlue uppercase tracking-wider mb-1 font-bold">Result</p>
-                                        <p class="text-xl font-bold text-textSub tracking-wide">PENDING</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="border-t border-gray-200 pt-8">
-                                <p id="landlord-summary" class="text-textSub font-mono text-sm leading-relaxed text-left border-l-2 border-aiBlue pl-4">...</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
         </div>
     </main>
 
@@ -732,27 +361,10 @@
         <span id="toast-msg" class="font-medium text-sm">Notification</span>
     </div>
 
-    <!-- Modal for Shockwave on Click (Simulation) -->
-    <div id="shockwave-overlay" class="fixed inset-0 z-40 hidden pointer-events-none"></div>
-
     <script>
         // State for Shopee Mode
         let shopeeMode = 'free';
         let currentPlan = null;
-
-        // --- Navigation Logic ---
-        function navigateTo(viewId) {
-            document.querySelectorAll('[id^="view-"]').forEach(el => el.classList.add('hidden'));
-            const target = document.getElementById('view-' + viewId);
-            target.classList.remove('hidden');
-            
-            // Reset animations
-            target.classList.remove('fade-in');
-            void target.offsetWidth; // Trigger reflow
-            target.classList.add('fade-in');
-            
-            window.scrollTo(0, 0);
-        }
 
         // --- Toast Logic ---
         function showToast(msg) {
@@ -849,7 +461,6 @@
         }
 
         function selectPlan(plan) {
-            // Prevent clicking same plan
             if (currentPlan === plan) return;
             
             resetPlans();
@@ -862,7 +473,6 @@
             card.classList.add('scale-105', 'z-10', 'opacity-100');
             
             if (plan === 'free') {
-                 // Simple highlight for free
                  card.classList.add('border-gray-400', 'shadow-lg');
             } else if (plan === 'pro') {
                 card.classList.add('border-aiBlue', 'shadow-glow-pro');
@@ -889,7 +499,7 @@
             }
         }
 
-        // --- Payment Logic (ECPay) ---
+        // --- Payment Logic ---
         function goToPaymentPro() {
             showToast('PRO 方案付款連結準備中...');
         }
@@ -901,8 +511,8 @@
             }, 800);
         }
 
-        // --- Shopee Logic (Free Mode - Single Step) ---
-        function runShopeeAnalysis() {
+        // --- Shopee Analysis API Call ---
+        async function runShopeeAnalysis() {
             if (shopeeMode !== 'free') return showToast('請切換至免費版使用文字分析');
             
             const keyword = document.getElementById('shopee-keyword').value;
@@ -915,84 +525,86 @@
 
             showToast('開始進行選品分析...');
 
-            // Simulate the analysis time and output
-            setTimeout(() => {
+            try {
+                // Call backend API
+                const response = await fetch('/.netlify/functions/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        textPrompt: keyword,
+                        images: []
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API 錯誤: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (!data.ok) {
+                    throw new Error(data.error || '分析失敗');
+                }
+
+                // Hide loading
                 document.getElementById('shopee-loading').classList.add('hidden');
-                document.getElementById('shopee-results').classList.remove('hidden');
-                
-                // Populate Top 10 List (Mock data)
+
+                // Parse and display results
+                let recommendations = [];
+                let extendedIdeas = '';
+
+                if (data.recommendations && Array.isArray(data.recommendations)) {
+                    recommendations = data.recommendations;
+                } else if (data.summary) {
+                    // Fallback: try to parse recommendations from summary
+                    recommendations = [{ item: "分析結果", reason: data.summary }];
+                }
+
+                if (data.plan) {
+                    extendedIdeas = data.plan;
+                } else if (data.summary) {
+                    extendedIdeas = data.summary;
+                }
+
+                // Populate Top 10 List
                 const top10List = document.getElementById('top-10-list');
                 top10List.innerHTML = '';
                 
-                const recommendations = [
-                    { item: "高階 eSIM (多國漫遊)", reason: "高毛利、低庫存風險，瞄準旅遊復甦熱潮。" },
-                    { item: "小米生態鏈清潔組合", reason: "利用小米品牌信任度，搭配 Dyson 形成高中低端市場佈局。" },
-                    { item: "Dyson 濾網訂閱服務", reason: "創造週期性收入，鎖定舊有 Dyson 客群，提高 LTV。" },
-                    { item: "輕巧型 5G 手機 (中階)", reason: "填補 iPhone/旗艦機價格空缺，吸引預算有限但追求性能的消費者。" },
-                    { item: "熱銷品客製化組合包", reason: "將熱銷 eSIM 與特定手機型號打包，提高客單價。" },
-                    { item: "入門級智慧手環/手錶", reason: "低價引流款，吸引年輕人，促進後續購買。" },
-                    { item: "無線吸塵器周邊配件", reason: "專注於延長管、地刷等易損耗配件，競爭少，利潤高。" },
-                    { item: "親子/教育平板電腦", reason: "鎖定家庭客群，與學習 APP 進行綑綁推廣。" },
-                    { item: "極簡風行動電源 (高容量)", reason: "高需求品，可作為主力行銷品，設置優勢價格。" },
-                    { item: "特定國家 eSIM 批發專案", reason: "針對重度使用者或小型旅行社，擴大 B2B 市場。" }
-                ];
-                
-                recommendations.forEach((rec, index) => {
+                recommendations.slice(0, 10).forEach((rec, index) => {
+                    const item = typeof rec === 'string' ? rec : rec.item || rec;
+                    const reason = typeof rec === 'string' ? '' : rec.reason || '';
+                    
                     top10List.innerHTML += `
                         <li class="flex items-start text-sm border-b border-blue-100 pb-2">
                             <span class="font-mono font-bold text-aiBlue w-6 flex-shrink-0">#${index + 1}</span>
                             <div>
-                                <span class="font-bold text-textMain">${rec.item}:</span>
-                                <span class="text-textSub">${rec.reason}</span>
+                                <span class="font-bold text-textMain">${item}</span>
+                                ${reason ? `<span class="text-textSub">: ${reason}</span>` : ''}
                             </div>
                         </li>
                     `;
                 });
-                
-                // Clear input field after successful simulation
+
+                // Populate extended ideas
+                document.getElementById('extended-ideas').innerText = extendedIdeas || '暫無延伸建議';
+
+                // Show results
+                document.getElementById('shopee-results').classList.remove('hidden');
                 document.getElementById('shopee-keyword').value = '';
                 
                 showToast('選品決策卡已成功生成！');
-            }, 3000); 
-        }
 
-        // --- Landlord Logic (Unchanged) ---
-        function runLandlordAnalysis() {
-            const name = document.getElementById('landlord-name').value;
-            if(!name) return showToast('Please enter tenant name');
-
-            document.getElementById('landlord-empty').classList.add('hidden');
-            document.getElementById('landlord-results').classList.add('hidden');
-            document.getElementById('landlord-loading').classList.remove('hidden');
-
-            setTimeout(() => {
-                const score = Math.floor(Math.random() * 30) + 70;
-                const risk = score > 85 ? "Approved" : "Caution";
-                const colorClass = score > 85 ? "bg-green-50 text-green-700 border-green-200" : "bg-orange-50 text-orange-700 border-orange-200";
-
-                const badge = document.getElementById('landlord-badge');
-                badge.innerText = risk;
-                badge.className = `inline-block px-6 py-2 rounded-full font-semibold text-sm mb-12 self-center border ${colorClass}`;
-                
-                document.getElementById('landlord-score').innerText = score;
-                document.getElementById('landlord-deposit').innerText = score > 85 ? "2 Mo" : "3 Mo";
-                document.getElementById('landlord-summary').innerText = `Tenant ${name} has a ${score > 85 ? 'strong' : 'fair'} credit profile. Income-to-rent ratio is within acceptable limits. ${score > 85 ? 'Standard lease recommended.' : 'Guarantor suggested.'}`;
-
-                const circle = document.getElementById('risk-circle');
-                const circumference = 565;
-                const offset = circumference - (score / 100) * circumference;
-                circle.style.strokeDashoffset = offset;
-                circle.style.stroke = score > 85 ? "#22c55e" : "#f97316";
-
-                document.getElementById('landlord-loading').classList.add('hidden');
-                document.getElementById('landlord-results').classList.remove('hidden');
-            }, 1500);
+            } catch (error) {
+                console.error('分析錯誤:', error);
+                document.getElementById('shopee-loading').classList.add('hidden');
+                document.getElementById('shopee-empty').classList.remove('hidden');
+                showToast('分析失敗: ' + error.message);
+            }
         }
 
         // Init
         window.onload = function() {
-            navigateTo('home');
-            switchShopeeMode('free'); // Ensure default mode is set correctly
+            switchShopeeMode('free'); // Set default mode
         };
     </script>
 </body>
