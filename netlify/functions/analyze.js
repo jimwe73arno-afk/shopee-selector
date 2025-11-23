@@ -47,9 +47,15 @@ exports.handler = async (event, context) => {
 
   if (event.httpMethod === 'GET') {
     return {
-      statusCode: 405,
+      statusCode: 200,
       headers,
-      body: JSON.stringify({ error: 'Method Not Allowed' })
+      body: JSON.stringify({ 
+        status: 'ok',
+        message: 'Gemini API 兩段式分析',
+        endpoints: {
+          analyze: 'POST /api/analyze'
+        }
+      })
     };
   }
 
