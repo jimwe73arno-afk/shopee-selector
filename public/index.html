@@ -602,15 +602,25 @@
                 }
 
                 const data = await response.json();
+                
+                // 添加调试日志
+                console.log('📥 API 響應數據:', data);
 
                 // 检查是否有错误
                 if (data.error) {
                     throw new Error(data.error || '分析失敗');
                 }
 
-                // 检查是否有有效数据
-                if (!data.summary && !data.recommendations && !data.plan) {
-                    throw new Error('API 返回空数据，请稍后重试');
+                // 检查是否有有效数据（更宽松的检查）
+                const hasData = data.summary || data.recommendations || data.plan || data.reasoningText;
+                if (!hasData) {
+                    console.warn('⚠️ API 返回的數據格式異常:', data);
+                    // 即使没有标准格式，也尝试显示原始数据
+                    if (typeof data === 'string') {
+                        data = { summary: data };
+                    } else if (Object.keys(data).length === 0) {
+                        throw new Error('API 返回空数据，请稍后重试');
+                    }
                 }
 
                 // Hide loading
@@ -619,64 +629,102 @@
                 // Parse and display results
                 let recommendations = [];
                 let extendedIdeas = '';
+                let summaryText = '';
 
+                // 提取摘要
+                summaryText = data.summary || data.reasoningText || JSON.stringify(data).substring(0, 500);
+
+                // 提取推薦
                 if (data.recommendations && Array.isArray(data.recommendations)) {
                     recommendations = data.recommendations;
-                } else if (data.summary) {
-                    // Fallback: try to parse recommendations from summary
-                    recommendations = [{ item: "分析結果", reason: data.summary }];
+                } else if (summaryText) {
+                    // 如果没有推薦，从摘要中生成
+                    recommendations = [
+                        { item: "核心分析", reason: summaryText.substring(0, 200) }
+                    ];
                 }
 
+                // 提取計劃
                 if (data.plan) {
                     extendedIdeas = data.plan;
-                } else if (data.summary) {
-                    extendedIdeas = data.summary;
+                } else if (summaryText) {
+                    extendedIdeas = summaryText;
+                } else {
+                    extendedIdeas = '暫無延伸建議，請查看上方分析結果。';
                 }
+                
+                console.log('📊 解析後的數據:', { recommendations, extendedIdeas, summaryText });
 
                 // Populate Top 10 List
                 const top10List = document.getElementById('top-10-list');
-                top10List.innerHTML = '';
-                
-                // 如果没有推荐，至少显示摘要
-                if (recommendations.length === 0 && data.summary) {
-                    // 将摘要分段显示
-                    const summaryParts = data.summary.split('。').filter(p => p.trim());
-                    summaryParts.slice(0, 10).forEach((part, index) => {
-                        top10List.innerHTML += `
-                            <li class="flex items-start text-sm border-b border-blue-100 pb-2">
-                                <span class="font-mono font-bold text-aiBlue w-6 flex-shrink-0">#${index + 1}</span>
-                                <div>
-                                    <span class="text-textSub">${part.trim()}。</span>
-                                </div>
-                            </li>
-                        `;
-                    });
+                if (!top10List) {
+                    console.error('❌ 找不到 top-10-list 元素');
                 } else {
-                    recommendations.slice(0, 10).forEach((rec, index) => {
-                        const item = typeof rec === 'string' ? rec : (rec.item || rec || `建議 ${index + 1}`);
-                        const reason = typeof rec === 'string' ? '' : (rec.reason || '');
-                        
-                        top10List.innerHTML += `
-                            <li class="flex items-start text-sm border-b border-blue-100 pb-2">
-                                <span class="font-mono font-bold text-aiBlue w-6 flex-shrink-0">#${index + 1}</span>
-                                <div>
-                                    <span class="font-bold text-textMain">${item}</span>
-                                    ${reason ? `<span class="text-textSub">: ${reason}</span>` : ''}
-                                </div>
-                            </li>
-                        `;
-                    });
+                    top10List.innerHTML = '';
+                    
+                    // 如果没有推荐，至少显示摘要
+                    if (recommendations.length === 0 && summaryText) {
+                        // 将摘要分段显示
+                        const summaryParts = summaryText.split(/[。！\n]/).filter(p => p.trim()).slice(0, 10);
+                        if (summaryParts.length === 0) {
+                            // 如果分割后没有内容，直接显示完整摘要
+                            summaryParts.push(summaryText);
+                        }
+                        summaryParts.forEach((part, index) => {
+                            top10List.innerHTML += `
+                                <li class="flex items-start text-sm border-b border-blue-100 pb-2">
+                                    <span class="font-mono font-bold text-aiBlue w-6 flex-shrink-0">#${index + 1}</span>
+                                    <div>
+                                        <span class="text-textSub">${part.trim()}${part.endsWith('。') ? '' : '。'}</span>
+                                    </div>
+                                </li>
+                            `;
+                        });
+                    } else {
+                        recommendations.slice(0, 10).forEach((rec, index) => {
+                            const item = typeof rec === 'string' ? rec : (rec.item || rec || `建議 ${index + 1}`);
+                            const reason = typeof rec === 'string' ? '' : (rec.reason || '');
+                            
+                            top10List.innerHTML += `
+                                <li class="flex items-start text-sm border-b border-blue-100 pb-2">
+                                    <span class="font-mono font-bold text-aiBlue w-6 flex-shrink-0">#${index + 1}</span>
+                                    <div>
+                                        <span class="font-bold text-textMain">${item}</span>
+                                        ${reason ? `<span class="text-textSub">: ${reason}</span>` : ''}
+                                    </div>
+                                </li>
+                            `;
+                        });
+                    }
                 }
+                
+                console.log('✅ Top 10 List 已填充，共', recommendations.length || 0, '項');
 
                 // Populate extended ideas
-                const extendedIdeasText = extendedIdeas || data.summary || '暫無延伸建議';
-                document.getElementById('extended-ideas').innerText = extendedIdeasText;
+                const extendedIdeasText = extendedIdeas || summaryText || '暫無延伸建議';
+                const extendedIdeasEl = document.getElementById('extended-ideas');
+                if (extendedIdeasEl) {
+                    extendedIdeasEl.innerText = extendedIdeasText || '暫無延伸建議';
+                }
 
-                // Show results
-                document.getElementById('shopee-results').classList.remove('hidden');
-                document.getElementById('shopee-keyword').value = '';
+                // 確保隱藏空狀態和顯示結果
+                const emptyEl = document.getElementById('shopee-empty');
+                const resultsEl = document.getElementById('shopee-results');
+                
+                if (emptyEl) emptyEl.classList.add('hidden');
+                if (resultsEl) {
+                    resultsEl.classList.remove('hidden');
+                    console.log('✅ 顯示結果區域');
+                } else {
+                    console.error('❌ 找不到 shopee-results 元素');
+                }
+                
+                // 清空輸入框
+                const keywordEl = document.getElementById('shopee-keyword');
+                if (keywordEl) keywordEl.value = '';
                 
                 showToast('選品決策卡已成功生成！');
+                console.log('✅ 分析完成並顯示結果');
 
             } catch (error) {
                 console.error('分析錯誤:', error);
