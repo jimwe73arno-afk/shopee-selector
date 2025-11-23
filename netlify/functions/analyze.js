@@ -75,13 +75,18 @@ async function callGeminiAPI(model, contents, generationConfig = {}) {
   // 處理 MAX_TOKENS 情況（輸出被截斷，但可能仍有部分內容）
   if (!text && finishReason === 'MAX_TOKENS') {
     console.warn('⚠️ Response hit MAX_TOKENS limit. Trying to extract partial content...');
-    // 嘗試從其他字段提取內容
-    const partialText = candidate?.content?.parts?.find(p => p.text)?.text || '';
+    // 嘗試從所有 parts 中提取內容
+    const allParts = candidate?.content?.parts || [];
+    const partialText = allParts.map(p => p.text || '').join('').trim();
+    
     if (partialText) {
       console.log(`✅ Extracted partial response: ${partialText.length} chars`);
-      return partialText;
+      return partialText + '... [內容被截斷，建議減少圖片數量或簡化請求]';
     }
-    throw new Error('Response hit MAX_TOKENS limit and no partial content available. Please reduce input size or increase maxOutputTokens.');
+    
+    // 如果還是沒有內容，返回一個提示信息而不是拋出錯誤
+    console.warn('⚠️ No partial content available, returning fallback message');
+    return '[圖片分析完成，但輸出被截斷。建議減少圖片數量或增加 maxOutputTokens。]';
   }
   
   if (!text) {
@@ -141,7 +146,8 @@ Output as structured text summary. Be concise but comprehensive.`;
       return `[Image ${index + 1} Analysis]:\n${result}\n\n`;
     }).catch(error => {
       console.error(`❌ Image ${index + 1} failed:`, error.message);
-      return `[Image ${index + 1} Analysis]: Error - ${error.message}\n\n`;
+      // 即使失敗也返回一個占位符，讓流程繼續
+      return `[Image ${index + 1} Analysis]: 處理時遇到問題 - ${error.message}。已跳過此圖片，繼續處理其他圖片。\n\n`;
     });
   });
 
