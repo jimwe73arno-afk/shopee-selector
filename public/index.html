@@ -757,32 +757,90 @@
                     const preview = document.getElementById('image-preview');
                     if (preview) preview.innerHTML = '';
                     
+                    console.log('📷 [圖片上傳] 選擇了', files.length, '張圖片');
+                    
+                    if (files.length === 0) {
+                        showToast('請選擇至少一張圖片');
+                        return;
+                    }
+                    
+                    let loadedCount = 0;
                     files.forEach((file, index) => {
                         const reader = new FileReader();
                         reader.onload = function(e) {
                             uploadedImages.push(e.target.result);
+                            loadedCount++;
+                            console.log(`✅ [圖片上傳] 圖片 ${index + 1}/${files.length} 已載入`);
                             
                             // Show preview
                             if (preview) {
+                                const imgWrapper = document.createElement('div');
+                                imgWrapper.className = 'relative';
+                                
                                 const img = document.createElement('img');
                                 img.src = e.target.result;
                                 img.className = 'w-full h-20 object-cover rounded border border-border';
-                                preview.appendChild(img);
+                                img.alt = `預覽 ${index + 1}`;
+                                
+                                const removeBtn = document.createElement('button');
+                                removeBtn.innerHTML = '×';
+                                removeBtn.className = 'absolute top-0 right-0 bg-red-500 text-white w-6 h-6 rounded-full text-xs hover:bg-red-600';
+                                removeBtn.onclick = function() {
+                                    uploadedImages.splice(index, 1);
+                                    imgWrapper.remove();
+                                    showToast(`已移除圖片 ${index + 1}`);
+                                };
+                                
+                                imgWrapper.appendChild(img);
+                                imgWrapper.appendChild(removeBtn);
+                                preview.appendChild(imgWrapper);
                             }
+                            
+                            if (loadedCount === files.length) {
+                                console.log('✅ [圖片上傳] 所有圖片已載入，共', uploadedImages.length, '張');
+                                showToast(`已載入 ${uploadedImages.length} 張圖片，可以開始分析了`);
+                            }
+                        };
+                        reader.onerror = function(error) {
+                            console.error(`❌ [圖片上傳] 圖片 ${index + 1} 載入失敗:`, error);
+                            showToast(`圖片 ${index + 1} 載入失敗`);
                         };
                         reader.readAsDataURL(file);
                     });
                 });
+            } else {
+                console.warn('⚠️ [圖片上傳] 找不到 shopee-image-upload 元素');
             }
         });
 
         // --- Image Analysis Function ---
         async function runShopeeImageAnalysis() {
+            console.log('🚀 [圖片分析] 開始分析，已上傳圖片數:', uploadedImages.length);
+            
             if (uploadedImages.length === 0) {
-                return showToast('請先上傳圖片');
+                // 嘗試從 input 直接讀取文件
+                const imageInput = document.getElementById('shopee-image-upload');
+                if (imageInput && imageInput.files && imageInput.files.length > 0) {
+                    console.log('⚠️ [圖片分析] uploadedImages 為空，從 input 重新讀取文件');
+                    const files = Array.from(imageInput.files);
+                    const promises = files.map(file => {
+                        return new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload = e => resolve(e.target.result);
+                            reader.onerror = reject;
+                            reader.readAsDataURL(file);
+                        });
+                    });
+                    uploadedImages = await Promise.all(promises);
+                    console.log('✅ [圖片分析] 從 input 重新載入了', uploadedImages.length, '張圖片');
+                } else {
+                    return showToast('請先上傳圖片');
+                }
             }
             
             const query = document.getElementById('shopee-image-query')?.value || '分析這些圖片並給出選品建議';
+            console.log('📝 [圖片分析] 查詢文本:', query);
+            console.log('📷 [圖片分析] 準備發送', uploadedImages.length, '張圖片');
             
             // Show loading
             document.getElementById('shopee-empty').classList.add('hidden');
@@ -799,6 +857,8 @@
                     return img.includes(',') ? img.split(',')[1] : img;
                 });
                 
+                console.log('📤 [圖片分析] 發送 API 請求...');
+                
                 const response = await fetch('/.netlify/functions/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -807,6 +867,8 @@
                         images: base64Images
                     })
                 });
+                
+                console.log('📥 [圖片分析] API 響應狀態:', response.status, response.statusText);
                 
                 if (!response.ok) {
                     throw new Error(`API 錯誤: ${response.status}`);
