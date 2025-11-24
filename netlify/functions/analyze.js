@@ -1,132 +1,130 @@
 // netlify/functions/analyze.js
-// BrotherG AI - "Lite & Fast" Version
-// Strategy: Minimal Prompt + Low Token Limit = Guaranteed Response
+// Shopee Analyst - Text Only Minimal Version
 
-const API_KEY = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-const API_VERSION = "v1beta";
-const MODEL_NAME = "gemini-2.5-flash";
+const API_KEY =
+  process.env.GOOGLE_API_KEY ||
+  process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
-exports.handler = async (event, context) => {
-  context.callbackWaitsForEmptyEventLoop = false;
+const MODEL = "gemini-2.5-flash";
+const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
-  const headers = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Content-Type": "text/plain; charset=utf-8",
-  };
+const baseCorsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
 
-  // 1. CORS
+const jsonHeaders = {
+  ...baseCorsHeaders,
+  "Content-Type": "application/json; charset=utf-8",
+};
+
+exports.handler = async (event) => {
+  // CORS preflight
   if (event.httpMethod === "OPTIONS") {
-    return {
-      statusCode: 200,
-      headers,
-      body: "",
-    };
+    return { statusCode: 204, headers: baseCorsHeaders };
   }
 
   if (event.httpMethod !== "POST") {
-    return {
-      statusCode: 405,
-      headers,
-      body: "Method Not Allowed",
-    };
+    return { statusCode: 405, headers: jsonHeaders, body: "Method Not Allowed" };
   }
 
   try {
-    let body;
-    try {
-      body = JSON.parse(event.body || "{}");
-    } catch (e) {
+    if (!API_KEY) {
+      console.error("Missing GOOGLE_API_KEY / GOOGLE_GENERATIVE_AI_API_KEY");
       return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: "Body Error" }),
+        statusCode: 200,
+        headers: jsonHeaders,
+        body: JSON.stringify({
+          ok: false,
+          result: "系統尚未設定金鑰，請稍後再試。",
+        }),
       };
     }
 
-    const { textPrompt } = body;
+    const body = JSON.parse(event.body || "{}");
+    const userText = (body.textPrompt || "").trim();
 
-    if (!API_KEY) {
-      throw new Error("API Key 設定錯誤 (請檢查 Netlify 環境變數)");
+    if (!userText) {
+      return {
+        statusCode: 200,
+        headers: jsonHeaders,
+        body: JSON.stringify({
+          ok: false,
+          result: "請先輸入產品描述或你現在遇到的問題。",
+        }),
+      };
     }
 
-    if (!textPrompt) {
-      throw new Error("textPrompt 為必填欄位");
-    }
+    // 最小但結構化的 system 語氣
+    const systemPrompt =
+      "你是 Shopee 直播選品顧問，請用條列、結構化方式回答。" +
+      "輸出分成三段：「一、現況診斷」「二、價格與利潤判斷」「三、直播排品與話術建議」。" +
+      "全程使用繁體中文，避免廢話，專注在可執行的建議。";
 
-    console.log(`🚀 Request: Lite Mode. Prompt length: ${textPrompt?.length}`);
+    const fullPrompt = `${systemPrompt}\n\n=== 使用者輸入 ===\n${userText}`;
 
-    // 2. 極簡化 System Instruction (防止 AI 想太久)
-    const systemInstruction = `
-你是 Shopee 決策顧問，輸入是賣家狀況。
-用繁體中文回答，給四段：
-1. 結論 (一句話)
-2. C-A-B 選品建議 (誘餌/利潤/湊單)
-3. 直播話術 (100字內)
-4. 下一步行動
-輸出用 Markdown，不要廢話。
-`;
+    console.info("📝 Requesting", MODEL, "Text Only...");
 
-    // 3. 呼叫 Google API
-    const url = `https://generativelanguage.googleapis.com/${API_VERSION}/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
-    
-    const response = await fetch(url, {
+    const resp = await fetch(`${ENDPOINT}?key=${API_KEY}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{
-          role: "user",
-          parts: [{ text: `${systemInstruction}\n\n【賣家輸入】\n${textPrompt}` }]
-        }],
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: fullPrompt }],
+          },
+        ],
         generationConfig: {
-          maxOutputTokens: 800, // 設定 800 夠講完話，且不會超時
+          maxOutputTokens: 768, // 控制在一頁以內，避免 MAX_TOKENS
           temperature: 0.7,
+          topP: 0.9,
         },
-        // 關閉安全鎖，避免空值
-        safetySettings: [
-          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-        ]
-      })
+      }),
     });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("❌ Google API Error:", errText);
-      throw new Error(`Google API Error: ${errText.substring(0, 500)}`);
+    const data = await resp.json();
+    const finishReason = data?.candidates?.[0]?.finishReason;
+    console.info("🔍 finishReason:", finishReason);
+
+    let text = "";
+
+    if (Array.isArray(data.candidates) && data.candidates.length > 0) {
+      const parts = data.candidates[0].content?.parts || [];
+      text = parts
+        .map((p) => p.text || "")
+        .join("")
+        .trim();
     }
 
-    const data = await response.json();
-    
-    // 4. 檢查結果
-    const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!resultText) {
-      // 如果還是空的，印出完整 Log 抓兇手
-      console.error("❌ Empty Response Details:", JSON.stringify(data));
-      throw new Error("AI 生成內容為空 (可能觸發 MAX_TOKENS 截斷)");
+    // 無論是 MAX_TOKENS / SAFETY / 解析失敗，都不要再丟 500
+    if (!text) {
+      console.warn("⚠️ Empty text from model, raw data:", JSON.stringify(data));
+      text = "目前無法產生建議，可能是模型輸出被截斷或暫時忙碌，請稍後再試。";
     }
 
-    console.log(`✅ Success! Length: ${resultText.length}`);
+    console.info("✅ Success, length:", text.length);
 
     return {
       statusCode: 200,
-      headers,
-      body: resultText,
+      headers: jsonHeaders,
+      body: JSON.stringify({
+        ok: true,
+        result: text,
+      }),
     };
+  } catch (err) {
+    console.error("❌ Analyze Error:", err);
 
-  } catch (error) {
-    console.error("🔥 Error:", error);
+    // 這裡一律 200 + 保底文案，前端就不會再看到 500 了
     return {
-      statusCode: 500,
-      headers: {
-        ...headers,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ error: error.message || "Server Error" }),
+      statusCode: 200,
+      headers: jsonHeaders,
+      body: JSON.stringify({
+        ok: false,
+        result: "系統忙線中，暫時無法完成分析，請稍後再試。",
+      }),
     };
   }
 };

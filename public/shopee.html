@@ -591,27 +591,27 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        textPrompt: input,
-                        images: []    // 目前先不傳圖片
+                        textPrompt: input
                     })
                 });
 
                 console.log('📥 收到響應:', response.status, response.statusText);
 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('API 錯誤:', response.status, errorText);
-                    throw new Error(`分析服務錯誤 (${response.status})，請稍後再試`);
+                // 後端一律返回 200，所以不需要檢查 response.ok
+                const data = await response.json();
+                console.log('📝 API 返回數據:', data);
+
+                // 4) 解析新的返回格式：{ ok: true/false, result: "text" }
+                let markdownContent = '';
+                
+                if (data.ok && data.result) {
+                    // 成功：使用後端返回的 Markdown 文字
+                    markdownContent = `### ${userName}，這是您的市場洞察報告\n\n`;
+                    markdownContent += data.result;
+                } else {
+                    // 失敗：使用後端的錯誤訊息
+                    markdownContent = `### 系統提示\n\n${data.result || '目前無法產生建議，請稍後再試。'}`;
                 }
-
-                // 4) 讀取響應文本（後端返回的是 Markdown 格式的決策卡，不再是 JSON）
-                const responseText = await response.text();
-                console.log('📝 響應文本長度:', responseText.length);
-                console.log('📝 響應文本前 300 字:', responseText.substring(0, 300));
-
-                // 5) 後端返回的是 Markdown 格式的決策卡，直接使用
-                let markdownContent = `### ${userName}，這是您的市場洞察報告\n\n`;
-                markdownContent += responseText;
 
                 loadingBlock.classList.add('hidden');
                 resultBlock.classList.remove('hidden');
@@ -624,7 +624,11 @@
                     }
                 }
 
-                showToast(`${userName}，分析報告已生成完畢！`);
+                if (data.ok) {
+                    showToast(`${userName}，分析報告已生成完畢！`);
+                } else {
+                    showToast(data.result || '分析時發生錯誤，請稍後再試');
+                }
             } catch (err) {
                 console.error('❌ 分析錯誤:', err);
                 loadingBlock.classList.add('hidden');
