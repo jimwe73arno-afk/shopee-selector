@@ -381,7 +381,7 @@
                         <li class="flex items-center"><i class="fa-solid fa-boxes-stacked feature-icon feature-check"></i> 針對低客單價跑量商品優化</li>
                         <li class="flex items-center"><i class="fa-solid fa-pen-nib feature-icon feature-check"></i> 競品文案一鍵仿寫與優化</li>
                     </ul>
-                    <button onclick="showToast('PRO 方案連結準備中...')" class="w-full py-3 bg-slate-800 text-aiBlue border border-aiBlue font-bold text-sm rounded hover:bg-aiBlue hover:text-white transition-colors">立即升級 PRO</button>
+                    <button onclick="handleCheckout('PRO')" class="w-full py-3 bg-slate-800 text-aiBlue border border-aiBlue font-bold text-sm rounded hover:bg-aiBlue hover:text-white transition-colors">立即升級 PRO</button>
                 </div>
 
                 <!-- MASTER -->
@@ -413,7 +413,7 @@
                         </ul>
                     </div>
 
-                    <button onclick="window.open('https://p.ecpay.com.tw/4A01064', '_blank')" class="w-full mt-4 py-3 bg-gradient-to-r from-amber-600 to-yellow-600 text-white font-bold text-sm rounded hover:shadow-[0_0_20px_rgba(245,158,11,0.4)] hover:scale-105 transition-all border border-yellow-500/50">成為大師</button>
+                    <button onclick="handleCheckout('MASTER')" class="w-full mt-4 py-3 bg-gradient-to-r from-amber-600 to-yellow-600 text-white font-bold text-sm rounded hover:shadow-[0_0_20px_rgba(245,158,11,0.4)] hover:scale-105 transition-all border border-yellow-500/50">成為大師</button>
                 </div>
             </div>
         </div>
@@ -541,6 +541,52 @@
                 card.classList.add('border-aiBlue', 'shadow-glow-pro');
             } else if(plan === 'master') {
                 card.classList.add('border-yellow-500', 'shadow-glow-master');
+            }
+        }
+
+        // 處理結帳（PRO 和 MASTER）
+        async function handleCheckout(plan) {
+            const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
+            
+            if (!currentUser) {
+                showToast('請先登入以進行付款');
+                showLoginModal();
+                return;
+            }
+
+            const userId = currentUser.uid || currentUser.email || 'anonymous';
+            
+            try {
+                showToast(`正在準備 ${plan} 方案付款...`);
+                
+                // 呼叫 payment-checkout API
+                const response = await fetch('/.netlify/functions/payment-checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        plan: plan,
+                        userId: userId
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('付款服務暫時無法使用');
+                }
+
+                // 取得 HTML 表單
+                const html = await response.text();
+                
+                // 建立新視窗並寫入 HTML
+                const newWindow = window.open('', '_blank');
+                newWindow.document.write(html);
+                newWindow.document.close();
+                
+                // 關閉定價模態框
+                closePricingModal();
+                
+            } catch (error) {
+                console.error('❌ Checkout Error:', error);
+                showToast(`付款處理失敗：${error.message}`);
             }
         }
 
