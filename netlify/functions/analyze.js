@@ -141,7 +141,7 @@ exports.handler = async (event, context) => {
 ---
 
 若輸入資訊不足（例如沒有金額、品類），請先假設平均值再推理，不要回「請補資訊」，要給暫時可用的版本。`;
-      maxTokens = 2048; // 增加到 2048 避免截斷
+      maxTokens = 8192; // MASTER 版使用最大 token 限制，不應被限制
     } else if (actualTier === "PRO") {
       // PRO 版提示詞（450-600 字）
       systemPrompt = `你是「BrotherG Shopee Analyst PRO」，專門協助蝦皮賣家做「單一商品／小組合」的選品與定價判斷。
