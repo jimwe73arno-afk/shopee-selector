@@ -1,9 +1,9 @@
 // netlify/functions/analyze.js
-// Shopee Analyst 穩定版：統一使用 gemini-1.5-flash，回傳 success flag
+// Shopee Analyst 穩定版：統一使用 gemini-2.5-flash，回傳 success flag
 
 const API_KEY = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 const API_VERSION = 'v1beta';
-const MODEL = 'gemini-1.5-flash';
+const MODEL = 'gemini-2.5-flash';
 
 const headers = {
   'Access-Control-Allow-Origin': '*',
