@@ -45,7 +45,7 @@ exports.handler = async (event, context) => {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Content-Type': 'application/json'
+    'Content-Type': 'text/plain; charset=utf-8'  // 返回 Markdown 文本
   };
 
   if (event.httpMethod === 'OPTIONS') {
