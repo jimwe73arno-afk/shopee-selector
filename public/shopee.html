@@ -18,6 +18,13 @@
     
     <!-- Marked.js -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- Firebase SDK (放在 </body> 之前) -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
+
+    <!-- 全站共用登入模組 -->
+    <script src="/js/auth.js"></script>
 
     <script>
         tailwind.config = {
@@ -249,11 +256,25 @@
                     <span id="usage-count" class="text-aiBlue font-bold font-mono">5</span>
                 </div>
 
-                <button onclick="openPricingModal()" class="flex items-center space-x-2 px-3 py-1.5 md:px-4 md:py-1.5 bg-gradient-to-r from-aiBlue to-blue-700 text-white rounded text-xs font-bold hover:shadow-[0_0_15px_rgba(0,160,233,0.4)] transition-all">
-                    <i class="fa-solid fa-crown text-yellow-300 drop-shadow-md"></i>
-                    <span class="hidden md:inline">升級進階版</span>
-                    <span class="md:hidden">UPGRADE</span>
+                <!-- 登入按鈕 -->
+                <button id="login-btn" onclick="handleGoogleLogin()" 
+                    class="hidden flex items-center gap-2 px-3 py-1.5 bg-aiBlue/20 border border-aiBlue text-aiBlue rounded text-xs font-bold hover:bg-aiBlue hover:text-white transition-all">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-4 h-4" alt="Google">
+                    <span>登入</span>
                 </button>
+
+                <!-- 用戶資訊（登入後顯示） -->
+                <div id="user-info" class="hidden flex items-center gap-3">
+                    <div id="user-avatar-header" 
+                        class="w-8 h-8 rounded-full border-2 border-aiBlue bg-aiBlue/20 text-aiBlue flex items-center justify-center font-bold text-xs cursor-pointer">
+                    </div>
+                    <span id="user-name" class="text-xs font-mono text-textSub hidden md:inline"></span>
+                    <button onclick="openPricingModal()" class="flex items-center space-x-2 px-3 py-1.5 md:px-4 md:py-1.5 bg-gradient-to-r from-aiBlue to-blue-700 text-white rounded text-xs font-bold hover:shadow-[0_0_15px_rgba(0,160,233,0.4)] transition-all">
+                        <i class="fa-solid fa-crown text-yellow-300 drop-shadow-md"></i>
+                        <span class="hidden md:inline">升級進階版</span>
+                        <span class="md:hidden">UPGRADE</span>
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -411,39 +432,75 @@
         <span id="toast-msg" class="font-medium text-sm font-mono">Notification</span>
     </div>
 
-    <!-- Firebase Scripts (Demo Mode) -->
+    <!-- 覆寫 auth.js 的 updateAuthUI 函數以適配深色版 UI -->
     <script>
-        let currentUser = null;
-
-        window.handleGoogleLogin = function() {
-            const btn = document.getElementById('login-btn');
-            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 驗證中...';
-            btn.disabled = true;
-
-            setTimeout(() => {
-                document.getElementById('login-overlay').classList.add('hidden');
-                currentUser = { displayName: "Chang", email: "demo@example.com" }; // Changed to "Chang"
-                document.getElementById('user-avatar').classList.remove('hidden');
-                document.getElementById('logout-btn').classList.remove('hidden');
-                btn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-6 h-6" alt="Google"><span>使用 Google 帳號登入</span>';
-                btn.disabled = false;
-                showToast('登入成功 (Demo Mode)');
-            }, 1500);
-        };
-
-        window.handleLogout = function() {
-            showToast('正在登出...');
-            setTimeout(() => {
-                currentUser = null;
-                document.getElementById('user-avatar').classList.add('hidden');
-                document.getElementById('logout-btn').classList.add('hidden');
-                showToast('已安全登出');
-            }, 800);
-        };
+        // 等待 auth.js 載入後，覆寫 updateAuthUI 函數
+        window.addEventListener('DOMContentLoaded', () => {
+            // 監聽 authStateChanged 事件來更新 UI
+            window.addEventListener('authStateChanged', (event) => {
+                const user = event.detail.user;
+                updateShopeeAuthUI(user);
+            });
+        });
         
-        window.showLoginModal = function() {
-            document.getElementById('login-overlay').classList.remove('hidden');
+        function updateShopeeAuthUI(user) {
+            const avatar = document.getElementById('user-avatar');
+            const avatarHeader = document.getElementById('user-avatar-header');
+            const logoutBtn = document.getElementById('logout-btn');
+            const loginBtn = document.getElementById('login-btn');
+            const userInfo = document.getElementById('user-info');
+            const userName = document.getElementById('user-name');
+
+            if (user) {
+                const name = user.displayName || user.email || 'User';
+                
+                // 更新側邊欄頭像
+                if (avatar) {
+                    if (user.photoURL) {
+                        avatar.style.backgroundImage = `url(${user.photoURL})`;
+                        avatar.style.backgroundSize = 'cover';
+                        avatar.style.backgroundPosition = 'center';
+                        avatar.textContent = '';
+                    } else {
+                        avatar.textContent = name.charAt(0).toUpperCase();
+                        avatar.style.backgroundImage = '';
+                    }
+                    avatar.title = name;
+                    avatar.classList.remove('hidden');
+                }
+                
+                // 更新 Header 頭像
+                if (avatarHeader) {
+                    if (user.photoURL) {
+                        avatarHeader.style.backgroundImage = `url(${user.photoURL})`;
+                        avatarHeader.style.backgroundSize = 'cover';
+                        avatarHeader.style.backgroundPosition = 'center';
+                        avatarHeader.textContent = '';
+                    } else {
+                        avatarHeader.textContent = name.charAt(0).toUpperCase();
+                        avatarHeader.style.backgroundImage = '';
+                    }
+                    avatarHeader.title = name;
+                }
+                
+                if (userName) userName.textContent = name;
+                if (logoutBtn) logoutBtn.classList.remove('hidden');
+                if (loginBtn) loginBtn.classList.add('hidden');
+                if (userInfo) userInfo.classList.remove('hidden');
+                
+            } else {
+                if (avatar) avatar.classList.add('hidden');
+                if (logoutBtn) logoutBtn.classList.add('hidden');
+                if (loginBtn) loginBtn.classList.remove('hidden');
+                if (userInfo) userInfo.classList.add('hidden');
+            }
         }
+        
+        // 覆寫 showLoginModal 以顯示登入浮層
+        window.showLoginModal = function() {
+            const overlay = document.getElementById('login-overlay');
+            if (overlay) overlay.classList.remove('hidden');
+        };
     </script>
 
     <script>
@@ -495,6 +552,9 @@
         }
 
         async function runShopeeAnalysis() {
+            // 檢查登入（使用 auth.js 的函數）
+            const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
+            
             if (!currentUser) {
                 showToast('請先登入以使用分析功能');
                 showLoginModal();
@@ -517,7 +577,8 @@
             remainingUsage--;
             document.getElementById('usage-count').innerText = remainingUsage;
 
-            showToast(`${currentUser.displayName} 你好，BrotherG 正在為您的產品進行深度運算...`);
+            const userName = currentUser.displayName || currentUser.email || '用戶';
+            showToast(`${userName}，BrotherG 正在為您的產品進行深度運算...`);
 
             try {
                 // 调用后端 API
@@ -531,26 +592,37 @@
                 });
 
                 if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API 錯誤:', response.status, errorText);
                     throw new Error(`API 錯誤: ${response.status}`);
                 }
 
                 const data = await response.json();
                 
+                console.log('✅ API 響應:', data);
+                
                 document.getElementById('shopee-loading').classList.add('hidden');
                 document.getElementById('shopee-results').classList.remove('hidden');
 
-                // 解析并显示结果
+                // 解析并显示结果（禮貌使用用戶名字）
                 let markdownContent = '';
                 
                 if (data.summary) {
-                    markdownContent += `### ${currentUser.displayName} 的市場洞察報告\n\n`;
+                    markdownContent += `### ${userName}，這是您的市場洞察報告\n\n`;
                     markdownContent += data.summary + '\n\n';
+                } else if (typeof data === 'string') {
+                    markdownContent += `### ${userName}，這是您的市場洞察報告\n\n`;
+                    markdownContent += data + '\n\n';
+                } else {
+                    markdownContent += `### ${userName}，這是您的市場洞察報告\n\n`;
+                    markdownContent += JSON.stringify(data, null, 2) + '\n\n';
                 }
                 
                 if (data.recommendations && Array.isArray(data.recommendations)) {
                     markdownContent += `### 銷售組合策略 (C-A-B 模型應用)\n\n`;
                     data.recommendations.forEach(rec => {
-                        markdownContent += `* ${rec}\n`;
+                        const recText = typeof rec === 'string' ? rec : (rec.item || rec.reason || JSON.stringify(rec));
+                        markdownContent += `* ${recText}\n`;
                     });
                     markdownContent += '\n';
                 }
@@ -560,17 +632,20 @@
                 }
 
                 const contentDiv = document.getElementById('shopee-markdown-content');
-                if(typeof marked !== 'undefined') {
-                    contentDiv.innerHTML = marked.parse(markdownContent);
-                } else {
-                    contentDiv.innerHTML = markdownContent.replace(/\n/g, '<br>');
+                if (contentDiv) {
+                    if(typeof marked !== 'undefined') {
+                        contentDiv.innerHTML = marked.parse(markdownContent);
+                    } else {
+                        contentDiv.innerHTML = markdownContent.replace(/\n/g, '<br>');
+                    }
                 }
 
-                showToast('分析報告生成完畢');
+                showToast(`${userName}，分析報告已生成完畢！`);
             } catch (error) {
                 console.error('分析錯誤:', error);
                 document.getElementById('shopee-loading').classList.add('hidden');
-                showToast('分析失敗: ' + error.message);
+                const userName = currentUser.displayName || currentUser.email || '用戶';
+                showToast(`${userName}，分析失敗: ${error.message}`);
             }
         }
     </script>

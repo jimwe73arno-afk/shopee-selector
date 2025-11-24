@@ -51,6 +51,7 @@ auth.onAuthStateChanged(user => {
 // 更新 UI
 function updateAuthUI(user) {
   const avatar = document.getElementById('user-avatar');
+  const avatarHeader = document.getElementById('user-avatar-header');
   const logoutBtn = document.getElementById('logout-btn');
   const loginBtn = document.getElementById('login-btn');
   const userInfo = document.getElementById('user-info');
@@ -59,19 +60,23 @@ function updateAuthUI(user) {
   if (user) {
     const name = user.displayName || user.email || 'User';
     
-    if (avatar) {
-      if (user.photoURL) {
-        avatar.style.backgroundImage = `url(${user.photoURL})`;
-        avatar.style.backgroundSize = 'cover';
-        avatar.style.backgroundPosition = 'center';
-        avatar.textContent = '';
-      } else {
-        avatar.textContent = name.charAt(0).toUpperCase();
-        avatar.style.backgroundImage = '';
+    // 更新所有可能的頭像元素
+    [avatar, avatarHeader].forEach(av => {
+      if (av) {
+        if (user.photoURL) {
+          av.style.backgroundImage = `url(${user.photoURL})`;
+          av.style.backgroundSize = 'cover';
+          av.style.backgroundPosition = 'center';
+          av.textContent = '';
+        } else {
+          av.textContent = name.charAt(0).toUpperCase();
+          av.style.backgroundImage = '';
+        }
+        av.title = name;
+        av.classList.remove('hidden');
       }
-      avatar.title = name;
-      avatar.classList.remove('hidden');
-    }
+    });
+    
     if (userName) userName.textContent = name;
     if (logoutBtn) logoutBtn.classList.remove('hidden');
     if (loginBtn) loginBtn.classList.add('hidden');
@@ -79,10 +84,14 @@ function updateAuthUI(user) {
     
   } else {
     if (avatar) avatar.classList.add('hidden');
+    if (avatarHeader) avatarHeader.classList.add('hidden');
     if (logoutBtn) logoutBtn.classList.add('hidden');
     if (loginBtn) loginBtn.classList.remove('hidden');
     if (userInfo) userInfo.classList.add('hidden');
   }
+  
+  // 觸發自定義事件，讓其他頁面也能更新 UI
+  window.dispatchEvent(new CustomEvent('authUIUpdated', { detail: { user } }));
 }
 
 // Google 登入
