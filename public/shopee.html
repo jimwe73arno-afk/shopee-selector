@@ -18,13 +18,6 @@
     
     <!-- Marked.js -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    
-    <!-- Firebase SDK (放在 </body> 之前) -->
-    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
-
-    <!-- 全站共用登入模組 -->
-    <script src="/js/auth.js"></script>
 
     <script>
         tailwind.config = {
@@ -644,11 +637,19 @@
             } catch (error) {
                 console.error('分析錯誤:', error);
                 document.getElementById('shopee-loading').classList.add('hidden');
-                const userName = currentUser.displayName || currentUser.email || '用戶';
+                const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
+                const userName = currentUser ? (currentUser.displayName || currentUser.email || '用戶') : '用戶';
                 showToast(`${userName}，分析失敗: ${error.message}`);
             }
         }
     </script>
+
+    <!-- Firebase SDK (放在 </body> 之前) -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
+
+    <!-- 全站共用登入模組 -->
+    <script src="/js/auth.js"></script>
 </body>
 </html>
 
