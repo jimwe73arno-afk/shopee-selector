@@ -587,11 +587,18 @@
             try {
                 // 3) 呼叫 Edge Function 串流 API
                 console.log('📤 發送串流分析請求...');
+                
+                // 獲取用戶資訊
+                const userEmail = currentUser ? (currentUser.email || null) : null;
+                const userTier = "FREE"; // TODO: 從後端或 localStorage 獲取用戶等級
+                
                 const response = await fetch('/api/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        textPrompt: input
+                        textPrompt: input,
+                        userEmail: userEmail,
+                        userTier: userTier
                     })
                 });
 
