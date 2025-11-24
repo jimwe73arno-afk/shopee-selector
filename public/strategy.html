@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>直播選品提詞機 (彈出式)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Noto Sans TC', 'sans-serif'],
+                    },
+                    colors: {
+                        bg: {
+                            main: '#121212', 
+                            panel: '#1e1e1e',
+                            active: '#333333',
+                        },
+                        track: {
+                            a: '#fcd34d', // 亮黃色
+                            b: '#7dd3fc', // 亮藍色
+                            c: '#e5e7eb'  // 亮灰色
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { 
+            background-color: #121212; 
+            color: #f3f4f6; 
+            overscroll-behavior: none; /* 禁止手機下拉重整 */
+            -webkit-tap-highlight-color: transparent; /* 移除點擊高亮色塊 */
+        }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 彈窗動畫 */
+        #scriptModal { transition: opacity 0.2s ease-in-out; }
+        #modalContent { transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        
+        .modal-hidden #scriptModal { opacity: 0; pointer-events: none; }
+        .modal-hidden #modalContent { transform: translateY(100%); }
+        
+        .modal-visible #scriptModal { opacity: 1; pointer-events: auto; }
+        .modal-visible #modalContent { transform: translateY(0); }
+
+        /* 電腦版彈窗微調 */
+        @media (min-width: 768px) {
+            .modal-hidden #modalContent { transform: scale(0.95); opacity: 0; }
+            .modal-visible #modalContent { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="flex flex-col h-[100dvh] font-sans modal-hidden" id="appBody">
+
+    <!-- 1. 頂部篩選區 (固定) -->
+    <header class="h-16 shrink-0 bg-bg-panel border-b border-gray-700 flex items-center px-3 gap-2 overflow-x-auto no-scrollbar z-20 shadow-md">
+        <button class="filter-btn active flex-1 px-4 py-3 rounded-lg bg-gray-600 text-white text-lg font-bold shadow whitespace-nowrap border-0 transition-transform active:scale-95" data-filter="all">
+            全部
+        </button>
+        <button class="filter-btn flex-1 px-4 py-3 rounded-lg bg-gray-800 text-track-a border border-track-a/40 text-lg font-bold shadow whitespace-nowrap transition-transform active:scale-95" data-filter="A">
+            💰 賺錢
+        </button>
+        <button class="filter-btn flex-1 px-4 py-3 rounded-lg bg-gray-800 text-track-b border border-track-b/40 text-lg font-bold shadow whitespace-nowrap transition-transform active:scale-95" data-filter="B">
+            📦 衝量
+        </button>
+        <button class="filter-btn flex-1 px-4 py-3 rounded-lg bg-gray-800 text-white border border-white/40 text-lg font-bold shadow whitespace-nowrap transition-transform active:scale-95" data-filter="C">
+            📣 引流
+        </button>
+    </header>
+
+    <!-- 2. 主清單 (全螢幕) -->
+    <main class="flex-1 overflow-y-auto bg-bg-main relative" id="listContainer">
+        <div id="productTableBody" class="flex flex-col divide-y divide-gray-800 pb-4">
+            <!-- JS 產生列表 -->
+        </div>
+        
+        <!-- 無資料提示 -->
+        <div id="emptyState" class="hidden h-full flex flex-col items-center justify-center text-gray-500 mt-20">
+            <i class="fas fa-search text-5xl mb-4"></i>
+            <span class="text-xl">找不到相關商品</span>
+        </div>
+    </main>
+
+    <!-- 3. 底部免責聲明 (Footer) -->
+    <footer class="bg-bg-panel border-t border-gray-800 p-3 shrink-0 z-10 text-center">
+        <p class="text-[10px] md:text-xs text-gray-500 leading-relaxed font-medium">
+            ※ 預估分潤僅供參考，依實際狀況為主。<br>
+            此為商品陳列建議，不構成一定銷售目標。
+        </p>
+    </footer>
+
+    <!-- 4. 彈出式視窗 (Modal) -->
+    <div id="scriptModal" class="fixed inset-0 z-50 flex items-end md:items-center justify-center">
+        <!-- 背景遮罩 (點擊關閉) -->
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closeModal()"></div>
+        
+        <!-- 視窗本體 -->
+        <div id="modalContent" class="bg-gray-900 w-full md:w-[600px] max-h-[85vh] md:max-h-[90vh] rounded-t-2xl md:rounded-2xl shadow-2xl flex flex-col relative z-10 border-t border-gray-700 md:border border-gray-700">
+            
+            <!-- 視窗標題列 -->
+            <div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center shrink-0">
+                <div class="flex items-center gap-3">
+                    <span id="modalCategory" class="px-3 py-1 rounded text-base font-bold bg-gray-700 text-gray-300">類別</span>
+                    <span id="modalTrack" class="text-xl font-bold">軌道</span>
+                </div>
+                <!-- 關閉按鈕 -->
+                <button onclick="closeModal()" class="w-10 h-10 rounded-full bg-gray-800 text-gray-400 flex items-center justify-center hover:bg-gray-700 active:scale-90 transition-all">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <!-- 視窗內容 (可捲動) -->
+            <div class="p-6 md:p-8 overflow-y-auto">
+                <h2 id="modalTitle" class="text-2xl md:text-3xl font-bold text-white mb-2 leading-tight">商品名稱</h2>
+                <p id="modalTiming" class="text-gray-400 text-lg mb-6 flex items-center gap-2">
+                    <i class="fas fa-clock"></i> 建議時段
+                </p>
+                
+                <!-- 大字話術區 -->
+                <div id="modalScriptBox" class="bg-black/40 p-6 rounded-xl border-l-8 relative">
+                    <div class="absolute right-4 top-4 text-gray-600 text-xs font-mono font-bold tracking-widest uppercase">SCRIPT</div>
+                    <p id="modalScript" class="text-3xl md:text-5xl font-bold text-white leading-snug text-left tracking-wide">
+                        這裡會顯示超大字體的話術內容...
+                    </p>
+                </div>
+            </div>
+
+            <!-- 底部大關閉按鈕 -->
+            <div class="p-4 border-t border-gray-800 bg-gray-900 rounded-b-xl shrink-0">
+                 <button onclick="closeModal()" class="w-full py-4 bg-gray-800 hover:bg-gray-700 active:bg-gray-600 text-white text-xl font-bold rounded-xl transition-colors border border-gray-700">
+                    關閉 / 回列表
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 資料來源
+        const products = [
+            {id: "01", track: "A", category: "清潔", name: "台灣製 強效水管疏通粉 (3入囤貨組)", margin: "12%", timing: "開場/有人問免運", script: "全家都要用，今天免運，3罐剛好用半年！"},
+            {id: "02", track: "A", category: "清潔", name: "台灣製 強效水管疏通粉 (單罐試用)", margin: "10%", timing: "新客進場流量大時", script: "一罐不到一杯咖啡錢，先搶先贏！"},
+            {id: "03", track: "A", category: "清潔", name: "洗衣槽酵素清潔粉 (4入組)", margin: "12%", timing: "婆媽客群/深夜場", script: "衣服洗不乾淨是洗衣機髒，這組直接把髒污炸出來。"},
+            {id: "04", track: "A", category: "清潔", name: "除黴慕斯 (浴室專用)", margin: "10%", timing: "下雨天/潮濕話題", script: "只要噴上去不用刷，黴菌自己掉下來。"},
+            {id: "05", track: "A", category: "清潔", name: "1080度旋轉水龍頭延伸器", margin: "15%", timing: "湊單時/展示新品", script: "刷牙洗臉不彎腰，這利潤低但我就是要給你們方便。"},
+            {id: "06", track: "A", category: "保健", name: "UNIQMAN 瑪卡 (90粒大包裝)", margin: "15%", timing: "男性觀眾/PM 11:00後", script: "男人專屬 88 折！這包吃下去，精神不一樣。"},
+            {id: "07", track: "A", category: "保健", name: "UNIQMAN 螯合鋅 (提升精氣神)", margin: "15%", timing: "搭配瑪卡一起推", script: "買瑪卡的記得帶鋅，效果加倍，還是 88 折。"},
+            {id: "08", track: "A", category: "保健", name: "UNIQMAN B群+馬卡 (上班族組)", margin: "12%", timing: "上班族抱怨累時", script: "加班太累的，這組 B 群加強版帶回去。"},
+            {id: "09", track: "A", category: "保健", name: "悠活原力 穀胱甘肽 (美白/好眠)", margin: "10%", timing: "女性/問美容時", script: "越睡越漂亮就是這罐，今天有折扣券必囤。"},
+            {id: "10", track: "A", category: "保健", name: "悠活原力 葉黃素 (護眼)", margin: "10%", timing: "講手機看太久時", script: "整天盯著手機搶單，眼睛要不要顧？這罐帶上。"},
+            {id: "11-15", track: "A", category: "保健", name: "延伸：UNIQMAN/悠活原力 其他5種不同功能單品", margin: "10-15%", timing: "針對特定痛點", script: "針對你們剛剛說的問題，我有這罐..."},
+            {id: "16", track: "A", category: "香氛", name: "Lenor 衣物芳香豆 (晨曦玫瑰)", margin: "10%", timing: "女性多/切換氣氛", script: "衣服香香的一整天心情就好，比香水還自然。"},
+            {id: "17", track: "A", category: "香氛", name: "Lenor 衣物芳香豆 (清晨草木)", margin: "10%", timing: "中性/男性客群", script: "男生用這個味道，女生會覺得你很乾淨。"},
+            {id: "18", track: "A", category: "香氛", name: "擴香瓶 (廁所/房間用)", margin: "12%", timing: "居家生活話題", script: "家裡要有高級感，味道最重要。"},
+            {id: "19", track: "A", category: "配件", name: "iPhone 17 頂級防窺保護貼", margin: "20%", timing: "有人問 iPhone 時 (必推)", script: "手機幾萬塊都在買了，這個貼膜保護你的隱私跟螢幕！"},
+            {id: "20", track: "A", category: "配件", name: "20W/30W PD 快充頭 (認證款)", margin: "15%", timing: "買手機/平板時", script: "現在手機都不送頭了，這顆充得快又不傷機。"},
+            {id: "21-30", track: "A", category: "配件", name: "iPhone 17/16 各型號軍規防摔殼", margin: "15%", timing: "問手機殼/顏色", script: "軍規防摔，這殼摔爛了我賠你新的（話術）。"},
+            {id: "31-40", track: "A", category: "清潔", name: "馬桶清潔劑、除油煙機清潔劑...等延伸品", margin: "10%", timing: "湊免運門檻", script: "差 99 免運？帶這罐馬桶清潔劑剛好。"},
+            {id: "41-50", track: "A", category: "網卡", name: "日本/韓國/歐洲 eSIM (依天數拆分)", margin: "8%", timing: "問出國/旅遊", script: "年底出國現在先買，反正 eSim 不會過期。"},
+            {id: "51", track: "B", category: "健身", name: "果果能量 乳清蛋白 (多口味單包)", margin: "8%", timing: "互動/猜口味/嘴饞", script: "奶茶、巧克力、芝麻...你猜我現在喝什麼口味？"},
+            {id: "52", track: "B", category: "健身", name: "果果能量 蛋白威化餅 (整盒)", margin: "8%", timing: "深夜餓了/湊單", script: "半夜肚子餓不敢吃宵夜？吃這個，有蛋白質又不怕胖。"},
+            {id: "53", track: "B", category: "健身", name: "果果能量 蛋白脆片", margin: "8%", timing: "看劇/零食話題", script: "看劇就是要咬東西，這個比洋芋片健康多了。"},
+            {id: "54", track: "B", category: "美妝", name: "SKINTIFIC 5X 神經醯胺面霜", margin: "8%", timing: "換季/皮膚乾", script: "換季脫皮的救星，這個修復力超強。"},
+            {id: "55", track: "B", category: "美妝", name: "SKINTIFIC 泥膜 (去黑頭)", margin: "8%", timing: "看到鼻頭粉刺時", script: "草莓鼻的救星，敷 10 分鐘粉刺浮出來。"},
+            {id: "56-70", track: "B", category: "延伸", name: "果果能量其餘15種口味/SKINTIFIC精華液", margin: "5-8%", timing: "豐富版面用", script: "口味超多，你們自己去賣場挑喜歡的。"},
+            {id: "71-80", track: "B", category: "日用", name: "衛生紙/濕紙巾 (整箱)", margin: "5%", timing: "絕對剛需/湊單", script: "這不用介紹了吧？反正都要用，趁免運搬一箱。"},
+            {id: "81", track: "C", category: "3C", name: "iPhone 17 256G (各色)", margin: "1%", timing: "秀肌肉/93折券主打", script: "我知道你們都想要這個，25 號券折 4000，比官網便宜！"},
+            {id: "82", track: "C", category: "3C", name: "iPhone 17 128G", margin: "1%", timing: "預算有限客群", script: "預算不夠上 256？那 128 也是香的。"},
+            {id: "83", track: "C", category: "3C", name: "Garmin Vivoactive 5", margin: "3%", timing: "運動/健康話題", script: "監測心率、睡眠，這支錶是你的健康管家。"},
+            {id: "84", track: "C", category: "3C", name: "Xiaomi 掃地機器人 S40 Pro", margin: "2%", timing: "懶人/家庭話題", script: "掃地拖地交給它，你去追劇就好。"},
+            {id: "85", track: "C", category: "3C", name: "POCO X7 / F7 Pro", margin: "2%", timing: "性價比/遊戲黨", script: "打傳說對決不卡頓，這支 CP 值最高。"},
+            {id: "86", track: "C", category: "3C", name: "Xiaomi 手環 9 Active", margin: "3%", timing: "學生/湊單", script: "幾百塊就有智慧手環，買給小孩也不心疼。"},
+            {id: "87", track: "C", category: "3C", name: "Dyson 吸塵器 / 吹風機", margin: "2%", timing: "高端形象展示", script: "Dyson 就是好用，今天商城日買最划算。"},
+            {id: "88", track: "C", category: "3C", name: "Nintendo Switch / PS5", margin: "1%", timing: "娛樂/話題引流", script: "週末在家無聊？這台拿去玩。"},
+            {id: "89-95", track: "C", category: "3C", name: "iPad Air / Pro / mini", margin: "1%", timing: "生產力/追劇", script: "買前生產力，買後愛奇藝，平板就是好用。"},
+            {id: "96-00", track: "C", category: "3C", name: "行動電源 / 高階耳機", margin: "3%", timing: "3C 配件湊單", script: "出門怕沒電？這顆帶著有安全感。"}
+        ];
+
+        // 設定：不同軌道的顏色與標籤
+        const config = {
+            'A': { border: 'border-track-a', text: 'text-track-a', label: '賺錢', bg: 'bg-yellow-900/10' },
+            'B': { border: 'border-track-b', text: 'text-track-b', label: '衝量', bg: 'bg-blue-900/10' },
+            'C': { border: 'border-track-c', text: 'text-gray-300', label: '引流', bg: 'bg-gray-800' }
+        };
+
+        const listContainer = document.getElementById('productTableBody');
+        const emptyState = document.getElementById('emptyState');
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        const body = document.getElementById('appBody');
+        
+        // Modal Elements
+        const modalCategory = document.getElementById('modalCategory');
+        const modalTrack = document.getElementById('modalTrack');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalTiming = document.getElementById('modalTiming');
+        const modalScript = document.getElementById('modalScript');
+        const modalScriptBox = document.getElementById('modalScriptBox');
+
+        let currentFilter = 'all';
+
+        // 初始化
+        renderList();
+
+        // 篩選按鈕事件
+        filterButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // 重置按鈕樣式
+                filterButtons.forEach(b => {
+                    b.classList.remove('bg-white', 'text-black', 'scale-105');
+                    b.classList.add('bg-gray-800', 'text-gray-400', 'border-transparent');
+                    if (b.dataset.filter === 'A') b.classList.add('text-track-a', 'border-track-a/40');
+                    if (b.dataset.filter === 'B') b.classList.add('text-track-b', 'border-track-b/40');
+                    if (b.dataset.filter === 'C') b.classList.add('text-white', 'border-white/40');
+                    if (b.dataset.filter === 'all') b.classList.add('bg-gray-600', 'text-white');
+                });
+                
+                // 設定當前按鈕 (白色高亮)
+                btn.className = "filter-btn active flex-1 px-4 py-3 rounded-lg bg-white text-black text-lg font-bold shadow scale-105 whitespace-nowrap border-0";
+                
+                currentFilter = btn.dataset.filter;
+                renderList();
+            });
+        });
+
+        function renderList() {
+            listContainer.innerHTML = '';
+            
+            const filtered = products.filter(product => {
+                return currentFilter === 'all' || product.track === currentFilter;
+            });
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                
+                filtered.forEach(product => {
+                    const style = config[product.track];
+                    const btn = document.createElement('button');
+                    // 大按鈕設計
+                    btn.className = `w-full text-left p-5 md:p-6 transition-all border-l-[6px] md:border-l-[10px] ${style.border} hover:bg-bg-active focus:outline-none flex justify-between items-center group min-h-[90px] border-b border-gray-800/50 active:bg-gray-800`;
+                    
+                    // 點擊觸發彈窗
+                    btn.onclick = () => openModal(product);
+
+                    btn.innerHTML = `
+                        <div class="flex-1 min-w-0 pr-2">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="px-2 py-0.5 rounded text-sm font-bold bg-gray-700 text-gray-300 shrink-0">${product.category}</span>
+                                <span class="text-base md:text-xl font-bold ${style.text}">[${style.label}]</span>
+                            </div>
+                            <h3 class="text-xl md:text-2xl font-bold text-gray-100 group-hover:text-white transition-colors leading-snug truncate">
+                                ${product.name}
+                            </h3>
+                            <p class="text-gray-500 text-sm md:text-lg mt-1 truncate">
+                                ${product.timing}
+                            </p>
+                        </div>
+                        <div class="flex flex-col items-end pl-3 border-l border-gray-700 ml-2 shrink-0">
+                            <span class="text-gray-500 text-[10px] font-bold uppercase text-right w-full">預估分潤*</span>
+                            <span class="text-3xl md:text-4xl font-bold ${style.text}">${product.margin}</span>
+                        </div>
+                    `;
+                    listContainer.appendChild(btn);
+                });
+            }
+        }
+
+        function openModal(product) {
+            const style = config[product.track];
+            
+            // 填入資料
+            modalCategory.innerText = product.category;
+            
+            modalTrack.innerText = `${product.track}軌 - ${style.label}款`;
+            modalTrack.className = `text-xl font-bold ${style.text}`;
+            
+            modalTitle.innerText = product.name;
+            
+            modalTiming.innerHTML = `<i class="fas fa-clock"></i> 時段：${product.timing}`;
+            
+            modalScript.innerText = product.script;
+            
+            // 設定邊框顏色以符合軌道
+            modalScriptBox.className = `bg-black/40 p-6 rounded-xl border-l-8 relative ${style.border}`;
+
+            // 顯示視窗
+            body.classList.remove('modal-hidden');
+            body.classList.add('modal-visible');
+        }
+
+        window.closeModal = function() {
+            body.classList.remove('modal-visible');
+            body.classList.add('modal-hidden');
+        };
+    </script>
+</body>
+</html>
+
