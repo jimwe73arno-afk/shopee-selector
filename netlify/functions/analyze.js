@@ -7,6 +7,14 @@ const MODEL = "gemini-2.5-flash";
 exports.handler = async (event, context) => {
   context.callbackWaitsForEmptyEventLoop = false;
 
+  // 立即記錄所有請求（診斷用）
+  console.log("🔥 Function called:", {
+    method: event.httpMethod,
+    path: event.path,
+    headers: event.headers,
+    hasBody: !!event.body
+  });
+
   // CORS 處理
   const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
@@ -15,7 +23,9 @@ exports.handler = async (event, context) => {
     "Content-Type": "application/json",
   };
 
+  // 處理 OPTIONS 預檢請求
   if (event.httpMethod === "OPTIONS") {
+    console.log("✅ OPTIONS preflight request");
     return {
       statusCode: 200,
       headers: corsHeaders,
@@ -23,11 +33,18 @@ exports.handler = async (event, context) => {
     };
   }
 
+  // 檢查請求方法
   if (event.httpMethod !== "POST") {
+    console.error("❌ Invalid method:", event.httpMethod, "Expected: POST");
     return {
       statusCode: 405,
       headers: corsHeaders,
-      body: JSON.stringify({ error: "Method Not Allowed" }),
+      body: JSON.stringify({ 
+        error: "Method Not Allowed",
+        received: event.httpMethod,
+        expected: "POST",
+        path: event.path
+      }),
     };
   }
 
