@@ -382,57 +382,67 @@
                     <button class="w-full py-3 border border-slate-700 text-slate-400 font-bold text-sm rounded pointer-events-none bg-slate-800/50">目前方案</button>
                 </div>
 
-                <!-- PRO -->
-                <div id="plan-card-pro" onclick="selectPlan('pro')" class="plan-card rounded-xl p-6 flex flex-col relative">
-                    <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-slate-800 border border-aiBlue text-aiBlue text-[10px] font-bold px-3 py-1 rounded-full tracking-wider shadow-[0_0_10px_rgba(0,160,233,0.3)]">
-                        熱銷首選 (Most Popular)
+                <!-- PRO 專業版卡片（主力賣點） -->
+                <div id="plan-card-pro"
+                     onclick="selectPlan('pro')"
+                     class="plan-card rounded-xl p-6 flex flex-col relative border-2 border-aiBlue bg-slate-900/80 shadow-[0_0_30px_rgba(0,160,233,0.2)] transform scale-105 z-10">
+                  <div class="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-[10px] font-bold px-4 py-1 rounded-full tracking-widest uppercase shadow-lg animate-pulse">
+                    🔥 店長推薦 (Most Popular)
+                  </div>
+
+                  <div class="mb-4 mt-2">
+                    <h4 class="text-sm font-bold text-aiBlue uppercase tracking-widest mb-2">專業版 Professional</h4>
+                    <div class="flex items-baseline">
+                      <span class="text-5xl font-display font-bold text-white">$688</span>
+                      <span class="text-sm text-slate-400 ml-1">/ 月</span>
                     </div>
-                    <h4 class="text-sm font-bold text-aiBlue uppercase tracking-widest mb-2 mt-2">專業版 Professional</h4>
-                    <p class="text-[10px] text-textSub mb-3 h-8 leading-tight">專為全職賣家打造。利用高頻率測品與流量攔截，快速建立爆品矩陣。</p>
-                    <div class="mb-4">
-                        <span class="text-3xl font-display font-bold text-textMain">$688</span>
-                        <span class="text-xs text-textSub">/ 月</span>
-                    </div>
-                    <ul class="space-y-3 text-xs mb-8 flex-1 font-medium text-gray-300">
-                        <li class="flex items-center"><i class="fa-solid fa-bolt feature-icon feature-check"></i> 每日 50 次 標準戰術分析 (BrotherG 極速引擎)</li>
-                        <li class="flex items-center"><i class="fa-solid fa-comments feature-icon feature-check"></i> 無限次 選品文字諮詢</li>
-                        <li class="flex items-center"><i class="fa-solid fa-file-lines feature-icon feature-check"></i> 秒級生成 直播帶貨逐字稿</li>
-                        <li class="flex items-center"><i class="fa-solid fa-boxes-stacked feature-icon feature-check"></i> 針對低客單價跑量商品優化</li>
-                        <li class="flex items-center"><i class="fa-solid fa-pen-nib feature-icon feature-check"></i> 競品文案一鍵仿寫與優化</li>
-                    </ul>
-                    <button onclick="handleCheckout('PRO')" class="w-full py-3 bg-slate-800 text-aiBlue border border-aiBlue font-bold text-sm rounded hover:bg-aiBlue hover:text-white transition-colors">立即升級 PRO</button>
+                    <p class="text-xs text-gray-300 mt-3 leading-relaxed font-medium">
+                      別讓選品憑感覺！解鎖 AI 戰術分析，每天 20 次機會，只要選中一個爆品就回本。
+                    </p>
+                  </div>
+
+                  <div class="w-full h-px bg-slate-700 my-4"></div>
+
+                  <ul class="space-y-4 text-xs mb-8 flex-1 text-white font-medium">
+                    <li class="flex items-start"><i class="fa-solid fa-check w-5 text-aiBlue mt-0.5"></i> <span>每日 <strong>20 次</strong> 深度戰術分析</span></li>
+                    <li class="flex items-start"><i class="fa-solid fa-check w-5 text-aiBlue mt-0.5"></i> <span>解鎖 <strong>C-A-B 完整操盤策略</strong></span></li>
+                    <li class="flex items-start"><i class="fa-solid fa-check w-5 text-aiBlue mt-0.5"></i> <span>生成 <strong>直播爆單口播稿</strong></span></li>
+                    <li class="flex items-start"><i class="fa-solid fa-check w-5 text-aiBlue mt-0.5"></i> <span>優先算力通道（不排隊）</span></li>
+                  </ul>
+
+                  <button onclick="window.open('https://p.ecpay.com.tw/B9C31CF', '_blank')"
+                          class="w-full py-4 bg-gradient-to-r from-blue-600 to-aiBlue text-white font-bold text-sm rounded-lg hover:shadow-lg hover:scale-[1.02] transition-all tracking-widest border border-blue-400/30">
+                    立即升級 PRO 賺錢
+                  </button>
                 </div>
 
-                <!-- MASTER -->
-                <div id="plan-card-master" onclick="selectPlan('master')" class="plan-card rounded-xl p-6 flex flex-col relative">
-                    <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-yellow-600 to-amber-700 text-white text-[10px] font-bold px-3 py-1 rounded-full tracking-wider shadow-[0_0_15px_rgba(245,158,11,0.4)]">
-                        企業方案 (Enterprise)
-                    </div>
-                    <h4 class="text-sm font-bold text-amber-500 uppercase tracking-widest mb-2 mt-2">大師版 Master</h4>
-                    <p class="text-[10px] text-textSub mb-3 h-8 leading-tight">不只是工具，更是你的首席營運長。具備深度邏輯推演能力與獨家操盤心法。</p>
-                    <div class="mb-4">
-                        <span class="text-3xl font-display font-bold text-textMain">$1,688</span>
-                        <span class="text-xs text-textSub">/ 月</span>
-                    </div>
-                    <ul class="space-y-3 text-xs mb-4 flex-1 text-textMain">
-                        <li class="flex items-center"><i class="fa-solid fa-brain feature-icon feature-gold"></i> 每日 50 次 高階策略推演 (BrotherG 深度邏輯架構)</li>
-                        <li class="flex items-center"><i class="fa-solid fa-gem feature-icon feature-gold"></i> 生成高客單價與品牌感銷售劇本</li>
-                        <li class="flex items-center"><i class="fa-solid fa-user-group feature-icon feature-gold"></i> 消費者心理學戰術植入 (痛點挖掘)</li>
-                        <li class="flex items-center"><i class="fa-solid fa-memory feature-icon feature-gold"></i> AI 長期記憶 (鎖定店鋪風格)</li>
-                        <li class="flex items-center"><i class="fa-solid fa-forward-fast feature-icon feature-gold"></i> 優先算力通道 (尖峰時刻不降速)</li>
-                    </ul>
-                    
-                    <!-- Bonus Section -->
-                    <div class="mt-2 pt-3 border-t border-slate-700">
-                        <p class="text-[10px] text-amber-500 font-bold mb-2 uppercase tracking-wide">訂閱即贈：BrotherG 獨家操盤 SOP</p>
-                        <ul class="text-[10px] space-y-1.5 text-gray-400">
-                            <li class="flex items-center"><i class="fa-solid fa-check feature-icon text-amber-600"></i> 直播全流程防呆地圖 (開播檢核表)</li>
-                            <li class="flex items-center"><i class="fa-solid fa-check feature-icon text-amber-600"></i> 黃金排品節奏學 (流量款與利潤款配置)</li>
-                            <li class="flex items-center"><i class="fa-solid fa-check feature-icon text-amber-600"></i> 成交話術底層邏輯 (憋單與轉化拆解)</li>
-                        </ul>
-                    </div>
+                <!-- MASTER 大師版：鎖起來、只負責製造「還有下一階」的感覺 -->
+                <div id="plan-card-master"
+                     class="plan-card rounded-xl p-6 flex flex-col relative border border-slate-800 bg-slate-950/50 opacity-75 grayscale-[0.5] cursor-not-allowed">
+                  <div class="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-slate-700 text-slate-300 text-[10px] font-bold px-4 py-1 rounded-full tracking-widest uppercase border border-slate-600">
+                    🚧 即將開放 Waitlist
+                  </div>
 
-                    <button onclick="handleCheckout('MASTER')" class="w-full mt-4 py-3 bg-gradient-to-r from-amber-600 to-yellow-600 text-white font-bold text-sm rounded hover:shadow-[0_0_20px_rgba(245,158,11,0.4)] hover:scale-105 transition-all border border-yellow-500/50">成為大師</button>
+                  <div class="mb-4 mt-2 text-center">
+                    <h4 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">大師版 Master</h4>
+                    <div class="flex items-baseline justify-center">
+                      <span class="text-3xl font-display font-bold text-slate-600">$1,688</span>
+                      <span class="text-xs text-slate-600 ml-1">/ 月</span>
+                    </div>
+                  </div>
+
+                  <div class="flex-1 flex flex-col items-center justify-center text-center p-4 space-y-4">
+                    <i class="fa-solid fa-lock text-4xl text-slate-700"></i>
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                      BrotherG 獨家高階操盤系統正在實驗室調校中。<br>
+                      未來會包含：私密選品庫、實戰 SOP、全案教學。
+                    </p>
+                  </div>
+
+                  <button disabled
+                          class="w-full mt-6 py-3 bg-slate-800 text-slate-500 font-bold text-sm rounded border border-slate-700">
+                    暫未開放申請
+                  </button>
                 </div>
             </div>
         </div>
@@ -488,11 +498,18 @@
         }
         
         function selectPlan(plan) {
+            // Master 先鎖起來
+            if (plan === 'master') {
+                showToast('大師版正在調校中，先用 PRO 幫你賺 688 回本。');
+                return;
+            }
             if (currentPlan === plan) return;
             resetPlans();
             currentPlan = plan;
             
             const card = document.getElementById(`plan-card-${plan}`);
+            if (!card) return;
+            
             card.classList.remove('border-slate-700'); 
             card.classList.add('active'); 
             
@@ -500,8 +517,7 @@
                 card.classList.add('border-slate-500');
             } else if(plan === 'pro') {
                 card.classList.add('border-aiBlue', 'shadow-glow-pro');
-            } else if(plan === 'master') {
-                card.classList.add('border-yellow-500', 'shadow-glow-master');
+                window.userTier = 'pro';
             }
         }
 
@@ -581,81 +597,100 @@
             updateTierUI();
         }
 
+        // API endpoint 統一走傳統 Netlify Function
+        const ANALYZE_ENDPOINT = '/.netlify/functions/analyze';
+
+        // 預設方案：free（之後 Gmail + Firebase 完成再從登入狀態帶入）
+        window.userTier = window.userTier || 'free';
+
+        // 假裝有「剩餘免費次數」，目前先給 5；之後接 Firebase 再換掉
+        window.userCredits = window.userCredits ?? 5;
+
         async function runShopeeAnalysis() {
-            // 1) 登入與配額檢查
-            if (!window.isLoggedIn || !window.isLoggedIn()) {
-                showToast('請先登入以使用分析功能');
-                showLoginModal();
+            const inputEl = document.getElementById('shopee-keyword');
+            const contentDiv = document.getElementById('shopee-markdown-content');
+            const btn = document.getElementById('analyze-btn');
+
+            const textPrompt = (inputEl.value || '').trim();
+            if (!textPrompt) {
+                showToast('先隨便打幾句：類別＋利潤＋目前遇到的瓶頸。');
                 return;
             }
 
-            const input = document.getElementById('shopee-keyword').value.trim();
-            if (!input) {
-                showToast('請輸入產品描述或數據');
-                return;
-            }
-
-            const userPlan = getUserPlan();
-            const normalizedPlan = userPlan.toUpperCase();
-            
-            if (normalizedPlan === 'FREE' && remainingUsage <= 0) {
-                showToast('今日免費次數已用罄，請升級方案');
-                openPricingModal();
-                return;
-            }
-
-            // 2) UI 狀態切換
+            // UI 狀態切換
             const emptyBlock = document.getElementById('shopee-empty');
             const resultBlock = document.getElementById('shopee-results');
             const loadingBlock = document.getElementById('shopee-loading');
-            const contentDiv = document.getElementById('shopee-markdown-content');
 
             emptyBlock.classList.add('hidden');
             resultBlock.classList.add('hidden');
             loadingBlock.classList.remove('hidden');
             contentDiv.innerHTML = '';
 
-            if (normalizedPlan === 'FREE') {
-                remainingUsage--;
-                document.getElementById('usage-count').innerText = remainingUsage;
-            } else {
-                document.getElementById('usage-count').innerText = "∞";
-            }
-
-            const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
-            const userName = currentUser ? (currentUser.displayName || currentUser.email || '賣家') : '賣家';
-            showToast(`${userName} 你好，BrotherG 正在為你的產品進行深度運算...`);
+            // 按鈕進入 loading 狀態
+            const oldLabel = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = '分析中…';
 
             try {
-                // 3) 呼叫 Netlify analyze（純文字模式）
-                const userEmail = currentUser ? (currentUser.email || null) : null;
-                const userTier = normalizedPlan;
+                const tier = (window.userTier || getUserPlan() || 'free').toUpperCase();
 
-                // 3) 呼叫 Netlify Function（標準 Functions，非 Edge）
-                const response = await fetch('/.netlify/functions/analyze', {
+                const resp = await fetch(ANALYZE_ENDPOINT, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        textPrompt: input,
-                        userEmail: userEmail,
-                        userTier: userTier
+                        textPrompt,
+                        tier
                     })
                 });
 
-                if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-                    throw new Error(errorData.error || '分析服務暫時無法使用，請稍後再試');
+                if (!resp.ok) {
+                    throw new Error('分析服務暫時無法使用，請稍後再試');
                 }
 
-                // 4) 解析 JSON 響應
-                const data = await response.json();
-                const resultText = data.text || data.error || 'AI 暫時沒有產生內容，請稍後再試。';
+                const data = await resp.json();
+                const result = data.result || data.text || '目前無法產生建議，稍後再試。';
 
-                // 5) 顯示結果
+                // 顯示 AI 主體內容
                 if (typeof marked !== 'undefined') {
-                    contentDiv.innerHTML = marked.parse(resultText);
+                    contentDiv.innerHTML = marked.parse(result);
                 } else {
-                    contentDiv.textContent = resultText;
+                    contentDiv.textContent = result;
+                }
+
+                // 免費版：在底下插一塊「模糊上鎖」催付
+                if (tier === 'FREE') {
+                    const upsellHTML = `
+                        <div class="mt-8 border-t-2 border-dashed border-slate-700 pt-6">
+                            <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-xl p-5 relative overflow-hidden group cursor-pointer"
+                                 onclick="openPricingModal()">
+                              
+                                <div class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-10 backdrop-blur-[2px] group-hover:backdrop-blur-none transition-all duration-500">
+                                    <div class="bg-aiBlue/20 border border-aiBlue/50 text-aiBlue px-4 py-2 rounded-full font-bold text-[10px] flex items-center gap-2 shadow-[0_0_20px_rgba(0,160,233,0.4)] animate-pulse">
+                                        <i class="fa-solid fa-lock"></i> 解鎖 PRO 版完整「利潤放大術」
+                                    </div>
+                                    <p class="text-gray-400 text-[10px] mt-2">點一下，看看 $688 怎麼幫你把 3 萬分潤做到頂。</p>
+                                </div>
+
+                                <h4 class="text-gray-500 font-bold mb-2">💎 [PRO 專屬] 進階利潤放大策略：</h4>
+                                <p class="text-gray-600 text-xs leading-relaxed blur-sm select-none">
+                                  針對這個品類，其實還有一個「隱藏 C-A-B 排品組合」可以把客單價再拉 30%…<br>
+                                  詳細拆解僅提供給 PRO 專業版，用作長期操盤策略與直播話術腳本…
+                                </p>
+                            </div>
+                            
+                            <p class="text-center text-xs text-slate-500 mt-3">
+                                今日剩餘免費次數：<span class="text-aiBlue font-bold">${window.userCredits}</span> 次
+                            </p>
+                        </div>
+                    `;
+                    contentDiv.innerHTML += upsellHTML;
+                }
+
+                // 自動捲到底
+                const panel = contentDiv.parentElement;
+                if (panel) {
+                    panel.scrollTop = panel.scrollHeight;
                 }
 
                 loadingBlock.classList.add('hidden');
@@ -666,8 +701,11 @@
                 console.error(err);
                 loadingBlock.classList.add('hidden');
                 resultBlock.classList.remove('hidden');
-                contentDiv.innerHTML = `<p class="text-red-400 text-sm">系統錯誤：${err.message}</p>`;
+                contentDiv.innerHTML = `<p class="text-red-400 text-sm">系統忙碌中，請稍後再試。<br>${err.message}</p>`;
                 showToast('分析時發生錯誤，請稍後再試');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = oldLabel;
             }
         }
 
