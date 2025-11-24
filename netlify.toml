@@ -3,8 +3,19 @@
   publish = "public"
   functions = "netlify/functions"
 
+# 忽略 Firebase API Key 的 secrets 掃描
+# Firebase API Key 是設計為公開的，安全性靠授權網域控制
+[build.environment]
+  SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
+
 [functions]
   node_bundler = "esbuild"
+
+# 將 /shopee 重定向到首頁
+[[redirects]]
+  from = "/shopee"
+  to = "/"
+  status = 301
 
 [[redirects]]
   from = "/api/*"
