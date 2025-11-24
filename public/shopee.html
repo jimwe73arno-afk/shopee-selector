@@ -586,6 +586,7 @@
 
             try {
                 // 3) 呼叫 Netlify analyze（純文字模式）
+                console.log('📤 發送分析請求...');
                 const response = await fetch('/.netlify/functions/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -595,49 +596,46 @@
                     })
                 });
 
+                console.log('📥 收到響應:', response.status, response.statusText);
+
                 if (!response.ok) {
                     const errorText = await response.text();
                     console.error('API 錯誤:', response.status, errorText);
-                    throw new Error('分析服務暫時無法使用，請稍後再試');
+                    throw new Error(`分析服務錯誤 (${response.status})，請稍後再試`);
                 }
 
-                // 4) 讀取 JSON 響應（非串流）
-                const data = await response.json();
-                console.log('✅ API 響應:', data);
+                // 4) 讀取響應文本（後端返回的是 JSON 字符串）
+                const responseText = await response.text();
+                console.log('📝 響應文本長度:', responseText.length);
+                console.log('📝 響應文本前 200 字:', responseText.substring(0, 200));
 
-                // 5) 解析並顯示結果（禮貌使用用戶名字）
+                // 5) 解析 JSON（後端可能返回 JSON 字符串，需要解析）
+                let data;
+                try {
+                    // 先嘗試直接解析
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    // 如果解析失敗，可能是字符串格式的 JSON，再試一次
+                    console.warn('第一次 JSON 解析失敗，嘗試清理後再解析');
+                    const cleanText = responseText.replace(/```json|```/g, "").trim();
+                    try {
+                        data = JSON.parse(cleanText);
+                    } catch (e2) {
+                        // 如果還是失敗，就當作純文本處理
+                        console.error('JSON 解析失敗，使用原始文本');
+                        data = { summary: responseText };
+                    }
+                }
+
+                console.log('✅ 解析後的數據:', data);
+
+                // 6) 解析並顯示結果（禮貌使用用戶名字）
                 let markdownContent = '';
                 
+                markdownContent += `### ${userName}，這是您的市場洞察報告\n\n`;
+                
                 if (data.summary) {
-                    markdownContent += `### ${userName}，這是您的市場洞察報告\n\n`;
                     markdownContent += data.summary + '\n\n';
-                } else if (typeof data === 'string') {
-                    // 如果後端直接返回字符串（JSON 字符串）
-                    try {
-                        const parsedData = JSON.parse(data);
-                        if (parsedData.summary) {
-                            markdownContent += `### ${userName}，這是您的市場洞察報告\n\n`;
-                            markdownContent += parsedData.summary + '\n\n';
-                            if (parsedData.recommendations && Array.isArray(parsedData.recommendations)) {
-                                markdownContent += `### 銷售組合策略 (C-A-B 模型應用)\n\n`;
-                                parsedData.recommendations.forEach(rec => {
-                                    const recText = typeof rec === 'string' ? rec : (rec.item || rec.reason || JSON.stringify(rec));
-                                    markdownContent += `* ${recText}\n`;
-                                });
-                                markdownContent += '\n';
-                            }
-                            if (parsedData.plan) {
-                                markdownContent += `### 轉化率優化建議 (文案話術)\n\n${parsedData.plan}\n`;
-                            }
-                        } else {
-                            markdownContent += `### ${userName}，這是您的市場洞察報告\n\n${data}\n`;
-                        }
-                    } catch (e) {
-                        markdownContent += `### ${userName}，這是您的市場洞察報告\n\n${data}\n`;
-                    }
-                } else {
-                    markdownContent += `### ${userName}，這是您的市場洞察報告\n\n`;
-                    markdownContent += JSON.stringify(data, null, 2) + '\n\n';
                 }
                 
                 if (data.recommendations && Array.isArray(data.recommendations)) {
@@ -647,10 +645,17 @@
                         markdownContent += `* ${recText}\n`;
                     });
                     markdownContent += '\n';
+                } else if (data.recommendations && typeof data.recommendations === 'string') {
+                    markdownContent += `### 銷售組合策略 (C-A-B 模型應用)\n\n${data.recommendations}\n\n`;
                 }
                 
                 if (data.plan) {
                     markdownContent += `### 轉化率優化建議 (文案話術)\n\n${data.plan}\n`;
+                }
+
+                // 如果沒有有效內容，顯示原始數據
+                if (!data.summary && !data.recommendations && !data.plan) {
+                    markdownContent += responseText + '\n';
                 }
 
                 loadingBlock.classList.add('hidden');
@@ -666,11 +671,17 @@
 
                 showToast(`${userName}，分析報告已生成完畢！`);
             } catch (err) {
-                console.error('分析錯誤:', err);
+                console.error('❌ 分析錯誤:', err);
                 loadingBlock.classList.add('hidden');
                 resultBlock.classList.remove('hidden');
                 const errorUserName = currentUser ? (currentUser.displayName || currentUser.email || '賣家') : '賣家';
-                contentDiv.innerHTML = `<p class="text-red-400 text-sm">系統錯誤：${err.message}</p>`;
+                if (contentDiv) {
+                    contentDiv.innerHTML = `<div class="text-red-400 text-sm p-4 border border-red-500 rounded-lg">
+                        <p class="font-bold mb-2">系統錯誤：</p>
+                        <p>${err.message}</p>
+                        <p class="text-xs mt-2 text-gray-400">請檢查網路連接或稍後再試</p>
+                    </div>`;
+                }
                 showToast(`${errorUserName}，分析時發生錯誤，請稍後再試`);
             }
         }
