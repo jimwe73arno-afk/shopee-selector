@@ -16,79 +16,6 @@
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-        
-        // Firebase 配置（請替換為您的 Firebase 項目配置）
-        // 從環境變數或直接配置中取得
-        const firebaseConfig = {
-            apiKey: window.FIREBASE_API_KEY || "YOUR_API_KEY",
-            authDomain: window.FIREBASE_AUTH_DOMAIN || "YOUR_AUTH_DOMAIN",
-            projectId: window.FIREBASE_PROJECT_ID || "YOUR_PROJECT_ID",
-            storageBucket: window.FIREBASE_STORAGE_BUCKET || "YOUR_STORAGE_BUCKET",
-            messagingSenderId: window.FIREBASE_MESSAGING_SENDER_ID || "YOUR_MESSAGING_SENDER_ID",
-            appId: window.FIREBASE_APP_ID || "YOUR_APP_ID"
-        };
-        
-        // 初始化 Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const provider = new GoogleAuthProvider();
-        
-        // 設定 Google 登入的額外參數
-        provider.setCustomParameters({
-            prompt: 'select_account'
-        });
-        
-        // 將 Firebase 實例暴露到全局
-        window.firebaseAuth = auth;
-        window.firebaseProvider = provider;
-        window.firebaseSignIn = signInWithPopup;
-        window.firebaseSignOut = signOut;
-        window.firebaseOnAuthStateChanged = onAuthStateChanged;
-        
-        // 監聽登入狀態變化
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                // 用戶已登入
-                const userData = {
-                    uid: user.uid,
-                    displayName: user.displayName,
-                    email: user.email,
-                    photoURL: user.photoURL
-                };
-                localStorage.setItem('userId', user.uid);
-                localStorage.setItem('userData', JSON.stringify(userData));
-                window.currentUser = userData;
-                
-                // 更新 UI
-                const userAvatar = document.getElementById('user-avatar');
-                const logoutBtn = document.getElementById('logout-btn');
-                if (userAvatar) {
-                    userAvatar.classList.remove('hidden');
-                    userAvatar.textContent = user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U';
-                    userAvatar.title = user.displayName || user.email;
-                }
-                if (logoutBtn) logoutBtn.classList.remove('hidden');
-            } else {
-                // 用戶已登出
-                localStorage.removeItem('userId');
-                localStorage.removeItem('userData');
-                window.currentUser = null;
-                
-                // 更新 UI
-                const userAvatar = document.getElementById('user-avatar');
-                const logoutBtn = document.getElementById('logout-btn');
-                if (userAvatar) userAvatar.classList.add('hidden');
-                if (logoutBtn) logoutBtn.classList.add('hidden');
-            }
-        });
-        
-        console.log('✅ Firebase 已初始化');
-    </script>
-    
     <script>
         tailwind.config = {
             theme: {
@@ -212,7 +139,7 @@
                 <h1 class="text-3xl font-display font-bold text-textMain mb-2">身份驗證</h1>
                 <p class="text-textSub mb-8 font-light text-sm">請登入 Google 帳號以啟用深度運算引擎</p>
                 
-                <button onclick="handleGoogleLogin()" class="w-full bg-white text-gray-900 font-bold py-3.5 rounded-lg hover:bg-gray-100 transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-xl hover:scale-105 transform duration-200 border border-gray-200" id="login-btn">
+                <button onclick="handleGoogleLogin()" class="w-full bg-white text-gray-900 font-bold py-3.5 rounded-lg hover:bg-gray-100 transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-xl hover:scale-105 transform duration-200 border border-gray-200" id="login-btn-modal">
                     <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google">
                     <span>使用 Google 帳號登入</span>
                 </button>
@@ -240,10 +167,21 @@
                 </div>
                 <a href="/shopee.html" class="border border-border px-3 py-1 rounded text-aiBlue bg-blue-50 font-bold hover:bg-aiBlue hover:text-white transition-colors cursor-pointer">Shopee Analyst (深色版)</a>
                 
-                <!-- User Avatar & Logout -->
-                <div class="flex items-center space-x-3">
-                    <div id="user-avatar" class="w-8 h-8 rounded-full border-2 border-aiBlue bg-blue-50 flex items-center justify-center text-xs font-bold text-aiBlue hidden cursor-pointer" title="已登入" onclick="showLoginModal()"></div>
-                    <button id="logout-btn" onclick="handleLogout()" class="text-xs text-textSub hover:text-red-500 transition-colors hidden" title="登出">
+                <!-- 登入按鈕 -->
+                <button id="login-btn" onclick="handleGoogleLogin()" 
+                    class="hidden flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-xs font-mono">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-4 h-4" alt="Google">
+                    <span>登入</span>
+                </button>
+
+                <!-- 用戶資訊（登入後顯示） -->
+                <div id="user-info" class="hidden flex items-center gap-3">
+                    <div id="user-avatar" 
+                        class="w-8 h-8 rounded-full border-2 border-aiBlue bg-blue-50 text-aiBlue flex items-center justify-center font-bold text-xs cursor-pointer">
+                    </div>
+                    <span id="user-name" class="text-xs font-mono text-textSub hidden md:inline"></span>
+                    <button id="logout-btn" onclick="handleLogout()" 
+                        class="text-xs text-textSub hover:text-red-500 transition-colors" title="登出">
                         <i class="fa-solid fa-power-off"></i>
                     </button>
                 </div>
@@ -739,126 +677,14 @@
             }
         }
 
-        // --- Firebase Google Login Functions ---
-        let currentUser = null;
-        
-        // 從 localStorage 恢復用戶狀態
-        window.addEventListener('DOMContentLoaded', () => {
-            const savedUserData = localStorage.getItem('userData');
-            if (savedUserData) {
-                try {
-                    currentUser = JSON.parse(savedUserData);
-                    updateUserUI(currentUser);
-                } catch (e) {
-                    console.error('Failed to parse user data:', e);
-                }
-            }
-        });
-        
-        function updateUserUI(user) {
-            const userAvatar = document.getElementById('user-avatar');
-            const logoutBtn = document.getElementById('logout-btn');
-            
-            if (user) {
-                if (userAvatar) {
-                    userAvatar.classList.remove('hidden');
-                    userAvatar.textContent = user.displayName ? user.displayName.charAt(0).toUpperCase() : (user.email ? user.email.charAt(0).toUpperCase() : 'U');
-                    userAvatar.title = user.displayName || user.email || '已登入';
-                }
-                if (logoutBtn) logoutBtn.classList.remove('hidden');
-            } else {
-                if (userAvatar) userAvatar.classList.add('hidden');
-                if (logoutBtn) logoutBtn.classList.add('hidden');
-            }
-        }
-        
-        async function handleGoogleLogin() {
-            const btn = document.getElementById('login-btn');
-            if (!btn) return;
-            
-            // 檢查 Firebase 是否已初始化
-            if (!window.firebaseAuth || !window.firebaseProvider || !window.firebaseSignIn) {
-                showToast('Firebase 尚未初始化，請檢查配置');
-                console.error('Firebase 未初始化');
-                return;
-            }
-            
-            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 驗證中...';
-            btn.disabled = true;
-            
-            try {
-                const result = await window.firebaseSignIn(window.firebaseAuth, window.firebaseProvider);
-                const user = result.user;
-                
-                currentUser = {
-                    uid: user.uid,
-                    displayName: user.displayName,
-                    email: user.email,
-                    photoURL: user.photoURL
-                };
-                
-                localStorage.setItem('userId', user.uid);
-                localStorage.setItem('userData', JSON.stringify(currentUser));
-                
-                document.getElementById('login-overlay').classList.add('hidden');
-                updateUserUI(currentUser);
-                
-                btn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google"><span>使用 Google 帳號登入</span>';
-                btn.disabled = false;
-                
-                showToast(`登入成功！歡迎 ${user.displayName || user.email}`);
-                
-            } catch (error) {
-                console.error('登入錯誤:', error);
-                btn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google"><span>使用 Google 帳號登入</span>';
-                btn.disabled = false;
-                
-                let errorMsg = '登入失敗';
-                if (error.code === 'auth/popup-closed-by-user') {
-                    errorMsg = '登入已取消';
-                } else if (error.code === 'auth/popup-blocked') {
-                    errorMsg = '彈出視窗被阻擋，請允許彈出視窗';
-                } else if (error.message) {
-                    errorMsg = error.message;
-                }
-                showToast(errorMsg);
-            }
-        }
-        
-        async function handleLogout() {
-            if (!window.firebaseAuth || !window.firebaseSignOut) {
-                showToast('Firebase 尚未初始化');
-                return;
-            }
-            
-            showToast('正在登出...');
-            
-            try {
-                await window.firebaseSignOut(window.firebaseAuth);
-                currentUser = null;
-                localStorage.removeItem('userId');
-                localStorage.removeItem('userData');
-                updateUserUI(null);
-                showToast('已安全登出');
-            } catch (error) {
-                console.error('登出錯誤:', error);
-                showToast('登出失敗: ' + error.message);
-            }
-        }
-        
-        function showLoginModal() {
-            const overlay = document.getElementById('login-overlay');
-            if (overlay) {
-                overlay.classList.remove('hidden');
-            }
-        }
-        
-        window.handleGoogleLogin = handleGoogleLogin;
-        window.handleLogout = handleLogout;
-        window.showLoginModal = showLoginModal;
-        
         // --- Shopee Analysis API Call ---
         async function runShopeeAnalysis() {
+            // 檢查登入
+            if (!window.isLoggedIn || !window.isLoggedIn()) {
+                showToast('請先登入以使用分析功能');
+                showLoginModal();
+                return;
+            }
             if (shopeeMode !== 'free') return showToast('請切換至免費版使用文字分析');
             
             const keyword = document.getElementById('shopee-keyword').value;
@@ -1124,6 +950,12 @@
 
         // --- Image Analysis Function ---
         async function runShopeeImageAnalysis() {
+            // 檢查登入
+            if (!window.isLoggedIn || !window.isLoggedIn()) {
+                showToast('請先登入以使用圖片分析功能');
+                showLoginModal();
+                return;
+            }
             console.log('🚀 [圖片分析] 開始分析，已上傳圖片數:', uploadedImages.length);
             
             if (uploadedImages.length === 0) {
@@ -1407,5 +1239,12 @@
             switchShopeeMode('free'); // Set default mode
         };
     </script>
+
+    <!-- Firebase SDK (放在 </body> 之前) -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
+
+    <!-- 全站共用登入模組 -->
+    <script src="/js/auth.js"></script>
 </body>
 </html>
