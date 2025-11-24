@@ -545,7 +545,7 @@
         }
 
         async function runShopeeAnalysis() {
-            // 檢查登入（使用 auth.js 的函數）
+            // 1) 登入與配額檢查
             const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
             
             if (!currentUser) {
@@ -555,57 +555,86 @@
             }
 
             const input = document.getElementById('shopee-keyword').value.trim();
-            if(!input) return showToast('請輸入產品描述或數據');
+            if (!input) {
+                showToast('請輸入產品描述或數據');
+                return;
+            }
 
-            if(remainingUsage <= 0) {
+            if (remainingUsage <= 0) {
                 showToast('今日免費次數已用罄，請升級方案');
                 openPricingModal();
                 return;
             }
 
-            document.getElementById('shopee-empty').classList.add('hidden');
-            document.getElementById('shopee-results').classList.add('hidden');
-            document.getElementById('shopee-loading').classList.remove('hidden');
-            
+            // 2) UI 狀態切換
+            const emptyBlock   = document.getElementById('shopee-empty');
+            const resultBlock  = document.getElementById('shopee-results');
+            const loadingBlock = document.getElementById('shopee-loading');
+            const contentDiv   = document.getElementById('shopee-markdown-content');
+
+            emptyBlock.classList.add('hidden');
+            resultBlock.classList.add('hidden');
+            loadingBlock.classList.remove('hidden');
+
+            contentDiv.innerHTML = '';
+
             remainingUsage--;
             document.getElementById('usage-count').innerText = remainingUsage;
 
-            const userName = currentUser.displayName || currentUser.email || '用戶';
-            showToast(`${userName}，BrotherG 正在為您的產品進行深度運算...`);
+            const userName = currentUser.displayName || currentUser.email || '賣家';
+            showToast(`${userName} 你好，BrotherG 正在為你的產品進行深度運算...`);
 
             try {
-                // 调用后端 API
+                // 3) 呼叫 Netlify analyze（純文字模式）
                 const response = await fetch('/.netlify/functions/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         textPrompt: input,
-                        images: []
+                        images: []    // 目前先不傳圖片
                     })
                 });
 
                 if (!response.ok) {
                     const errorText = await response.text();
                     console.error('API 錯誤:', response.status, errorText);
-                    throw new Error(`API 錯誤: ${response.status}`);
+                    throw new Error('分析服務暫時無法使用，請稍後再試');
                 }
 
+                // 4) 讀取 JSON 響應（非串流）
                 const data = await response.json();
-                
                 console.log('✅ API 響應:', data);
-                
-                document.getElementById('shopee-loading').classList.add('hidden');
-                document.getElementById('shopee-results').classList.remove('hidden');
 
-                // 解析并显示结果（禮貌使用用戶名字）
+                // 5) 解析並顯示結果（禮貌使用用戶名字）
                 let markdownContent = '';
                 
                 if (data.summary) {
                     markdownContent += `### ${userName}，這是您的市場洞察報告\n\n`;
                     markdownContent += data.summary + '\n\n';
                 } else if (typeof data === 'string') {
-                    markdownContent += `### ${userName}，這是您的市場洞察報告\n\n`;
-                    markdownContent += data + '\n\n';
+                    // 如果後端直接返回字符串（JSON 字符串）
+                    try {
+                        const parsedData = JSON.parse(data);
+                        if (parsedData.summary) {
+                            markdownContent += `### ${userName}，這是您的市場洞察報告\n\n`;
+                            markdownContent += parsedData.summary + '\n\n';
+                            if (parsedData.recommendations && Array.isArray(parsedData.recommendations)) {
+                                markdownContent += `### 銷售組合策略 (C-A-B 模型應用)\n\n`;
+                                parsedData.recommendations.forEach(rec => {
+                                    const recText = typeof rec === 'string' ? rec : (rec.item || rec.reason || JSON.stringify(rec));
+                                    markdownContent += `* ${recText}\n`;
+                                });
+                                markdownContent += '\n';
+                            }
+                            if (parsedData.plan) {
+                                markdownContent += `### 轉化率優化建議 (文案話術)\n\n${parsedData.plan}\n`;
+                            }
+                        } else {
+                            markdownContent += `### ${userName}，這是您的市場洞察報告\n\n${data}\n`;
+                        }
+                    } catch (e) {
+                        markdownContent += `### ${userName}，這是您的市場洞察報告\n\n${data}\n`;
+                    }
                 } else {
                     markdownContent += `### ${userName}，這是您的市場洞察報告\n\n`;
                     markdownContent += JSON.stringify(data, null, 2) + '\n\n';
@@ -624,7 +653,9 @@
                     markdownContent += `### 轉化率優化建議 (文案話術)\n\n${data.plan}\n`;
                 }
 
-                const contentDiv = document.getElementById('shopee-markdown-content');
+                loadingBlock.classList.add('hidden');
+                resultBlock.classList.remove('hidden');
+
                 if (contentDiv) {
                     if(typeof marked !== 'undefined') {
                         contentDiv.innerHTML = marked.parse(markdownContent);
@@ -634,12 +665,13 @@
                 }
 
                 showToast(`${userName}，分析報告已生成完畢！`);
-            } catch (error) {
-                console.error('分析錯誤:', error);
-                document.getElementById('shopee-loading').classList.add('hidden');
-                const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
-                const userName = currentUser ? (currentUser.displayName || currentUser.email || '用戶') : '用戶';
-                showToast(`${userName}，分析失敗: ${error.message}`);
+            } catch (err) {
+                console.error('分析錯誤:', err);
+                loadingBlock.classList.add('hidden');
+                resultBlock.classList.remove('hidden');
+                const errorUserName = currentUser ? (currentUser.displayName || currentUser.email || '賣家') : '賣家';
+                contentDiv.innerHTML = `<p class="text-red-400 text-sm">系統錯誤：${err.message}</p>`;
+                showToast(`${errorUserName}，分析時發生錯誤，請稍後再試`);
             }
         }
     </script>
