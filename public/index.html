@@ -2,13 +2,13 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shopee Analyst | BrotherG AI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Shopee Analyst | BrotherGAi</title>
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&family=JetBrains+Mono:wght@400;500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
     
     <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -16,6 +16,9 @@
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- Marked.js -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
     <script>
         tailwind.config = {
             theme: {
@@ -26,27 +29,34 @@
                         mono: ['JetBrains Mono', 'monospace'],
                     },
                     colors: {
-                        aiBlue: '#00A0E9',
-                        panel: '#F8FAFC',
-                        border: '#E2E8F0',
-                        textMain: '#0F172A',
-                        textSub: '#64748B',
-                        gold: '#D97706',
+                        bgDark: '#020617', // 深邃黑背景
+                        bgCard: '#0F172A', // 卡片深色背景
+                        aiBlue: '#00A0E9', // 主視覺藍
+                        aiBlueDim: 'rgba(0, 160, 233, 0.1)', 
+                        borderDark: '#1E293B',
+                        textMain: '#F8FAFC', // 亮白文字
+                        textSub: '#94A3B8',  // 灰階文字
+                        gold: '#F59E0B',
                     },
                     boxShadow: {
-                        'neon': '0 0 15px rgba(0, 160, 233, 0.2)',
-                        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-                        'card-hover': '0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02)',
-                        'glow-pro': '0 0 25px rgba(0, 160, 233, 0.25)',
-                        'glow-master': '0 0 25px rgba(217, 119, 6, 0.25)',
+                        'neon': '0 0 10px rgba(0, 160, 233, 0.4), 0 0 20px rgba(0, 160, 233, 0.2)',
+                        'glow-card': '0 0 15px rgba(0, 0, 0, 0.5)',
+                        'glow-pro': '0 0 30px rgba(0, 160, 233, 0.25)', // 增強 PRO 發光
+                        'glow-master': '0 0 30px rgba(245, 158, 11, 0.25)', // 增強 Master 發光
                     },
                     animation: {
                         'shockwave': 'shockwave 0.6s ease-out',
+                        'breathe': 'breathe 4s ease-in-out infinite',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                     },
                     keyframes: {
                         shockwave: {
                             '0%': { transform: 'translate(-50%, -50%) scale(0)', opacity: '0.5' },
                             '100%': { transform: 'translate(-50%, -50%) scale(3)', opacity: '0' },
+                        },
+                        breathe: {
+                            '0%, 100%': { boxShadow: '0 0 10px rgba(0, 160, 233, 0.1)', borderColor: '#1E293B' },
+                            '50%': { boxShadow: '0 0 20px rgba(0, 160, 233, 0.3)', borderColor: '#00A0E9' },
                         }
                     }
                 }
@@ -55,67 +65,114 @@
     </script>
 
     <style>
-        body { background-color: #FFFFFF; color: #0F172A; overflow: hidden; }
+        body { background-color: #020617; color: #F8FAFC; overflow-x: hidden; }
         
         /* Scrollbar */
-        ::-webkit-scrollbar { width: 4px; background: #FFF; }
-        ::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 2px; }
+        ::-webkit-scrollbar { width: 6px; background: #020617; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #00A0E9; }
 
-        /* Pure Background */
+        /* Background Grid Effect */
         .cosmos-bg {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             background: 
-                radial-gradient(circle at 10% 10%, rgba(0, 160, 233, 0.03) 0%, transparent 40%),
-                radial-gradient(circle at 90% 90%, rgba(0, 160, 233, 0.03) 0%, transparent 40%);
+                radial-gradient(circle at 15% 50%, rgba(0, 160, 233, 0.05) 0%, transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(0, 160, 233, 0.03) 0%, transparent 25%);
             z-index: -1;
             pointer-events: none;
         }
 
-        /* Core Card Design */
-        .core-card {
-            background: #FFFFFF;
-            border: 1px solid #E2E8F0;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        /* Active Blue Container Style (Dark) */
+        .blue-container {
+            background-color: rgba(15, 23, 42, 0.8);
+            border: 1px solid #1E293B;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
         }
-
-        /* Inputs */
+        
+        /* Inputs - Dark */
         .cyber-input {
-            background: #FFFFFF;
-            border: 1px solid #E2E8F0;
-            color: #0F172A;
+            background: #1E293B;
+            border: 1px solid #334155;
+            color: #F8FAFC;
             font-family: 'Inter', sans-serif;
-            font-weight: 500;
-        }
-        .cyber-input:focus {
-            border-color: #00A0E9;
-            box-shadow: 0 0 0 4px rgba(0, 160, 233, 0.1);
-            outline: none;
-        }
-
-        /* Custom file input style */
-        .custom-file-upload {
-            border: 2px dashed #CBD5E1;
-            background-color: #F8FAFC;
+            font-weight: 400;
             transition: all 0.3s;
         }
-        .custom-file-upload:hover {
+        .cyber-input:focus {
+            background: #0F172A;
             border-color: #00A0E9;
-            background-color: #F0F9FF;
+            box-shadow: 0 0 15px rgba(0, 160, 233, 0.15);
+            outline: none;
+        }
+        .cyber-input::placeholder { color: #64748B; }
+
+        /* Modal Backdrop */
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
         }
 
-        /* Pricing Card Check/Cross */
-        .feature-check { color: #00A0E9; margin-right: 0.5rem; }
-        .feature-cross { color: #94A3B8; margin-right: 0.5rem; opacity: 0.5; }
-        
-        /* Plan Selection Transitions */
+        /* Feature List Icons (Updated to be cleaner) */
+        .feature-icon { width: 16px; text-align: center; margin-right: 10px; }
+        .feature-check { color: #00A0E9; }
+        .feature-gold { color: #F59E0B; }
+        .feature-dim { color: #475569; }
+
+        /* Plan Card Interaction - Improved */
         .plan-card {
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
             cursor: pointer;
+            background: #0F172A;
+            border: 1px solid #334155;
+            opacity: 0.7; /* Default dimmed state */
+            transform: scale(0.98);
+        }
+        
+        .plan-card:hover {
+            opacity: 0.9;
+            border-color: #475569;
+        }
+
+        .plan-card.active {
+            opacity: 1;
+            transform: scale(1.05);
+            z-index: 10;
+            background: #131c2e; /* Slightly lighter background for active */
+        }
+
+        /* Specific active styles handled by JS/Utility classes */
+
+        /* Markdown Output Styles */
+        .markdown-output h3 { 
+            color: #38BDF8; 
+            font-weight: 700; 
+            font-size: 1.1rem; 
+            margin-top: 1.5rem; 
+            margin-bottom: 0.75rem; 
+            font-family: 'Inter', sans-serif; 
+            border-left: 4px solid #00A0E9;
+            padding-left: 12px;
+            line-height: 1.2;
+        }
+        .markdown-output h3:first-child { margin-top: 0; }
+        .markdown-output p { margin-bottom: 1rem; line-height: 1.7; color: #CBD5E1; font-size: 0.95rem; text-align: justify; }
+        .markdown-output ul { list-style: none; padding-left: 0; margin-bottom: 1rem; }
+        .markdown-output li { margin-bottom: 0.75rem; padding-left: 0; position: relative; color: #CBD5E1; }
+        .markdown-output strong { color: #F8FAFC; font-weight: 700; text-shadow: 0 0 10px rgba(255,255,255,0.1); }
+        
+        .markdown-output li strong:first-child {
+            display: block;
+            color: #38BDF8;
+            margin-bottom: 4px;
+            text-shadow: none;
+        }
+
+        /* Mobile Specific */
+        @media (max-width: 768px) {
+            .mobile-hidden { display: none; }
+            .mobile-stack { flex-direction: column; }
+            .mobile-full { width: 100%; }
         }
     </style>
 </head>
@@ -123,252 +180,276 @@
 
     <div class="cosmos-bg"></div>
 
-    <!-- Main View -->
-    <main class="flex-1 relative overflow-hidden flex flex-col">
-        
-        <!-- Top HUD -->
-        <header class="h-16 px-8 flex justify-between items-center z-20 border-b border-border bg-white/80 backdrop-blur-md">
-            <div class="flex items-center space-x-4">
-                <div class="h-2 w-2 bg-aiBlue rotate-45"></div>
-                <span class="text-textMain font-display text-xl tracking-[0.1em] font-bold">BROTHER<span class="text-aiBlue">GAi</span></span>
-            </div>
-            <div class="flex items-center space-x-8 text-xs font-mono text-textSub">
-                <div class="flex items-center space-x-2">
-                    <span class="text-aiBlue animate-pulse">●</span>
-                    <span>SYSTEM READY</span>
+    <!-- Login Overlay (Hidden by Default) -->
+    <div id="login-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop fade-in">
+        <div class="text-center p-8 max-w-md w-full relative bg-bgCard border border-borderDark rounded-2xl shadow-2xl mx-4">
+            <button onclick="document.getElementById('login-overlay').classList.add('hidden')" class="absolute top-4 right-4 text-textSub hover:text-white transition-colors">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-aiBlue/10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div class="relative z-10">
+                <div class="w-16 h-16 bg-aiBlue rounded-xl flex items-center justify-center text-white text-3xl font-bold font-display shadow-[0_0_30px_rgba(0,160,233,0.4)] mx-auto mb-6 animate-pulse-slow">
+                    G
                 </div>
-                <a href="/shopee.html" class="border border-border px-3 py-1 rounded text-aiBlue bg-blue-50 font-bold hover:bg-aiBlue hover:text-white transition-colors cursor-pointer">Shopee Analyst (深色版)</a>
+                <h1 class="text-3xl font-display font-bold text-white mb-2">身份驗證</h1>
+                <p class="text-textSub mb-8 font-light text-sm">請登入 Google 帳號以啟用深度運算引擎</p>
+                
+                <button onclick="handleGoogleLogin()" class="w-full bg-white text-gray-900 font-bold py-3.5 rounded-lg hover:bg-gray-100 transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-xl hover:scale-105 transform duration-200" id="login-btn">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google">
+                    <span>使用 Google 帳號登入</span>
+                </button>
+                
+                <p class="text-[10px] text-gray-600 mt-6 font-mono">
+                    SECURED BY FIREBASE
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Left Sidebar (App Shell) -->
+    <aside id="app-sidebar" class="w-20 bg-bgDark/95 backdrop-blur border-r border-borderDark flex flex-col items-center py-8 z-30 flex-shrink-0">
+        <!-- Logo -->
+        <div class="w-12 h-12 mb-16 cursor-pointer relative group" onclick="window.location.href='https://brotherg.ai'">
+            <div class="w-full h-full bg-aiBlue rounded-xl flex items-center justify-center text-white text-xl font-bold font-display shadow-lg shadow-blue-500/20">G</div>
+        </div>
+
+        <!-- Icons -->
+        <nav class="flex-1 flex flex-col space-y-10 w-full items-center">
+            <button class="group relative w-12 h-12 flex items-center justify-center transition-all">
+                <i class="fa-solid fa-bag-shopping text-xl text-aiBlue drop-shadow-[0_0_8px_rgba(0,160,233,0.5)]"></i>
+            </button>
+        </nav>
+
+        <!-- User Profile -->
+        <div class="flex flex-col items-center space-y-4 mb-4">
+            <div id="user-avatar" class="w-8 h-8 rounded-full border border-aiBlue bg-aiBlue/20 flex items-center justify-center text-xs font-bold hidden" title="已登入">C</div>
+            <button id="logout-btn" onclick="handleLogout()" class="text-xs text-textSub hover:text-red-400 transition-colors hidden" title="Logout">
+                <i class="fa-solid fa-power-off"></i>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main View -->
+    <main id="app-main" class="flex-1 relative overflow-hidden flex flex-col bg-bgDark">
+        
+        <!-- Top HUD (Dark) -->
+        <header class="h-16 px-6 md:px-8 flex justify-between items-center z-20 border-b border-borderDark bg-bgDark/80 backdrop-blur-md sticky top-0">
+            <div class="flex items-center space-x-4">
+                <!-- Mobile Menu Button (Hidden on Desktop) -->
+                <div class="h-2 w-2 bg-aiBlue rotate-45 shadow-[0_0_10px_#00A0E9]"></div>
+                <span class="text-textMain font-display text-lg md:text-xl tracking-[0.1em] font-bold truncate">SHOPEE <span class="text-aiBlue">ANALYST</span></span>
+            </div>
+            
+            <!-- Right HUD: Usage & Upgrade -->
+            <div class="flex items-center space-x-3 md:space-x-6">
+                <div class="hidden md:flex items-center px-3 py-1 rounded bg-slate-800/50 border border-slate-700/50">
+                    <span class="text-xs font-mono text-textSub mr-2">TODAY</span>
+                    <span id="usage-count" class="text-aiBlue font-bold font-mono">5</span>
+                </div>
+
+                <button onclick="openPricingModal()" class="flex items-center space-x-2 px-3 py-1.5 md:px-4 md:py-1.5 bg-gradient-to-r from-aiBlue to-blue-700 text-white rounded text-xs font-bold hover:shadow-[0_0_15px_rgba(0,160,233,0.4)] transition-all">
+                    <i class="fa-solid fa-crown text-yellow-300 drop-shadow-md"></i>
+                    <span class="hidden md:inline">升級進階版</span>
+                    <span class="md:hidden">UPGRADE</span>
+                </button>
             </div>
         </header>
 
         <!-- Viewport -->
-        <div class="flex-1 overflow-y-auto scroll-smooth p-8 md:p-16 flex flex-col">
-            <!-- === SHOPEE INTERFACE === -->
-            <div class="h-full flex flex-col max-w-7xl mx-auto w-full">
-                <!-- Nav Bar -->
-                <div class="flex items-center space-x-4 mb-10">
-                    <button onclick="window.location.href='https://brotherg.ai'" class="w-10 h-10 border border-gray-300 flex items-center justify-center text-textSub hover:bg-blue-50 hover:text-aiBlue hover:border-aiBlue transition-all bg-white shadow-sm rounded-lg">
-                        <i class="fa-solid fa-angle-left"></i>
-                    </button>
-                    <div class="h-px flex-1 bg-gradient-to-r from-aiBlue/50 to-transparent"></div>
-                    <div class="font-mono text-xs text-aiBlue tracking-widest shadow-sm px-3 py-1 border border-aiBlue rounded bg-blue-50 font-bold">SHOPEE ANALYST</div>
-                </div>
+        <div class="flex-1 overflow-y-auto scroll-smooth p-4 md:p-10 flex flex-col">
 
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
-                    <!-- Left Control (Input and Mode Selection) -->
-                    <div class="lg:col-span-4 space-y-6">
+            <!-- Unified Shopee Interface -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 h-full max-w-7xl mx-auto w-full">
+                
+                <!-- Left Control (Input) -->
+                <div class="lg:col-span-4 space-y-6 flex flex-col h-auto">
+                    <div class="blue-container breathing-glow p-6 rounded-xl flex flex-col shadow-lg relative overflow-hidden flex-1 lg:flex-none lg:h-auto">
+                        <div class="absolute top-0 right-0 w-4 h-4 border-t border-r border-aiBlue/50"></div>
+                        <div class="absolute bottom-0 left-0 w-4 h-4 border-b border-l border-aiBlue/50"></div>
+
+                        <label class="text-xs font-bold text-aiBlue mb-3 block tracking-widest flex items-center">
+                            <i class="fa-solid fa-terminal mr-2"></i> 產品與市場描述
+                        </label>
                         
-                        <!-- Mode Tabs (Free / Paid) -->
-                        <div class="flex border-b border-border bg-white rounded-t-xl overflow-hidden shadow-card">
-                            <button id="tab-free" onclick="switchShopeeMode('free')" class="flex-1 py-3 text-sm font-bold transition-all border-b-2" data-mode="free">
-                                <span class="text-aiBlue">免費版</span> <span class="text-xs text-textSub">(文字)</span>
-                            </button>
-                            <button id="tab-paid" onclick="switchShopeeMode('paid')" class="flex-1 py-3 text-sm font-bold transition-all border-b-2" data-mode="paid">
-                                <span class="text-textSub">付費版</span> <span class="text-xs text-textSub">(報表圖)</span>
-                            </button>
-                        </div>
+                        <textarea id="shopee-keyword" class="w-full cyber-input p-4 text-base rounded-lg resize-none flex-1 min-h-[200px] lg:min-h-[300px] mb-4 focus:ring-0" 
+                            placeholder="請輸入產品描述、規格或目前遇到的銷售瓶頸..."></textarea>
                         
-                        <!-- Input Card -->
-                        <div class="core-card flex-col p-6 h-auto rounded-b-xl" style="display: flex; flex-direction: column;">
-                            
-                            <!-- === Free Mode Content === -->
-                            <div id="shopee-input-free">
-                                <div>
-                                    <label class="text-xs font-bold text-aiBlue mb-2 block tracking-widest">WHAT ARE YOU SELLING? (請提供細節)</label>
-                                    <textarea id="shopee-keyword" rows="5" placeholder="例如：我在蝦皮賣 eSIM、小米手機、Dyson，幫我看接下來要主推什麼。 (單價、毛利、銷量等資訊越詳細，建議越精準)" 
-                                        class="w-full cyber-input p-4 text-base rounded-lg placeholder-gray-400 resize-none border-l-4 border-l-aiBlue"></textarea>
-                                    
-                                    <button onclick="runShopeeAnalysis()" class="w-full mt-4 bg-textMain text-white font-display font-bold py-4 hover:bg-aiBlue transition-all duration-300 tracking-widest uppercase text-lg relative overflow-hidden shadow-lg rounded-lg">
-                                        開始分析市場
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <!-- === Paid Mode Content === -->
-                            <div id="shopee-input-paid" class="hidden">
-                                
-                                <div class="mb-4">
-                                    <div class="flex justify-between items-center mb-4">
-                                        <label class="text-xs font-bold text-aiBlue mb-1 block tracking-widest">UPLOAD REPORTS (MAX 10)</label>
-                                        <span class="font-mono text-[10px] text-green-500 border border-green-200 px-2 py-0.5 rounded bg-green-50 font-bold">已開放</span>
-                                    </div>
-                                    
-                                    <label for="shopee-image-upload" class="custom-file-upload p-6 flex flex-col items-center justify-center h-32 cursor-pointer rounded-lg mb-4">
-                                        <i class="fa-solid fa-cloud-arrow-up text-3xl text-aiBlue mb-2"></i>
-                                        <span class="text-sm font-medium text-textMain">點擊上傳 Shopee 報表截圖</span>
-                                        <span class="text-xs text-gray-400 font-mono">最多 10 張 (GMV, 廣告, 商品列表...)</span>
-                                        <input type="file" id="shopee-image-upload" multiple accept="image/*" class="hidden">
-                                    </label>
-                                    
-                                    <div id="image-preview" class="mb-4 grid grid-cols-2 gap-2"></div>
-
-                                    <label class="text-xs font-bold text-aiBlue mb-2 block tracking-widest">YOUR QUERY</label>
-                                    <textarea id="shopee-image-query" rows="2" placeholder="例如：看完圖，接下來 7 天我該怎麼選品？" 
-                                        class="w-full cyber-input p-3 text-base rounded-lg placeholder-gray-400 resize-none border-l-4 border-l-aiBlue"></textarea>
-                                </div>
-
-                                <button onclick="runShopeeImageAnalysis()" class="w-full mt-4 bg-textMain text-white font-display font-bold py-4 hover:bg-aiBlue transition-all duration-300 tracking-widest uppercase text-lg relative overflow-hidden shadow-lg rounded-lg">
-                                    開始圖片分析
-                                </button>
-                                <p class="text-[10px] text-textSub mt-2 text-center font-mono">
-                                    (目前所有功能已開放，可直接使用)
-                                </p>
-                            </div>
+                        <button onclick="runShopeeAnalysis()" class="w-full py-4 bg-aiBlue text-white font-display font-bold hover:bg-blue-600 transition-all duration-300 tracking-widest uppercase text-lg relative overflow-hidden shadow-[0_0_15px_rgba(0,160,233,0.3)] rounded-lg group active:scale-95">
+                            <span class="relative z-10 flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-bolt text-yellow-300 group-hover:animate-pulse"></i> 開始深度分析
+                            </span>
+                        </button>
+                        
+                        <div class="mt-4 flex justify-center items-center space-x-2 text-[10px] text-aiBlue opacity-50 hidden md:flex">
+                            <i class="fa-solid fa-microchip"></i>
+                            <span class="font-mono">BrotherG Intelligence Node</span>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Right Data Vis (Dynamic Content) -->
-                    <div class="lg:col-span-8 core-card flex-col p-8 relative rounded-xl overflow-y-auto" style="display: flex; flex-direction: column;">
-                        
-                        <!-- Loading -->
-                        <div id="shopee-loading" class="hidden absolute inset-0 bg-white/90 z-20 flex flex-col items-center justify-center rounded-xl">
-                            <div class="w-32 h-32 border-t-4 border-b-4 border-aiBlue rounded-full animate-spin mb-8 shadow-neon"></div>
-                            <div class="text-4xl font-display font-bold text-textMain tracking-widest animate-pulse">ANALYZING</div>
-                            <div class="text-xs font-mono text-aiBlue mt-4 border border-aiBlue px-4 py-1 font-bold rounded-full">FETCHING MARKET DATA</div>
+                <!-- Right Data Vis -->
+                <div class="lg:col-span-8 bg-bgCard border border-borderDark p-6 md:p-8 relative rounded-xl shadow-glow-card overflow-y-auto min-h-[400px] lg:h-auto">
+                    
+                    <!-- Loading Overlay -->
+                    <div id="shopee-loading" class="hidden absolute inset-0 bg-bgCard/95 z-20 flex flex-col items-center justify-center rounded-xl backdrop-blur-sm">
+                        <div class="w-20 h-20 border-t-4 border-b-4 border-aiBlue rounded-full animate-spin mb-6 shadow-[0_0_20px_rgba(0,160,233,0.2)]"></div>
+                        <div class="text-xl md:text-2xl font-bold text-textMain tracking-wider animate-pulse">正在進行深度運算</div>
+                        <div class="text-xs font-mono text-aiBlue mt-3 px-4 py-1 font-bold bg-slate-800 rounded-full border border-slate-700">AI PROCESSING...</div>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="shopee-empty" class="flex-1 h-full flex flex-col items-center justify-center opacity-30 py-10 md:py-20">
+                        <i class="fa-solid fa-chart-radar text-7xl md:text-8xl mb-6 text-slate-600 animate-pulse-slow"></i>
+                        <p class="font-mono text-xs md:text-sm tracking-[0.2em] text-textSub font-bold text-center">等待輸入以啟動分析<br><span class="text-[10px] opacity-50">Waiting for Input Signal</span></p>
+                    </div>
+
+                    <!-- Results -->
+                    <div id="shopee-results" class="hidden h-full flex flex-col w-full fade-in">
+                        <div class="mb-6 border-b border-borderDark pb-4 flex justify-between items-center sticky top-0 bg-bgCard z-10 pt-2">
+                            <h3 class="text-base md:text-lg font-bold text-textMain flex items-center">
+                                <i class="fa-solid fa-file-code text-aiBlue mr-3"></i> 戰略分析報告
+                            </h3>
+                            <span class="text-[10px] md:text-xs font-bold text-green-400 bg-green-900/20 px-3 py-1 rounded-full border border-green-900/50">COMPLETED</span>
                         </div>
-
-                        <!-- Empty State -->
-                        <div id="shopee-empty" class="flex-1 flex flex-col items-center justify-center opacity-40">
-                            <i class="fa-solid fa-magnifying-glass-chart text-8xl mb-8 text-aiBlue animate-pulse"></i>
-                            <p class="font-mono text-sm tracking-[0.3em] text-textSub font-bold">等待選品輸入</p>
+                        <div id="shopee-markdown-content" class="markdown-output text-sm text-textMain space-y-4 leading-relaxed pb-10">
+                            <!-- Content injected here -->
                         </div>
-
-                        <!-- Results (Free Version) -->
-                        <div id="shopee-results" class="hidden h-full flex flex-col w-full">
-                            
-                            <!-- Header -->
-                            <div class="mb-8 border-b border-gray-200 pb-4">
-                                <h3 class="text-xl font-display font-bold text-textMain">選品決策卡</h3>
-                                <p class="text-sm text-textSub">基於您的文字描述，以下是系統建議。</p>
-                            </div>
-
-                            <!-- Top 10 Core Recommendations -->
-                            <div class="mb-8 p-6 bg-blue-50 border border-aiBlue/30 rounded-lg">
-                                <p class="text-[10px] text-aiBlue font-bold uppercase mb-4 tracking-widest flex items-center">
-                                    <i class="fa-solid fa-star-of-life mr-2"></i> TOP 10 主推方向 (核心建議)
-                                </p>
-                                <ul id="top-10-list" class="space-y-3">
-                                    <!-- List items populated by JS -->
-                                </ul>
-                            </div>
-
-                            <!-- Extended Ideas -->
-                            <div class="mb-8 p-6 bg-panel border border-border rounded-lg">
-                                <p class="text-[10px] text-textSub font-bold uppercase mb-4 tracking-widest flex items-center">
-                                    <i class="fa-solid fa-atom mr-2"></i> 延伸測試組合/類別
-                                </p>
-                                <p id="extended-ideas" class="text-sm text-textSub leading-relaxed">
-                                    <!-- Populated by API response -->
-                                </p>
-                            </div>
-                        </div>
-                        
-                        <!-- Pricing Table (Paid Mode) -->
-                        <div id="shopee-paid-results" class="hidden h-full flex flex-col w-full">
-                            <div class="mb-6 flex justify-between items-end border-b border-border pb-4">
-                                <div>
-                                    <h3 class="text-2xl font-display font-bold text-textMain tracking-wide">CHOOSE YOUR PLAN</h3>
-                                    <p class="text-xs font-mono text-textSub mt-1">解鎖 AI 視覺深度診斷與批量分析能力</p>
-                                </div>
-                                <div class="text-[10px] font-bold bg-blue-50 text-aiBlue px-2 py-1 rounded border border-blue-100">
-                                    每月訂閱制
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1 items-start">
-                                
-                                <!-- Tier 1: Free -->
-                                <div id="plan-card-free" onclick="selectPlan('free')" class="plan-card border border-border rounded-xl p-6 flex flex-col relative bg-white opacity-90">
-                                    <h4 class="text-sm font-bold text-textSub uppercase tracking-widest mb-2">體驗版</h4>
-                                    <div class="mb-4">
-                                        <span class="text-3xl font-display font-bold text-textMain">$0</span>
-                                        <span class="text-xs text-textSub">/ month</span>
-                                    </div>
-                                    <p class="text-xs text-textSub mb-6 h-10">適合剛入門的新手，體驗 AI 威力。</p>
-                                    
-                                    <ul class="space-y-3 text-xs mb-8 flex-1">
-                                        <li class="flex items-center"><i class="fa-solid fa-check feature-check"></i> 每日 5 次 AI 對話</li>
-                                        <li class="flex items-center"><i class="fa-solid fa-check feature-check"></i> 單次對話 (無記憶)</li>
-                                        <li class="flex items-center text-gray-400"><i class="fa-solid fa-xmark feature-cross"></i> AI 視覺診斷</li>
-                                        <li class="flex items-center text-gray-400"><i class="fa-solid fa-xmark feature-cross"></i> 批量分析</li>
-                                    </ul>
-
-                                    <button class="w-full py-2 border border-border text-textSub font-bold text-xs rounded pointer-events-none">
-                                        目前方案
-                                    </button>
-                                </div>
-
-                                <!-- Tier 2: PRO -->
-                                <div id="plan-card-pro" onclick="selectPlan('pro')" class="plan-card border border-border rounded-xl p-6 flex flex-col relative bg-white opacity-90">
-                                    <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-aiBlue text-white text-[10px] font-bold px-3 py-1 rounded-full tracking-wider shadow-sm opacity-0 transition-opacity duration-300" id="badge-pro">
-                                        個人賣家首選
-                                    </div>
-                                    <h4 class="text-sm font-bold text-textSub uppercase tracking-widest mb-2 transition-colors duration-300" id="title-pro">專業版</h4>
-                                    <div class="mb-4">
-                                        <span class="text-3xl font-display font-bold text-textMain">$688</span>
-                                        <span class="text-xs text-textSub">/ month</span>
-                                    </div>
-                                    <p class="text-xs text-textSub mb-6 h-10">適合全職賣家，深度優化利潤。</p>
-                                    
-                                    <ul class="space-y-3 text-xs mb-8 flex-1 font-medium">
-                                        <li class="flex items-center"><i class="fa-solid fa-check feature-check"></i> 無限次 AI 對話</li>
-                                        <li class="flex items-center"><i class="fa-solid fa-check feature-check"></i> 每日 20 次 視覺診斷</li>
-                                        <li class="flex items-center"><i class="fa-solid fa-check feature-check"></i> 單張圖片上傳</li>
-                                        <li class="flex items-center text-red-400"><i class="fa-solid fa-xmark feature-cross"></i> 無長期記憶 (對話獨立)</li>
-                                        <li class="flex items-center"><i class="fa-solid fa-check feature-check"></i> 競品數據分析</li>
-                                    </ul>
-
-                                    <button onclick="event.stopPropagation(); goToPaymentPro()" class="w-full py-3 bg-gray-200 text-gray-500 font-bold text-sm rounded shadow-sm hover:bg-aiBlue hover:text-white transition-colors duration-300" id="btn-pro">
-                                        立即升級 PRO
-                                    </button>
-                                </div>
-
-                                <!-- Tier 3: MASTER -->
-                                <div id="plan-card-master" onclick="selectPlan('master')" class="plan-card border border-border rounded-xl p-6 flex flex-col relative bg-white opacity-90">
-                                    <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-yellow-500 to-amber-600 text-white text-[10px] font-bold px-3 py-1 rounded-full tracking-wider shadow-sm opacity-0 transition-opacity duration-300" id="badge-master">
-                                        工作室/企業專用
-                                    </div>
-                                    <h4 class="text-sm font-bold text-textSub uppercase tracking-widest mb-2 transition-colors duration-300" id="title-master">大師版</h4>
-                                    <div class="mb-4">
-                                        <span class="text-3xl font-display font-bold text-textMain">$1,688</span>
-                                        <span class="text-xs text-textSub">/ month</span>
-                                    </div>
-                                    <p class="text-xs text-textSub mb-6 h-10">適合工作室與多平台經營者，極致效率。</p>
-                                    
-                                    <ul class="space-y-3 text-xs mb-8 flex-1">
-                                        <li class="flex items-center"><i class="fa-solid fa-check text-amber-500 mr-2"></i> 無限次 AI 對話</li>
-                                        <li class="flex items-center"><i class="fa-solid fa-check text-amber-500 mr-2"></i> 每日 50 次 視覺診斷</li>
-                                        <li class="flex items-center"><i class="fa-solid fa-fire text-amber-500 mr-2"></i> 批量上傳 (一次 10 張)</li>
-                                        <li class="flex items-center"><i class="fa-solid fa-brain text-amber-500 mr-2"></i> AI 長期記憶 (店鋪語境)</li>
-                                        <li class="flex items-center"><i class="fa-solid fa-bolt text-amber-500 mr-2"></i> 優先算力通道</li>
-                                    </ul>
-
-                                    <button onclick="event.stopPropagation(); goToPaymentMaster()" class="w-full py-2 border border-border text-textSub font-bold text-xs rounded hover:bg-amber-50 hover:text-amber-600 hover:border-amber-500 transition-colors duration-300" id="btn-master">
-                                        成為大師
-                                    </button>
-                                </div>
-
-                            </div>
-                        </div>
-
                     </div>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-8 right-8 bg-textMain text-white px-6 py-3 rounded-lg shadow-xl transform translate-y-24 opacity-0 transition-all duration-300 z-50 flex items-center gap-3">
-        <i class="fa-solid fa-info-circle text-aiBlue"></i>
-        <span id="toast-msg" class="font-medium text-sm">Notification</span>
+    <!-- Pricing Modal (Clean Text & Proprietary Branding) -->
+    <div id="pricing-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop fade-in p-4">
+        <div class="bg-bgCard w-full max-w-5xl rounded-2xl shadow-2xl p-6 md:p-8 relative max-h-[90vh] overflow-y-auto border-t-4 border-aiBlue border-b border-b-borderDark border-x border-x-borderDark">
+            <button onclick="closePricingModal()" class="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors p-2">
+                <i class="fa-solid fa-xmark text-2xl"></i>
+            </button>
+
+            <div class="text-center mb-8 mt-2">
+                <h2 class="text-2xl md:text-3xl font-display font-bold text-textMain mb-2">升級您的決策引擎</h2>
+                <p class="text-textSub text-xs md:text-sm font-mono">解鎖高階運算配額與專屬市場情報</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Free -->
+                <div id="plan-card-free" onclick="selectPlan('free')" class="plan-card rounded-xl p-6 flex flex-col relative">
+                    <h4 class="text-sm font-bold text-textSub uppercase tracking-widest mb-2">體驗版 Basic</h4>
+                    <div class="mb-4">
+                        <span class="text-3xl font-display font-bold text-textMain">$0</span>
+                    </div>
+                    <ul class="space-y-4 text-xs mb-8 flex-1 text-textSub">
+                        <li class="flex items-center"><i class="fa-solid fa-bolt feature-icon feature-dim"></i> 每日 5 次 基礎分析</li>
+                        <li class="flex items-center"><i class="fa-solid fa-comment feature-icon feature-dim"></i> 單次對話模式</li>
+                        <li class="flex items-center feature-cross"><i class="fa-solid fa-xmark feature-icon"></i> 無長期記憶庫</li>
+                    </ul>
+                    <button class="w-full py-3 border border-slate-700 text-slate-400 font-bold text-sm rounded pointer-events-none bg-slate-800/50">目前方案</button>
+                </div>
+
+                <!-- PRO -->
+                <div id="plan-card-pro" onclick="selectPlan('pro')" class="plan-card rounded-xl p-6 flex flex-col relative">
+                    <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-slate-800 border border-aiBlue text-aiBlue text-[10px] font-bold px-3 py-1 rounded-full tracking-wider shadow-[0_0_10px_rgba(0,160,233,0.3)]">
+                        熱銷首選 (Most Popular)
+                    </div>
+                    <h4 class="text-sm font-bold text-aiBlue uppercase tracking-widest mb-2 mt-2">專業版 Professional</h4>
+                    <p class="text-[10px] text-textSub mb-3 h-8 leading-tight">專為全職賣家打造。利用高頻率測品與流量攔截，快速建立爆品矩陣。</p>
+                    <div class="mb-4">
+                        <span class="text-3xl font-display font-bold text-textMain">$688</span>
+                        <span class="text-xs text-textSub">/ 月</span>
+                    </div>
+                    <ul class="space-y-3 text-xs mb-8 flex-1 font-medium text-gray-300">
+                        <li class="flex items-center"><i class="fa-solid fa-bolt feature-icon feature-check"></i> 每日 50 次 標準戰術分析 (BrotherG 極速引擎)</li>
+                        <li class="flex items-center"><i class="fa-solid fa-comments feature-icon feature-check"></i> 無限次 選品文字諮詢</li>
+                        <li class="flex items-center"><i class="fa-solid fa-file-lines feature-icon feature-check"></i> 秒級生成 直播帶貨逐字稿</li>
+                        <li class="flex items-center"><i class="fa-solid fa-boxes-stacked feature-icon feature-check"></i> 針對低客單價跑量商品優化</li>
+                        <li class="flex items-center"><i class="fa-solid fa-pen-nib feature-icon feature-check"></i> 競品文案一鍵仿寫與優化</li>
+                    </ul>
+                    <button onclick="showToast('PRO 方案連結準備中...')" class="w-full py-3 bg-slate-800 text-aiBlue border border-aiBlue font-bold text-sm rounded hover:bg-aiBlue hover:text-white transition-colors">立即升級 PRO</button>
+                </div>
+
+                <!-- MASTER -->
+                <div id="plan-card-master" onclick="selectPlan('master')" class="plan-card rounded-xl p-6 flex flex-col relative">
+                    <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-yellow-600 to-amber-700 text-white text-[10px] font-bold px-3 py-1 rounded-full tracking-wider shadow-[0_0_15px_rgba(245,158,11,0.4)]">
+                        企業方案 (Enterprise)
+                    </div>
+                    <h4 class="text-sm font-bold text-amber-500 uppercase tracking-widest mb-2 mt-2">大師版 Master</h4>
+                    <p class="text-[10px] text-textSub mb-3 h-8 leading-tight">不只是工具，更是你的首席營運長。具備深度邏輯推演能力與獨家操盤心法。</p>
+                    <div class="mb-4">
+                        <span class="text-3xl font-display font-bold text-textMain">$1,688</span>
+                        <span class="text-xs text-textSub">/ 月</span>
+                    </div>
+                    <ul class="space-y-3 text-xs mb-4 flex-1 text-textMain">
+                        <li class="flex items-center"><i class="fa-solid fa-brain feature-icon feature-gold"></i> 每日 50 次 高階策略推演 (BrotherG 深度邏輯架構)</li>
+                        <li class="flex items-center"><i class="fa-solid fa-gem feature-icon feature-gold"></i> 生成高客單價與品牌感銷售劇本</li>
+                        <li class="flex items-center"><i class="fa-solid fa-user-group feature-icon feature-gold"></i> 消費者心理學戰術植入 (痛點挖掘)</li>
+                        <li class="flex items-center"><i class="fa-solid fa-memory feature-icon feature-gold"></i> AI 長期記憶 (鎖定店鋪風格)</li>
+                        <li class="flex items-center"><i class="fa-solid fa-forward-fast feature-icon feature-gold"></i> 優先算力通道 (尖峰時刻不降速)</li>
+                    </ul>
+                    
+                    <!-- Bonus Section -->
+                    <div class="mt-2 pt-3 border-t border-slate-700">
+                        <p class="text-[10px] text-amber-500 font-bold mb-2 uppercase tracking-wide">訂閱即贈：BrotherG 獨家操盤 SOP</p>
+                        <ul class="text-[10px] space-y-1.5 text-gray-400">
+                            <li class="flex items-center"><i class="fa-solid fa-check feature-icon text-amber-600"></i> 直播全流程防呆地圖 (開播檢核表)</li>
+                            <li class="flex items-center"><i class="fa-solid fa-check feature-icon text-amber-600"></i> 黃金排品節奏學 (流量款與利潤款配置)</li>
+                            <li class="flex items-center"><i class="fa-solid fa-check feature-icon text-amber-600"></i> 成交話術底層邏輯 (憋單與轉化拆解)</li>
+                        </ul>
+                    </div>
+
+                    <button onclick="window.open('https://p.ecpay.com.tw/4A01064', '_blank')" class="w-full mt-4 py-3 bg-gradient-to-r from-amber-600 to-yellow-600 text-white font-bold text-sm rounded hover:shadow-[0_0_20px_rgba(245,158,11,0.4)] hover:scale-105 transition-all border border-yellow-500/50">成為大師</button>
+                </div>
+            </div>
+        </div>
     </div>
 
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-8 right-8 bg-bgCard border border-aiBlue text-white px-6 py-3 rounded-lg shadow-[0_0_15px_rgba(0,160,233,0.3)] transform translate-y-24 opacity-0 transition-all duration-300 z-50 flex items-center gap-3">
+        <i class="fa-solid fa-info-circle text-aiBlue"></i>
+        <span id="toast-msg" class="font-medium text-sm font-mono">Notification</span>
+    </div>
+
+    <!-- Firebase Scripts (Demo Mode) -->
     <script>
-        // State for Shopee Mode
-        let shopeeMode = 'free';
+        let currentUser = null;
+
+        window.handleGoogleLogin = function() {
+            const btn = document.getElementById('login-btn');
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 驗證中...';
+            btn.disabled = true;
+
+            setTimeout(() => {
+                document.getElementById('login-overlay').classList.add('hidden');
+                currentUser = { displayName: "Chang", email: "demo@example.com" }; // Changed to "Chang"
+                document.getElementById('user-avatar').classList.remove('hidden');
+                document.getElementById('logout-btn').classList.remove('hidden');
+                btn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-6 h-6" alt="Google"><span>使用 Google 帳號登入</span>';
+                btn.disabled = false;
+                showToast('登入成功 (Demo Mode)');
+            }, 1500);
+        };
+
+        window.handleLogout = function() {
+            showToast('正在登出...');
+            setTimeout(() => {
+                currentUser = null;
+                document.getElementById('user-avatar').classList.add('hidden');
+                document.getElementById('logout-btn').classList.add('hidden');
+                showToast('已安全登出');
+            }, 800);
+        };
+        
+        window.showLoginModal = function() {
+            document.getElementById('login-overlay').classList.remove('hidden');
+        }
+    </script>
+
+    <script>
+        let remainingUsage = 5;
         let currentPlan = null;
 
-        // --- Toast Logic ---
         function showToast(msg) {
             const toast = document.getElementById('toast');
             document.getElementById('toast-msg').innerText = msg;
@@ -377,280 +458,74 @@
                 toast.classList.add('translate-y-24', 'opacity-0');
             }, 3000);
         }
-        
-        // --- Shopee Mode Switch Logic ---
-        function switchShopeeMode(mode) {
-            shopeeMode = mode;
-            console.log(`🔄 [切換模式] 切換到: ${mode}`);
-            
-            const tabFree = document.getElementById('tab-free');
-            const tabPaid = document.getElementById('tab-paid');
-            const inputFree = document.getElementById('shopee-input-free');
-            const inputPaid = document.getElementById('shopee-input-paid');
-            const resultsDiv = document.getElementById('shopee-results');
-            const paidResultsDiv = document.getElementById('shopee-paid-results');
-            const emptyEl = document.getElementById('shopee-empty');
-            
-            console.log('🔍 [切換模式] DOM 元素檢查:', {
-                tabFree: !!tabFree,
-                tabPaid: !!tabPaid,
-                inputFree: !!inputFree,
-                inputPaid: !!inputPaid,
-                resultsDiv: !!resultsDiv,
-                paidResultsDiv: !!paidResultsDiv,
-                emptyEl: !!emptyEl
-            });
-            
-            if (mode === 'free') {
-                // 免費版標籤樣式
-                if (tabFree) {
-                    tabFree.classList.add('border-aiBlue', 'text-aiBlue');
-                }
-                if (tabPaid) {
-                    tabPaid.classList.remove('border-aiBlue', 'text-aiBlue');
-                    tabPaid.classList.add('border-transparent');
-                }
-                
-                // 免費版輸入區域
-                if (inputFree) {
-                    inputFree.classList.remove('hidden');
-                    console.log('✅ [切換模式] 免費版輸入區域已顯示');
-                }
-                if (inputPaid) {
-                    inputPaid.classList.add('hidden');
-                }
-                
-                // 免費版結果區域
-                if (resultsDiv) {
-                    resultsDiv.classList.add('hidden');
-                }
-                if (paidResultsDiv) {
-                    paidResultsDiv.classList.add('hidden');
-                }
-                if (emptyEl) {
-                    emptyEl.classList.remove('hidden');
-                }
-                
-                showToast('已切換至免費版 (文字分析)');
-                
-            } else { // paid
-                // 付費版標籤樣式
-                if (tabPaid) {
-                    tabPaid.classList.add('border-aiBlue', 'text-aiBlue');
-                }
-                if (tabFree) {
-                    tabFree.classList.remove('border-aiBlue', 'text-aiBlue');
-                    tabFree.classList.add('border-transparent');
-                }
 
-                // 付費版輸入區域 - 強制顯示
-                if (inputPaid) {
-                    inputPaid.classList.remove('hidden');
-                    // 強制設置樣式確保可見
-                    inputPaid.style.display = 'block';
-                    inputPaid.style.visibility = 'visible';
-                    inputPaid.style.opacity = '1';
-                    console.log('✅ [切換模式] 付費版輸入區域已顯示');
-                    console.log('🔍 [切換模式] inputPaid 樣式:', {
-                        display: window.getComputedStyle(inputPaid).display,
-                        visibility: window.getComputedStyle(inputPaid).visibility,
-                        opacity: window.getComputedStyle(inputPaid).opacity
-                    });
-                } else {
-                    console.error('❌ [切換模式] 找不到 inputPaid 元素！');
-                }
-                
-                if (inputFree) {
-                    inputFree.classList.add('hidden');
-                }
-
-                // 付費版結果區域（定價表）
-                if (resultsDiv) {
-                    resultsDiv.classList.add('hidden');
-                }
-                if (paidResultsDiv) {
-                    paidResultsDiv.classList.remove('hidden');
-                    console.log('✅ [切換模式] 定價表已顯示');
-                }
-                if (emptyEl) {
-                    emptyEl.classList.add('hidden');
-                }
-                
-                // Reset Plans on Switch
-                resetPlans();
-                
-                showToast('付費版：可直接上傳圖片進行分析');
-            }
+        function openPricingModal() {
+            document.getElementById('pricing-modal').classList.remove('hidden');
         }
-        
-        // --- Plan Selection Logic ---
+        function closePricingModal() {
+            document.getElementById('pricing-modal').classList.add('hidden');
+            resetPlans();
+        }
+
         function resetPlans() {
             currentPlan = null;
-            const plans = ['free', 'pro', 'master'];
-            
-            plans.forEach(plan => {
-                const card = document.getElementById(`plan-card-${plan}`);
-                
-                // Reset Base Styles
-                card.classList.remove('scale-105', 'z-10', 'opacity-100', 'border-aiBlue', 'shadow-glow-pro', 'border-yellow-500', 'shadow-glow-master');
-                card.classList.add('scale-100', 'z-0', 'opacity-90', 'border-border');
-                
-                // Reset Text Colors
-                if(plan === 'pro') {
-                    document.getElementById('title-pro').classList.remove('text-aiBlue');
-                    document.getElementById('title-pro').classList.add('text-textSub');
-                    document.getElementById('badge-pro').classList.remove('opacity-100');
-                    document.getElementById('badge-pro').classList.add('opacity-0');
-                    
-                    const btn = document.getElementById('btn-pro');
-                    btn.classList.remove('bg-aiBlue', 'text-white');
-                    btn.classList.add('bg-gray-200', 'text-gray-500');
-                }
-                
-                if(plan === 'master') {
-                    document.getElementById('title-master').classList.remove('text-amber-600');
-                    document.getElementById('title-master').classList.add('text-textSub');
-                    document.getElementById('badge-master').classList.remove('opacity-100');
-                    document.getElementById('badge-master').classList.add('opacity-0');
-                    
-                    const btn = document.getElementById('btn-master');
-                    btn.classList.remove('border-amber-500', 'text-amber-600');
-                    btn.classList.add('border-border', 'text-textSub');
-                }
+            ['free', 'pro', 'master'].forEach(p => {
+                const card = document.getElementById(`plan-card-${p}`);
+                card.classList.remove('active', 'border-aiBlue', 'shadow-glow-pro', 'border-yellow-500', 'shadow-glow-master');
+                card.classList.add('border-slate-700');
             });
         }
-
+        
         function selectPlan(plan) {
             if (currentPlan === plan) return;
-            
             resetPlans();
             currentPlan = plan;
             
             const card = document.getElementById(`plan-card-${plan}`);
+            card.classList.remove('border-slate-700');
+            card.classList.add('active');
             
-            // Apply Active Styles
-            card.classList.remove('scale-100', 'z-0', 'opacity-90', 'border-border');
-            card.classList.add('scale-105', 'z-10', 'opacity-100');
-            
-            if (plan === 'free') {
-                 card.classList.add('border-gray-400', 'shadow-lg');
-            } else if (plan === 'pro') {
+            if(plan === 'free') {
+                card.classList.add('border-slate-500');
+            } else if(plan === 'pro') {
                 card.classList.add('border-aiBlue', 'shadow-glow-pro');
-                
-                document.getElementById('title-pro').classList.remove('text-textSub');
-                document.getElementById('title-pro').classList.add('text-aiBlue');
-                document.getElementById('badge-pro').classList.remove('opacity-0');
-                document.getElementById('badge-pro').classList.add('opacity-100');
-                
-                const btn = document.getElementById('btn-pro');
-                btn.classList.remove('bg-gray-200', 'text-gray-500');
-                btn.classList.add('bg-aiBlue', 'text-white');
-            } else if (plan === 'master') {
+            } else if(plan === 'master') {
                 card.classList.add('border-yellow-500', 'shadow-glow-master');
-                
-                document.getElementById('title-master').classList.remove('text-textSub');
-                document.getElementById('title-master').classList.add('text-amber-600');
-                document.getElementById('badge-master').classList.remove('opacity-0');
-                document.getElementById('badge-master').classList.add('opacity-100');
-                
-                const btn = document.getElementById('btn-master');
-                btn.classList.remove('border-border', 'text-textSub');
-                btn.classList.add('border-amber-500', 'text-amber-600');
             }
         }
 
-        // --- Payment Logic ---
-        async function goToPaymentPro() {
-            showToast('正在準備 PRO 方案付款...');
-            
-            try {
-                // 獲取用戶 ID（如果有登入系統，這裡應該從 localStorage 或 cookie 取得）
-                const userId = localStorage.getItem('userId') || 'anonymous';
-                
-                // 調用支付 API
-                const response = await fetch('/.netlify/functions/payment-checkout', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        plan: 'PRO',
-                        userId: userId,
-                    }),
-                });
-
-                if (!response.ok) {
-                    throw new Error('付款請求失敗');
-                }
-
-                // 取得付款表單 HTML，並在當前視窗打開
-                const html = await response.text();
-                const newWindow = window.open('', '_blank');
-                newWindow.document.write(html);
-                newWindow.document.close();
-                
-            } catch (error) {
-                console.error('付款錯誤:', error);
-                showToast('付款請求失敗，請稍後再試');
-            }
-        }
-
-        async function goToPaymentMaster() {
-            showToast('正在準備大師版付款...');
-            
-            try {
-                // 獲取用戶 ID（如果有登入系統，這裡應該從 localStorage 或 cookie 取得）
-                const userId = localStorage.getItem('userId') || 'anonymous';
-                
-                // 調用支付 API
-                const response = await fetch('/.netlify/functions/payment-checkout', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        plan: 'MASTER',
-                        userId: userId,
-                    }),
-                });
-
-                if (!response.ok) {
-                    throw new Error('付款請求失敗');
-                }
-
-                // 取得付款表單 HTML，並在當前視窗打開
-                const html = await response.text();
-                const newWindow = window.open('', '_blank');
-                newWindow.document.write(html);
-                newWindow.document.close();
-                
-            } catch (error) {
-                console.error('付款錯誤:', error);
-                showToast('付款請求失敗，請稍後再試');
-            }
-        }
-
-        // --- Shopee Analysis API Call ---
         async function runShopeeAnalysis() {
-            if (shopeeMode !== 'free') return showToast('請切換至免費版使用文字分析');
-            
-            const keyword = document.getElementById('shopee-keyword').value;
-            if(!keyword.trim()) return showToast('請輸入您的產品清單或需求');
+            if (!currentUser) {
+                showToast('請先登入以使用分析功能');
+                showLoginModal();
+                return;
+            }
 
-            // Show loading
+            const input = document.getElementById('shopee-keyword').value.trim();
+            if(!input) return showToast('請輸入產品描述或數據');
+
+            if(remainingUsage <= 0) {
+                showToast('今日免費次數已用罄，請升級方案');
+                openPricingModal();
+                return;
+            }
+
             document.getElementById('shopee-empty').classList.add('hidden');
             document.getElementById('shopee-results').classList.add('hidden');
             document.getElementById('shopee-loading').classList.remove('hidden');
+            
+            remainingUsage--;
+            document.getElementById('usage-count').innerText = remainingUsage;
 
-            showToast('開始進行選品分析...');
+            showToast(`${currentUser.displayName} 你好，BrotherG 正在為您的產品進行深度運算...`);
 
             try {
-                // Call backend API
+                // 调用后端 API
                 const response = await fetch('/.netlify/functions/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        textPrompt: keyword,
+                        textPrompt: input,
                         images: []
                     })
                 });
@@ -661,524 +536,44 @@
 
                 const data = await response.json();
                 
-                // 添加调试日志
-                console.log('📥 API 響應數據:', data);
-
-                // 检查是否有错误
-                if (data.error) {
-                    throw new Error(data.error || '分析失敗');
-                }
-
-                // 检查是否有有效数据（更宽松的检查）
-                const hasData = data.summary || data.recommendations || data.plan || data.reasoningText;
-                if (!hasData) {
-                    console.warn('⚠️ API 返回的數據格式異常:', data);
-                    // 即使没有标准格式，也尝试显示原始数据
-                    if (typeof data === 'string') {
-                        data = { summary: data };
-                    } else if (Object.keys(data).length === 0) {
-                        throw new Error('API 返回空数据，请稍后重试');
-                    }
-                }
-
-                // Hide loading
                 document.getElementById('shopee-loading').classList.add('hidden');
+                document.getElementById('shopee-results').classList.remove('hidden');
 
-                // Parse and display results
-                let recommendations = [];
-                let extendedIdeas = '';
-                let summaryText = '';
-
-                // 提取摘要
-                summaryText = data.summary || data.reasoningText || JSON.stringify(data).substring(0, 500);
-
-                // 提取推薦
+                // 解析并显示结果
+                let markdownContent = '';
+                
+                if (data.summary) {
+                    markdownContent += `### ${currentUser.displayName} 的市場洞察報告\n\n`;
+                    markdownContent += data.summary + '\n\n';
+                }
+                
                 if (data.recommendations && Array.isArray(data.recommendations)) {
-                    recommendations = data.recommendations;
-                } else if (summaryText) {
-                    // 如果没有推薦，从摘要中生成
-                    recommendations = [
-                        { item: "核心分析", reason: summaryText.substring(0, 200) }
-                    ];
+                    markdownContent += `### 銷售組合策略 (C-A-B 模型應用)\n\n`;
+                    data.recommendations.forEach(rec => {
+                        markdownContent += `* ${rec}\n`;
+                    });
+                    markdownContent += '\n';
                 }
-
-                // 提取計劃
+                
                 if (data.plan) {
-                    extendedIdeas = data.plan;
-                } else if (summaryText) {
-                    extendedIdeas = summaryText;
+                    markdownContent += `### 轉化率優化建議 (文案話術)\n\n${data.plan}\n`;
+                }
+
+                const contentDiv = document.getElementById('shopee-markdown-content');
+                if(typeof marked !== 'undefined') {
+                    contentDiv.innerHTML = marked.parse(markdownContent);
                 } else {
-                    extendedIdeas = '暫無延伸建議，請查看上方分析結果。';
-                }
-                
-                console.log('📊 解析後的數據:', { recommendations, extendedIdeas, summaryText });
-
-                // Populate Top 10 List
-                const top10List = document.getElementById('top-10-list');
-                if (!top10List) {
-                    console.error('❌ 找不到 top-10-list 元素');
-                } else {
-                    top10List.innerHTML = '';
-                    
-                    // 如果没有推荐，至少显示摘要
-                    if (recommendations.length === 0 && summaryText) {
-                        // 将摘要分段显示
-                        const summaryParts = summaryText.split(/[。！\n]/).filter(p => p.trim()).slice(0, 10);
-                        if (summaryParts.length === 0) {
-                            // 如果分割后没有内容，直接显示完整摘要
-                            summaryParts.push(summaryText);
-                        }
-                        summaryParts.forEach((part, index) => {
-                            top10List.innerHTML += `
-                                <li class="flex items-start text-sm border-b border-blue-100 pb-2">
-                                    <span class="font-mono font-bold text-aiBlue w-6 flex-shrink-0">#${index + 1}</span>
-                                    <div>
-                                        <span class="text-textSub">${part.trim()}${part.endsWith('。') ? '' : '。'}</span>
-                                    </div>
-                                </li>
-                            `;
-                        });
-                    } else {
-                        recommendations.slice(0, 10).forEach((rec, index) => {
-                            const item = typeof rec === 'string' ? rec : (rec.item || rec || `建議 ${index + 1}`);
-                            const reason = typeof rec === 'string' ? '' : (rec.reason || '');
-                            
-                            top10List.innerHTML += `
-                                <li class="flex items-start text-sm border-b border-blue-100 pb-2">
-                                    <span class="font-mono font-bold text-aiBlue w-6 flex-shrink-0">#${index + 1}</span>
-                                    <div>
-                                        <span class="font-bold text-textMain">${item}</span>
-                                        ${reason ? `<span class="text-textSub">: ${reason}</span>` : ''}
-                                    </div>
-                                </li>
-                            `;
-                        });
-                    }
-                }
-                
-                console.log('✅ Top 10 List 已填充，共', recommendations.length || 0, '項');
-
-                // Populate extended ideas
-                const extendedIdeasText = extendedIdeas || summaryText || '暫無延伸建議';
-                const extendedIdeasEl = document.getElementById('extended-ideas');
-                if (extendedIdeasEl) {
-                    extendedIdeasEl.innerText = extendedIdeasText || '暫無延伸建議';
+                    contentDiv.innerHTML = markdownContent.replace(/\n/g, '<br>');
                 }
 
-                // 確保隱藏空狀態和顯示結果
-                const emptyEl = document.getElementById('shopee-empty');
-                const resultsEl = document.getElementById('shopee-results');
-                
-                if (emptyEl) emptyEl.classList.add('hidden');
-                if (resultsEl) {
-                    resultsEl.classList.remove('hidden');
-                    console.log('✅ 顯示結果區域');
-                } else {
-                    console.error('❌ 找不到 shopee-results 元素');
-                }
-                
-                // 清空輸入框
-                const keywordEl = document.getElementById('shopee-keyword');
-                if (keywordEl) keywordEl.value = '';
-                
-                showToast('選品決策卡已成功生成！');
-                console.log('✅ 分析完成並顯示結果');
-
+                showToast('分析報告生成完畢');
             } catch (error) {
                 console.error('分析錯誤:', error);
                 document.getElementById('shopee-loading').classList.add('hidden');
-                document.getElementById('shopee-results').classList.add('hidden');
-                document.getElementById('shopee-empty').classList.remove('hidden');
-                
-                // 显示更详细的错误信息
-                const errorMsg = error.message || '未知錯誤';
-                showToast('分析失敗: ' + errorMsg);
-                
-                // 在控制台显示完整错误
-                console.error('完整錯誤信息:', {
-                    message: error.message,
-                    stack: error.stack,
-                    error: error
-                });
+                showToast('分析失敗: ' + error.message);
             }
         }
-
-        // --- 圖片壓縮工具函式 ---
-        const compressImage = (file) => {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = (event) => {
-                    const img = new Image();
-                    img.src = event.target.result;
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        // 設定最大寬度為 800px (夠 AI 看了，不需要 4K)
-                        const MAX_WIDTH = 800;
-                        const scaleSize = MAX_WIDTH / img.width;
-                        canvas.width = MAX_WIDTH;
-                        canvas.height = img.height * scaleSize;
-
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                        // 轉成 JPEG，品質設定為 0.6 (體積變很小)
-                        // 這樣回傳的就是已經壓縮過的 Base64
-                        resolve(canvas.toDataURL('image/jpeg', 0.6));
-                    };
-                };
-                reader.onerror = () => resolve(null);
-            });
-        };
-
-        // --- Image Upload Handler ---
-        let uploadedImages = [];
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            const imageUpload = document.getElementById('shopee-image-upload');
-            if (imageUpload) {
-                imageUpload.addEventListener('change', async function(e) {
-                    uploadedImages = [];
-                    const files = Array.from(e.target.files).slice(0, 10);
-                    const preview = document.getElementById('image-preview');
-                    if (preview) preview.innerHTML = '';
-                    
-                    console.log('📷 [圖片上傳] 選擇了', files.length, '張圖片');
-                    
-                    if (files.length === 0) {
-                        showToast('請選擇至少一張圖片');
-                        return;
-                    }
-                    
-                    // 顯示壓縮中...
-                    showToast('正在壓縮圖片以加速分析...');
-                    
-                    // 平行壓縮所有圖片
-                    const compressPromises = files.map(file => compressImage(file));
-                    const compressedResults = await Promise.all(compressPromises);
-                    
-                    // 過濾掉失敗的壓縮結果
-                    uploadedImages = compressedResults.filter(img => img !== null);
-                    
-                    console.log(`✅ [圖片上傳] 已壓縮 ${uploadedImages.length}/${files.length} 張圖片`);
-                    
-                    // Show preview
-                    if (preview) {
-                        uploadedImages.forEach((compressedImg, index) => {
-                            const imgWrapper = document.createElement('div');
-                            imgWrapper.className = 'relative';
-                            
-                            const img = document.createElement('img');
-                            img.src = compressedImg;
-                            img.className = 'w-full h-20 object-cover rounded border border-border';
-                            img.alt = `預覽 ${index + 1}`;
-                            
-                            const removeBtn = document.createElement('button');
-                            removeBtn.innerHTML = '×';
-                            removeBtn.className = 'absolute top-0 right-0 bg-red-500 text-white w-6 h-6 rounded-full text-xs hover:bg-red-600';
-                            removeBtn.onclick = function() {
-                                uploadedImages.splice(index, 1);
-                                imgWrapper.remove();
-                                showToast(`已移除圖片 ${index + 1}`);
-                            };
-                            
-                            imgWrapper.appendChild(img);
-                            imgWrapper.appendChild(removeBtn);
-                            preview.appendChild(imgWrapper);
-                        });
-                    }
-                    
-                    showToast(`已壓縮並載入 ${uploadedImages.length} 張圖片，可以開始分析了`);
-                });
-            } else {
-                console.warn('⚠️ [圖片上傳] 找不到 shopee-image-upload 元素');
-            }
-        });
-
-        // --- Image Analysis Function ---
-        async function runShopeeImageAnalysis() {
-            console.log('🚀 [圖片分析] 開始分析，已上傳圖片數:', uploadedImages.length);
-            
-            if (uploadedImages.length === 0) {
-                // 嘗試從 input 直接讀取文件
-                const imageInput = document.getElementById('shopee-image-upload');
-                if (imageInput && imageInput.files && imageInput.files.length > 0) {
-                    console.log('⚠️ [圖片分析] uploadedImages 為空，從 input 重新讀取文件');
-                    const files = Array.from(imageInput.files);
-                    const promises = files.map(file => {
-                        return new Promise((resolve, reject) => {
-                            const reader = new FileReader();
-                            reader.onload = e => resolve(e.target.result);
-                            reader.onerror = reject;
-                            reader.readAsDataURL(file);
-                        });
-                    });
-                    uploadedImages = await Promise.all(promises);
-                    console.log('✅ [圖片分析] 從 input 重新載入了', uploadedImages.length, '張圖片');
-                } else {
-                    return showToast('請先上傳圖片');
-                }
-            }
-            
-            const query = document.getElementById('shopee-image-query')?.value || '分析這些圖片並給出選品建議';
-            console.log('📝 [圖片分析] 查詢文本:', query);
-            console.log('📷 [圖片分析] 準備發送', uploadedImages.length, '張圖片');
-            
-            // Show loading (hide both result areas)
-            const emptyEl = document.getElementById('shopee-empty');
-            const resultsEl = document.getElementById('shopee-results');
-            const paidResultsEl = document.getElementById('shopee-paid-results');
-            const loadingEl = document.getElementById('shopee-loading');
-            
-            if (emptyEl) emptyEl.classList.add('hidden');
-            if (resultsEl) resultsEl.classList.add('hidden');
-            if (paidResultsEl) paidResultsEl.classList.add('hidden');
-            if (loadingEl) loadingEl.classList.remove('hidden');
-            
-            showToast('開始進行圖片分析...');
-            
-            try {
-                // Convert images to base64 array
-                const base64Images = uploadedImages.map(img => {
-                    // Remove data:image/xxx;base64, prefix if exists
-                    return img.includes(',') ? img.split(',')[1] : img;
-                });
-                
-                console.log('📤 [圖片分析] 發送 API 請求...');
-                console.log('⏱️ [圖片分析] 請求開始時間:', new Date().toISOString());
-                
-                // 創建 AbortController 用於超時控制（120 秒超時）
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => {
-                    controller.abort();
-                    console.error('❌ [圖片分析] 請求超時（120 秒）');
-                }, 120000); // 120 秒超時
-                
-                const response = await fetch('/.netlify/functions/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        textPrompt: query,
-                        images: base64Images
-                    }),
-                    signal: controller.signal
-                });
-                
-                clearTimeout(timeoutId);
-                console.log('📥 [圖片分析] API 響應狀態:', response.status, response.statusText);
-                console.log('⏱️ [圖片分析] 請求完成時間:', new Date().toISOString());
-                
-                if (!response.ok) {
-                    if (response.status === 504) {
-                        throw new Error('請求超時（504）。圖片分析需要較長時間，請稍後重試或減少圖片數量。');
-                    }
-                    throw new Error(`API 錯誤: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                
-                // 添加详细调试日志
-                console.log('📥 [圖片分析] API 響應數據:', data);
-                console.log('📊 [圖片分析] 數據結構:', {
-                    hasSummary: !!data.summary,
-                    hasRecommendations: !!data.recommendations,
-                    hasPlan: !!data.plan,
-                    recommendationsType: Array.isArray(data.recommendations) ? 'array' : typeof data.recommendations,
-                    recommendationsLength: Array.isArray(data.recommendations) ? data.recommendations.length : 0
-                });
-                
-                if (data.error) {
-                    throw new Error(data.error || '分析失敗');
-                }
-                
-                // Hide loading
-                const loadingEl = document.getElementById('shopee-loading');
-                if (loadingEl) loadingEl.classList.add('hidden');
-                
-                // Parse data with better fallback handling
-                let recommendations = [];
-                let extendedIdeas = '';
-                let summaryText = '';
-                
-                // 提取摘要
-                summaryText = data.summary || data.reasoningText || '';
-                console.log('📝 [圖片分析] 摘要長度:', summaryText.length);
-                
-                // 提取推薦 - 更健壯的解析
-                if (data.recommendations && Array.isArray(data.recommendations)) {
-                    recommendations = data.recommendations;
-                    console.log('✅ [圖片分析] 推薦列表 (數組):', recommendations.length, '項');
-                } else if (typeof data.recommendations === 'string') {
-                    // 如果是字符串，嘗試分割
-                    recommendations = data.recommendations.split('\n').filter(r => r.trim()).map(r => ({ item: r.trim() }));
-                    console.log('⚠️ [圖片分析] 推薦是字符串，已轉換為數組');
-                } else if (summaryText) {
-                    // 從摘要生成推薦
-                    const summaryParts = summaryText.split(/[。！\n]/).filter(p => p.trim()).slice(0, 10);
-                    recommendations = summaryParts.map((part, idx) => ({
-                        item: `建議 ${idx + 1}`,
-                        reason: part.trim()
-                    }));
-                    console.log('⚠️ [圖片分析] 從摘要生成推薦:', recommendations.length, '項');
-                }
-                
-                // 提取計劃
-                if (data.plan) {
-                    extendedIdeas = data.plan;
-                } else if (summaryText) {
-                    extendedIdeas = summaryText;
-                } else {
-                    extendedIdeas = '暫無延伸建議，請查看上方分析結果。';
-                }
-                
-                console.log('📊 [圖片分析] 解析後的數據:', {
-                    recommendations: recommendations.length,
-                    extendedIdeasLength: extendedIdeas.length,
-                    summaryLength: summaryText.length
-                });
-                
-                // Populate Top 10 List
-                const top10List = document.getElementById('top-10-list');
-                if (!top10List) {
-                    console.error('❌ [圖片分析] 找不到 top-10-list 元素');
-                } else {
-                    top10List.innerHTML = '';
-                    
-                    // 如果沒有推薦，從摘要生成列表
-                    if (recommendations.length === 0 && summaryText) {
-                        console.log('⚠️ [圖片分析] 沒有推薦列表，從摘要生成');
-                        const summaryParts = summaryText.split(/[。！\n]/).filter(p => p.trim()).slice(0, 10);
-                        if (summaryParts.length === 0) {
-                            summaryParts.push(summaryText.substring(0, 200));
-                        }
-                        summaryParts.forEach((part, index) => {
-                            top10List.innerHTML += `
-                                <li class="flex items-start text-sm border-b border-blue-100 pb-2">
-                                    <span class="font-mono font-bold text-aiBlue w-6 flex-shrink-0">#${index + 1}</span>
-                                    <div>
-                                        <span class="text-textSub">${part.trim()}${part.endsWith('。') ? '' : '。'}</span>
-                                    </div>
-                                </li>
-                            `;
-                        });
-                    } else {
-                        // 顯示推薦列表
-                        recommendations.slice(0, 10).forEach((rec, index) => {
-                            const item = typeof rec === 'string' ? rec : (rec.item || rec || `建議 ${index + 1}`);
-                            const reason = typeof rec === 'string' ? '' : (rec.reason || '');
-                            
-                            top10List.innerHTML += `
-                                <li class="flex items-start text-sm border-b border-blue-100 pb-2">
-                                    <span class="font-mono font-bold text-aiBlue w-6 flex-shrink-0">#${index + 1}</span>
-                                    <div>
-                                        <span class="font-bold text-textMain">${item}</span>
-                                        ${reason ? `<span class="text-textSub">: ${reason}</span>` : ''}
-                                    </div>
-                                </li>
-                            `;
-                        });
-                    }
-                    console.log('✅ [圖片分析] Top 10 List 已填充，共', recommendations.length || 0, '項');
-                }
-                
-                // Populate extended ideas
-                const extendedIdeasEl = document.getElementById('extended-ideas');
-                if (!extendedIdeasEl) {
-                    console.error('❌ [圖片分析] 找不到 extended-ideas 元素');
-                } else {
-                    extendedIdeasEl.innerText = extendedIdeas || summaryText || '暫無延伸建議';
-                    console.log('✅ [圖片分析] Extended Ideas 已填充，長度:', extendedIdeas.length);
-                }
-                
-                // 確保隱藏空狀態和顯示結果
-                const emptyEl = document.getElementById('shopee-empty');
-                const resultsEl = document.getElementById('shopee-results');
-                const paidResultsEl = document.getElementById('shopee-paid-results');
-                
-                console.log('🔍 [圖片分析] 檢查 DOM 元素:', {
-                    hasEmpty: !!emptyEl,
-                    hasResults: !!resultsEl,
-                    hasPaidResults: !!paidResultsEl
-                });
-                
-                // 強制隱藏其他區域
-                if (emptyEl) {
-                    emptyEl.classList.add('hidden');
-                    console.log('✅ [圖片分析] 已隱藏空狀態');
-                }
-                if (paidResultsEl) {
-                    paidResultsEl.classList.add('hidden');
-                    console.log('✅ [圖片分析] 已隱藏付費結果區域');
-                }
-                
-                // 強制顯示結果區域
-                if (!resultsEl) {
-                    console.error('❌ [圖片分析] 找不到 shopee-results 元素！');
-                    // 嘗試查找所有可能的結果容器
-                    const allDivs = document.querySelectorAll('[id*="result"], [id*="shopee"]');
-                    console.error('🔍 找到的相關元素:', Array.from(allDivs).map(el => el.id));
-                } else {
-                    // 強制移除 hidden 類並確保顯示
-                    resultsEl.classList.remove('hidden');
-                    resultsEl.style.display = 'flex'; // 強制顯示
-                    resultsEl.style.visibility = 'visible';
-                    resultsEl.style.opacity = '1';
-                    
-                    // 滾動到結果區域
-                    resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    
-                    console.log('✅ [圖片分析] 結果區域已顯示');
-                    console.log('✅ [圖片分析] resultsEl 類名:', resultsEl.className);
-                    console.log('✅ [圖片分析] resultsEl 樣式:', {
-                        display: window.getComputedStyle(resultsEl).display,
-                        visibility: window.getComputedStyle(resultsEl).visibility,
-                        opacity: window.getComputedStyle(resultsEl).opacity
-                    });
-                }
-                
-                showToast('圖片分析報告已成功生成！');
-                console.log('✅ [圖片分析] 分析完成並顯示結果');
-                
-                // 延遲檢查一次，確保顯示
-                setTimeout(() => {
-                    if (resultsEl && window.getComputedStyle(resultsEl).display === 'none') {
-                        console.error('⚠️ [圖片分析] 結果區域被 CSS 隱藏，強制顯示');
-                        resultsEl.style.display = 'flex';
-                    }
-                }, 100);
-                
-            } catch (error) {
-                console.error('❌ [圖片分析] 錯誤:', error);
-                console.error('❌ [圖片分析] 完整錯誤信息:', {
-                    message: error.message,
-                    stack: error.stack,
-                    error: error,
-                    name: error.name
-                });
-                
-                const loadingEl = document.getElementById('shopee-loading');
-                const resultsEl = document.getElementById('shopee-results');
-                const emptyEl = document.getElementById('shopee-empty');
-                
-                if (loadingEl) loadingEl.classList.add('hidden');
-                if (resultsEl) resultsEl.classList.add('hidden');
-                if (emptyEl) emptyEl.classList.remove('hidden');
-                
-                // 特殊處理超時錯誤
-                let errorMsg = error.message || '未知錯誤';
-                if (error.name === 'AbortError' || error.message.includes('超時') || error.message.includes('504')) {
-                    errorMsg = '請求超時。圖片分析需要較長時間，建議：\n1. 減少圖片數量（2-3 張）\n2. 稍後重試\n3. 如果持續超時，請聯繫客服';
-                    showToast('請求超時，請稍後重試或減少圖片數量', 5000);
-                } else {
-                    showToast('圖片分析失敗: ' + errorMsg);
-                }
-            }
-        }
-
-        // Init
-        window.onload = function() {
-            switchShopeeMode('free'); // Set default mode
-        };
     </script>
 </body>
 </html>
+
