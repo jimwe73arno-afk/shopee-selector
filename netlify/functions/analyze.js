@@ -1,13 +1,10 @@
 // netlify/functions/analyze.js
-// BrotherG AI - "Gemini 2.5 Force" Version
-// Logic: Uses Gemini 2.5 Flash, removes Deno dependencies, disables safety filters.
-
-// 使用 Node.js Runtime，避免 Deno 環境問題
-// 2.5 Flash 處理純文字夠快，通常可以在 10 秒內完成
+// BrotherG AI - "Lite & Fast" Version
+// Strategy: Minimal Prompt + Low Token Limit = Guaranteed Response
 
 const API_KEY = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 const API_VERSION = "v1beta";
-const MODEL_NAME = "gemini-2.5-flash"; // 鎖定 2.5
+const MODEL_NAME = "gemini-2.5-flash";
 
 exports.handler = async (event, context) => {
   context.callbackWaitsForEmptyEventLoop = false;
@@ -19,7 +16,7 @@ exports.handler = async (event, context) => {
     "Content-Type": "text/plain; charset=utf-8",
   };
 
-  // 1. CORS 處理
+  // 1. CORS
   if (event.httpMethod === "OPTIONS") {
     return {
       statusCode: 200,
@@ -37,7 +34,6 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // 解析請求體
     let body;
     try {
       body = JSON.parse(event.body || "{}");
@@ -45,7 +41,7 @@ exports.handler = async (event, context) => {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: "Body 解析失敗" }),
+        body: JSON.stringify({ error: "Body Error" }),
       };
     }
 
@@ -59,20 +55,17 @@ exports.handler = async (event, context) => {
       throw new Error("textPrompt 為必填欄位");
     }
 
-    console.log(`🚀 Requesting ${MODEL_NAME} (Text Only)...`);
+    console.log(`🚀 Request: Lite Mode. Prompt length: ${textPrompt?.length}`);
 
-    // 2. 戰術指令 (Markdown 格式)
+    // 2. 極簡化 System Instruction (防止 AI 想太久)
     const systemInstruction = `
-你現在是 Shopee 直播戰術分析師。
-請根據用戶輸入的產品描述，產出【直播決策卡】。
-
-格式要求 (Markdown)：
-### 📊 市場洞察
-### 🎯 C-A-B 選品戰術
-* 🪝 **誘餌 (C):**
-* 💰 **利潤 (A):**
-* 📦 **湊單 (B):**
-### 🗣️ 主播話術
+你是 Shopee 決策顧問，輸入是賣家狀況。
+用繁體中文回答，給四段：
+1. 結論 (一句話)
+2. C-A-B 選品建議 (誘餌/利潤/湊單)
+3. 直播話術 (100字內)
+4. 下一步行動
+輸出用 Markdown，不要廢話。
 `;
 
     // 3. 呼叫 Google API
@@ -84,13 +77,13 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({
         contents: [{
           role: "user",
-          parts: [{ text: `${systemInstruction}\n\n【用戶輸入】\n${textPrompt}` }]
+          parts: [{ text: `${systemInstruction}\n\n【賣家輸入】\n${textPrompt}` }]
         }],
         generationConfig: {
-          maxOutputTokens: 2048,
-          temperature: 0.7
+          maxOutputTokens: 800, // 設定 800 夠講完話，且不會超時
+          temperature: 0.7,
         },
-        // 🔥 關鍵：關閉所有安全過濾，避免 AI 已讀不回 (出現 15 字的情況)
+        // 關閉安全鎖，避免空值
         safetySettings: [
           { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
           { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
@@ -108,17 +101,17 @@ exports.handler = async (event, context) => {
 
     const data = await response.json();
     
-    // 檢查是否有內容
+    // 4. 檢查結果
     const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!resultText) {
-      console.error("❌ Empty Response:", JSON.stringify(data));
-      throw new Error("AI 回傳空白 (可能被 Google 攔截)");
+      // 如果還是空的，印出完整 Log 抓兇手
+      console.error("❌ Empty Response Details:", JSON.stringify(data));
+      throw new Error("AI 生成內容為空 (可能觸發 MAX_TOKENS 截斷)");
     }
 
     console.log(`✅ Success! Length: ${resultText.length}`);
 
-    // 4. 回傳結果
     return {
       statusCode: 200,
       headers,
@@ -126,7 +119,7 @@ exports.handler = async (event, context) => {
     };
 
   } catch (error) {
-    console.error("🔥 Server Error:", error);
+    console.error("🔥 Error:", error);
     return {
       statusCode: 500,
       headers: {
