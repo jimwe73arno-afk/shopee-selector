@@ -33,9 +33,9 @@ exports.handler = async (event, context) => {
     };
   }
 
-  // 檢查請求方法
-  if (event.httpMethod !== "POST") {
-    console.error("❌ Invalid method:", event.httpMethod, "Expected: POST");
+  // 檢查請求方法（允許 POST 和 GET，但 GET 用於測試）
+  if (event.httpMethod !== "POST" && event.httpMethod !== "GET") {
+    console.error("❌ Invalid method:", event.httpMethod, "Expected: POST or GET");
     return {
       statusCode: 405,
       headers: corsHeaders,
@@ -43,7 +43,27 @@ exports.handler = async (event, context) => {
         error: "Method Not Allowed",
         received: event.httpMethod,
         expected: "POST",
-        path: event.path
+        path: event.path,
+        debug: {
+          httpMethod: event.httpMethod,
+          requestContext: event.requestContext,
+          multiValueHeaders: event.multiValueHeaders
+        }
+      }),
+    };
+  }
+  
+  // 如果是 GET 請求（用於測試），返回狀態信息
+  if (event.httpMethod === "GET") {
+    console.log("ℹ️ GET request received (test mode)");
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify({
+        status: "ok",
+        message: "BrotherG AI Analyze Function is running",
+        method: event.httpMethod,
+        hasApiKey: !!(process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY)
       }),
     };
   }
