@@ -643,17 +643,21 @@
         window.userCredits = window.userCredits ?? 5;
 
         async function runShopeeAnalysis() {
-            // 1) 登入檢查
-            if (!window.isLoggedIn || !window.isLoggedIn()) {
-                showToast('請先登入以使用分析功能');
-                showLoginModal();
-                return;
-            }
+            // 1) 登入檢查（降級模式：未登入也允許使用）
+            let currentUser = null;
+            let userEmail = null;
 
-            const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
-            if (!currentUser || !currentUser.email) {
-                showToast('無法取得用戶資訊，請重新登入');
-                return;
+            if (window.isLoggedIn && window.isLoggedIn()) {
+                currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
+                if (currentUser && currentUser.email) {
+                    userEmail = currentUser.email;
+                    console.log('✅ 已登入用戶:', userEmail);
+                } else {
+                    console.warn('⚠️ 登入狀態異常，繼續使用匿名模式');
+                }
+            } else {
+                console.warn('⚠️ 未登入，使用匿名模式（允許基本使用）');
+                // 未登入也可以使用，但會限制功能
             }
 
             const inputEl = document.getElementById('shopee-keyword');
@@ -667,25 +671,29 @@
             }
 
             // 2) 檢查配額（前端預檢，但錯誤不阻擋請求）
-            try {
-                if (typeof window.checkQuota === 'function') {
-                    const quotaInfo = await window.checkQuota(currentUser.email);
-                    if (quotaInfo && !quotaInfo.canUse) {
-                        showToast(`今日已用完 ${quotaInfo.quota} 次額度，請升級方案或明日再試`);
-                        openPricingModal();
-                        return;
-                    }
-                    // 更新 UI 顯示剩餘次數
-                    if (quotaInfo) {
-                        const usageCountEl = document.getElementById('usage-count');
-                        if (usageCountEl) {
-                            usageCountEl.innerText = quotaInfo.remaining || 0;
+            if (userEmail) {
+                try {
+                    if (typeof window.checkQuota === 'function') {
+                        const quotaInfo = await window.checkQuota(userEmail);
+                        if (quotaInfo && !quotaInfo.canUse) {
+                            showToast(`今日已用完 ${quotaInfo.quota} 次額度，請升級方案或明日再試`);
+                            openPricingModal();
+                            return;
+                        }
+                        // 更新 UI 顯示剩餘次數
+                        if (quotaInfo) {
+                            const usageCountEl = document.getElementById('usage-count');
+                            if (usageCountEl) {
+                                usageCountEl.innerText = quotaInfo.remaining || 0;
+                            }
                         }
                     }
+                } catch (quotaError) {
+                    console.warn('⚠️ 配額檢查失敗，繼續執行請求:', quotaError);
+                    // 配額檢查失敗不阻擋請求，讓後端處理
                 }
-            } catch (quotaError) {
-                console.warn('⚠️ 配額檢查失敗，繼續執行請求:', quotaError);
-                // 配額檢查失敗不阻擋請求，讓後端處理
+            } else {
+                console.log('ℹ️ 匿名用戶跳過配額檢查');
             }
 
             // 3) UI 狀態切換
@@ -704,14 +712,20 @@
             btn.innerText = '分析中…';
 
             try {
-                // 4) 呼叫後端 API（傳遞 email）
+                // 4) 呼叫後端 API（傳遞 email，如果有的話）
+                const requestBody = {
+                    textPrompt: textPrompt
+                };
+                if (userEmail) {
+                    requestBody.email = userEmail;
+                }
+
+                console.log('📤 發送分析請求:', { hasEmail: !!userEmail, hasPrompt: !!textPrompt });
+
                 const resp = await fetch(ANALYZE_ENDPOINT, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: currentUser.email,
-                        textPrompt: textPrompt
-                    })
+                    body: JSON.stringify(requestBody)
                 });
 
                 if (!resp.ok) {
@@ -729,8 +743,8 @@
                 }
 
                 // 6) 重新獲取用戶資料（更新配額顯示）
-                if (typeof window.getUserData === 'function') {
-                    const userData = await window.getUserData(currentUser.email);
+                if (userEmail && typeof window.getUserData === 'function') {
+                    const userData = await window.getUserData(userEmail);
                     if (userData) {
                         const tier = userData.tier || 'FREE';
                         const limit = tier === 'PRO' ? 20 : 5;
