@@ -305,7 +305,7 @@
                                     開通
                                 </button>
                             </div>
-                            <p class="text-[10px] text-textSub mt-2">支援開通碼：bg888, bg688, bg1688, bg588</p>
+                            <p class="text-[10px] text-textSub mt-2">付款完成後，系統會發送開通碼至您的註冊信箱</p>
                         </div>
                         
                         <button onclick="runShopeeAnalysis()" class="w-full py-4 bg-aiBlue text-white font-display font-bold hover:bg-blue-600 transition-all duration-300 tracking-widest uppercase text-lg relative overflow-hidden shadow-[0_0_15px_rgba(0,160,233,0.3)] rounded-lg group active:scale-95">
@@ -518,41 +518,13 @@
         let remainingUsage = 5;
         let currentPlan = null;
         
-        // 開通碼列表（四組輪流使用）
-        const activationCodes = ['bg888', 'bg688', 'bg1688', 'bg588'];
-        let currentCodeIndex = 0;
-        
-        // 驗證開通碼的函數
-        function verifyActivationCode(code) {
-            const normalizedCode = code.toLowerCase().trim();
-            const isValid = activationCodes.includes(normalizedCode);
-            
-            if (isValid) {
-                // 根據開通碼判斷方案
-                let plan = 'FREE';
-                if (normalizedCode === 'bg888' || normalizedCode === 'bg688') {
-                    plan = 'PRO';
-                } else if (normalizedCode === 'bg1688' || normalizedCode === 'bg588') {
-                    plan = 'MASTER';
-                }
-                
-                // 儲存到 localStorage
-                localStorage.setItem('userPlan', plan);
-                localStorage.setItem('activationCode', normalizedCode);
-                
-                return { valid: true, plan: plan };
-            }
-            
-            return { valid: false, plan: null };
-        }
-        
         // 獲取當前用戶方案
         function getUserPlan() {
             return localStorage.getItem('userPlan') || 'FREE';
         }
         
-        // 開通碼驗證函數
-        function activateCode() {
+        // 開通碼驗證函數（改為後端驗證）
+        async function activateCode() {
             const input = document.getElementById('activation-code-input');
             const code = input.value.trim();
             
@@ -561,28 +533,52 @@
                 return;
             }
             
-            const result = verifyActivationCode(code);
+            const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
+            if (!currentUser) {
+                showToast('請先登入');
+                showLoginModal();
+                return;
+            }
             
-            if (result.valid) {
-                showToast(`✅ 開通成功！已升級為 ${result.plan} 方案`);
-                input.value = '';
+            try {
+                // 呼叫後端 API 驗證開通碼
+                const response = await fetch('/.netlify/functions/verify-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        code: code,
+                        userId: currentUser.uid || currentUser.email
+                    })
+                });
                 
-                // 更新使用次數（PRO 和 MASTER 有更多次數）
-                if (result.plan === 'PRO') {
-                    remainingUsage = 50;
+                const data = await response.json();
+                
+                if (data.valid && data.plan) {
+                    showToast(`✅ 開通成功！已升級為 ${data.plan} 方案`);
+                    input.value = '';
+                    
+                    // 儲存到 localStorage
+                    localStorage.setItem('userPlan', data.plan);
+                    
+                    // 更新使用次數
+                    if (data.plan === 'PRO') {
+                        remainingUsage = 50;
+                    } else if (data.plan === 'MASTER') {
+                        remainingUsage = 999;
+                    }
                     document.getElementById('usage-count').innerText = remainingUsage;
-                } else if (result.plan === 'MASTER') {
-                    remainingUsage = 999;
-                    document.getElementById('usage-count').innerText = remainingUsage;
+                    
+                    // 刷新頁面以更新 UI
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    showToast('❌ 開通碼無效，請確認後再試');
+                    input.value = '';
                 }
-                
-                // 刷新頁面以更新 UI
-                setTimeout(() => {
-                    location.reload();
-                }, 1500);
-            } else {
-                showToast('❌ 開通碼無效，請確認後再試');
-                input.value = '';
+            } catch (error) {
+                console.error('開通碼驗證錯誤:', error);
+                showToast('開通碼驗證失敗，請稍後再試');
             }
         }
         
@@ -590,10 +586,7 @@
         window.addEventListener('DOMContentLoaded', () => {
             const savedPlan = getUserPlan();
             if (savedPlan !== 'FREE') {
-                const code = localStorage.getItem('activationCode');
-                if (code) {
-                    console.log(`已檢測到 ${savedPlan} 方案，開通碼：${code}`);
-                }
+                console.log(`已檢測到 ${savedPlan} 方案`);
             }
         });
 
@@ -717,15 +710,20 @@
                 
                 console.log('📧 發送請求 - Email:', userEmail, '| Tier:', userTier);
                 
+                // 確保 userTier 是大寫（PRO, MASTER, FREE）
+                const normalizedTier = userTier.toUpperCase();
+                
                 const response = await fetch('/api/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         textPrompt: input,
                         userEmail: userEmail, // 確保傳遞 email
-                        userTier: userTier
+                        userTier: normalizedTier // 確保是大寫格式
                     })
                 });
+                
+                console.log('📥 API 請求已發送 - Tier:', normalizedTier);
 
                 console.log('📥 收到響應:', response.status, response.statusText);
 

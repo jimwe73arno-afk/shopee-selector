@@ -40,7 +40,9 @@ export default async (request, context) => {
     let maxTokens = 768;
 
     // 判斷用戶等級（白名單或付費用戶）
-    const actualTier = isWhitelisted ? "MASTER" : userTier;
+    // 確保 userTier 是大寫格式
+    const normalizedUserTier = (userTier || "FREE").toUpperCase();
+    const actualTier = isWhitelisted ? "MASTER" : normalizedUserTier;
 
     if (actualTier === "MASTER") {
       // 大師版提示詞（800-1000 字）
