@@ -3,8 +3,12 @@
 // 支援 PRO 版和大師版提示詞，根據用戶等級切換
 
 export default async (request, context) => {
+  // 立即記錄請求（確保函數被調用）
+  console.log("🔥 Edge Function called:", request.method, request.url);
+  
   // 1. 處理跨域 (CORS)
   if (request.method === "OPTIONS") {
+    console.log("✅ OPTIONS request handled");
     return new Response(null, {
       headers: {
         "Access-Control-Allow-Origin": "*",
@@ -14,7 +18,10 @@ export default async (request, context) => {
     });
   }
 
-  if (request.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
+  if (request.method !== "POST") {
+    console.log("❌ Invalid method:", request.method);
+    return new Response("Method Not Allowed", { status: 405 });
+  }
 
   try {
     // Edge 讀取環境變數的正確方式 (Netlify Edge Functions)

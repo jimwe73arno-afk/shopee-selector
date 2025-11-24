@@ -28,7 +28,7 @@
   to = "/payment/success.html"
   status = 200
 
-# SPA fallback - 所有其他路徑都重定向到 index.html
+# SPA fallback - 所有其他路徑都重定向到 index.html（必须放在最后）
 [[redirects]]
   from = "/*"
   to = "/index.html"
