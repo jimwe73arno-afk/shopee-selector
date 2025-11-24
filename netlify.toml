@@ -10,11 +10,7 @@
 
 [functions]
   node_bundler = "esbuild"
-
-# 🔥 Edge Functions 配置 (串流 API)
-[[edge_functions]]
-  function = "analyze"
-  path = "/api/analyze"
+  included_files = ["netlify/functions/**"]
 
 # 將 /shopee 重定向到深色版 (shopee.html)
 [[redirects]]

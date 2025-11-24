@@ -631,7 +631,8 @@
                 const userEmail = currentUser ? (currentUser.email || null) : null;
                 const userTier = normalizedPlan;
 
-                const response = await fetch('/api/analyze', {
+                // 3) 呼叫 Netlify Function（標準 Functions，非 Edge）
+                const response = await fetch('/.netlify/functions/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -641,27 +642,20 @@
                     })
                 });
 
-                if (!response.ok || !response.body) {
-                    throw new Error('分析服務暫時無法使用，請稍後再試');
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                    throw new Error(errorData.error || '分析服務暫時無法使用，請稍後再試');
                 }
 
-                // 4) 串流讀取，邊收邊畫 Markdown
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder('utf-8');
-                let fullText = '';
+                // 4) 解析 JSON 響應
+                const data = await response.json();
+                const resultText = data.text || data.error || 'AI 暫時沒有產生內容，請稍後再試。';
 
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    const chunkText = decoder.decode(value, { stream: true });
-                    fullText += chunkText;
-
-                    if (typeof marked !== 'undefined') {
-                        contentDiv.innerHTML = marked.parse(fullText);
-                    } else {
-                        contentDiv.textContent = fullText;
-                    }
+                // 5) 顯示結果
+                if (typeof marked !== 'undefined') {
+                    contentDiv.innerHTML = marked.parse(resultText);
+                } else {
+                    contentDiv.textContent = resultText;
                 }
 
                 loadingBlock.classList.add('hidden');
