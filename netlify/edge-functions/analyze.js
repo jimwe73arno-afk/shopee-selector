@@ -30,8 +30,8 @@ export default async (request, context) => {
       throw new Error("textPrompt is required");
     }
 
-    // 2. 使用最穩定的 1.5 Flash (2.5 目前不穩，容易回空值)
-    const MODEL = "gemini-1.5-flash";
+    // 2. 使用 gemini-2.5-flash
+    const MODEL = "gemini-2.5-flash";
     const URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:streamGenerateContent?key=${API_KEY}`;
 
     console.log(`🚀 Edge Streaming: ${MODEL}`);
