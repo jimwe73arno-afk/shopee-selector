@@ -1,10 +1,15 @@
 [build]
   command = ""
   publish = "public"
+  functions = "netlify/functions"
 
-[[edge_functions]]
-  function = "analyze"
-  path = "/api/analyze"
+[functions]
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
 
 # 付款成功頁面
 [[redirects]]

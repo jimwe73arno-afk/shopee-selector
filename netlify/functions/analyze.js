@@ -1,9 +1,7 @@
-// netlify/edge-functions/analyze.js
-// BrotherG AI - Edge Function (无超时限制)
+// netlify/functions/analyze.js
+// BrotherG AI - Edge Runtime (支持串流、无超时限制)
 
-export const config = {
-  path: "/api/analyze"
-};
+export const config = { runtime: "edge" };
 
 const API_KEY = Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY") || Deno.env.get("GEMINI_API_KEY");
 const API_VERSION = "v1beta";
