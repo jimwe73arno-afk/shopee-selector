@@ -141,7 +141,7 @@ exports.handler = async (event, context) => {
 ---
 
 若輸入資訊不足（例如沒有金額、品類），請先假設平均值再推理，不要回「請補資訊」，要給暫時可用的版本。`;
-      maxTokens = 640;
+      maxTokens = 2048; // 增加到 2048 避免截斷
     } else if (actualTier === "PRO") {
       // PRO 版提示詞（450-600 字）
       systemPrompt = `你是「BrotherG Shopee Analyst PRO」，專門協助蝦皮賣家做「單一商品／小組合」的選品與定價判斷。
@@ -184,7 +184,7 @@ exports.handler = async (event, context) => {
 
 【資訊不足時的處理】
 如果關鍵數字缺少（例如完全沒有價格、分潤），請在「市場判斷」段落最後列出「仍需補充的 3 個關鍵資訊」，但仍然先給暫時可用的建議，不要只回問題。`;
-      maxTokens = 1024;
+      maxTokens = 2048; // 增加到 2048 避免截斷
     } else {
       // FREE 版（簡化版）
       systemPrompt = `你現在是【蝦皮直播戰術分析師】。
@@ -199,7 +199,7 @@ exports.handler = async (event, context) => {
 * 📦 **湊單(B):**
 ### 🗣️ 主播話術
 (直接寫口播稿，語氣興奮專業)`;
-      maxTokens = 768;
+      maxTokens = 2048; // 增加到 2048 避免截斷
     }
 
     // 構建請求 payload
@@ -252,6 +252,7 @@ exports.handler = async (event, context) => {
     
     // 提取文本內容（多種格式支持）
     let textOut = null;
+    const finishReason = data?.candidates?.[0]?.finishReason;
     
     // 嘗試多種提取方式
     if (data?.candidates?.[0]?.content?.parts) {
@@ -265,18 +266,20 @@ exports.handler = async (event, context) => {
       textOut = data.candidates[0].text;
     }
     
-    // 如果還是沒有內容，檢查是否有錯誤或阻塞
+    // 如果沒有內容，檢查是否有錯誤或阻塞
     if (!textOut) {
       console.error("❌ No text content found in response:", JSON.stringify(data));
       
       // 檢查是否有安全過濾
-      if (data?.candidates?.[0]?.finishReason === "SAFETY") {
+      if (finishReason === "SAFETY") {
         textOut = "內容被安全過濾器阻擋，請修改輸入內容後重試。";
-      } else if (data?.candidates?.[0]?.finishReason) {
-        textOut = `AI 回應異常 (finishReason: ${data.candidates[0].finishReason})，請稍後再試。`;
       } else {
         textOut = "AI 暫時沒有產生內容，請稍後再試。";
       }
+    } else if (finishReason === "MAX_TOKENS") {
+      // 即使被截斷，也返回已有內容，但添加提示
+      console.warn("⚠️ Response truncated due to MAX_TOKENS, but returning partial content");
+      textOut = textOut + "\n\n*(注意：回應因長度限制被截斷，但已提供部分內容)*";
     }
 
     console.log(`✅ Response generated: ${textOut.length} characters`);
