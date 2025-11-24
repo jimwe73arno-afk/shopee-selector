@@ -140,12 +140,20 @@ exports.handler = async (event, context) => {
     console.error("🔥 Error:", error);
     return {
       statusCode: 200,
-      headers,
-      body: JSON.stringify({
-        summary: "系統錯誤",
-        recommendations: ["請稍後再試", error.message],
-        plan: `Error: ${error.message}`
-      })
+      headers: {
+        ...headers,
+        'Content-Type': 'text/plain; charset=utf-8'
+      },
+      body: `### 系統錯誤
+
+抱歉，分析服務暫時無法使用。
+
+**錯誤訊息**：${error.message}
+
+**建議**：
+- 請檢查網路連接
+- 稍後再試
+- 如果持續發生，請聯繫客服`
     };
   }
 };
