@@ -11,10 +11,10 @@
 [functions]
   node_bundler = "esbuild"
 
-# 將 /shopee 重定向到首頁
+# 將 /shopee 重定向到深色版 (shopee.html)
 [[redirects]]
   from = "/shopee"
-  to = "/"
+  to = "/shopee.html"
   status = 301
 
 [[redirects]]
