@@ -715,12 +715,14 @@
                 const userEmail = currentUser ? (currentUser.email || null) : null;
                 const userTier = getUserPlan(); // 從 localStorage 獲取用戶等級
                 
+                console.log('📧 發送請求 - Email:', userEmail, '| Tier:', userTier);
+                
                 const response = await fetch('/api/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         textPrompt: input,
-                        userEmail: userEmail,
+                        userEmail: userEmail, // 確保傳遞 email
                         userTier: userTier
                     })
                 });
