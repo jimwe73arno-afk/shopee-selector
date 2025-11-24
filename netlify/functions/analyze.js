@@ -3,7 +3,7 @@
 
 const API_KEY = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 const API_VERSION = 'v1beta';
-const MODEL = 'gemini-1.5-flash';
+const MODEL = 'gemini-2.5-flash';
 
 const commonHeaders = {
   'Access-Control-Allow-Origin': '*',
