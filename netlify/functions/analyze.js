@@ -248,18 +248,49 @@ exports.handler = async (event, context) => {
 
     const data = await response.json();
     
-    // 提取文本內容
-    const textOut =
-      data?.candidates?.[0]?.content?.parts
-        ?.map((p) => p.text)
-        .join("") || "AI 暫時沒有產生內容，請稍後再試。";
+    console.log("📦 API Response structure:", JSON.stringify(data).substring(0, 500));
+    
+    // 提取文本內容（多種格式支持）
+    let textOut = null;
+    
+    // 嘗試多種提取方式
+    if (data?.candidates?.[0]?.content?.parts) {
+      textOut = data.candidates[0].content.parts
+        .filter(p => p.text)
+        .map(p => p.text)
+        .join("");
+    } else if (data?.text) {
+      textOut = data.text;
+    } else if (data?.candidates?.[0]?.text) {
+      textOut = data.candidates[0].text;
+    }
+    
+    // 如果還是沒有內容，檢查是否有錯誤或阻塞
+    if (!textOut) {
+      console.error("❌ No text content found in response:", JSON.stringify(data));
+      
+      // 檢查是否有安全過濾
+      if (data?.candidates?.[0]?.finishReason === "SAFETY") {
+        textOut = "內容被安全過濾器阻擋，請修改輸入內容後重試。";
+      } else if (data?.candidates?.[0]?.finishReason) {
+        textOut = `AI 回應異常 (finishReason: ${data.candidates[0].finishReason})，請稍後再試。`;
+      } else {
+        textOut = "AI 暫時沒有產生內容，請稍後再試。";
+      }
+    }
 
     console.log(`✅ Response generated: ${textOut.length} characters`);
 
     return {
       statusCode: 200,
       headers: corsHeaders,
-      body: JSON.stringify({ text: textOut }),
+      body: JSON.stringify({ 
+        text: textOut,
+        debug: process.env.NODE_ENV === 'development' ? {
+          finishReason: data?.candidates?.[0]?.finishReason,
+          responseStructure: Object.keys(data || {})
+        } : undefined
+      }),
     };
   } catch (error) {
     console.error("❌ Function error:", error);
