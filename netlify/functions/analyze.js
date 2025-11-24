@@ -98,7 +98,7 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // 白名單檢查
+    // 白名單檢查（只有白名單中的 email 才能使用 MASTER）
     const WHITELIST_EMAILS = ["jimwe73arno@gmail.com"];
     const isWhitelisted = userEmail && WHITELIST_EMAILS.includes(userEmail);
     
@@ -107,7 +107,16 @@ exports.handler = async (event, context) => {
     let maxTokens = 640;
 
     const normalizedUserTier = (userTier || "FREE").toUpperCase();
-    const actualTier = isWhitelisted ? "MASTER" : normalizedUserTier;
+    
+    // 嚴格檢查：只有白名單用戶才能使用 MASTER
+    // 如果前端傳來的 userTier 是 MASTER 但不在白名單中，降級為 PRO 或 FREE
+    let actualTier = normalizedUserTier;
+    if (normalizedUserTier === "MASTER" && !isWhitelisted) {
+      console.warn(`⚠️ User ${userEmail || 'N/A'} attempted to use MASTER tier without whitelist. Downgrading to PRO.`);
+      actualTier = "PRO"; // 降級為 PRO
+    } else if (isWhitelisted) {
+      actualTier = "MASTER"; // 白名單用戶強制 MASTER
+    }
 
     console.log(`🔍 User Tier: ${actualTier} | Email: ${userEmail || 'N/A'} | Whitelisted: ${isWhitelisted}`);
 
