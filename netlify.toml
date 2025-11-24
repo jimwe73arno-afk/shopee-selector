@@ -11,16 +11,16 @@
 [functions]
   node_bundler = "esbuild"
 
+# 🔥 Edge Functions 配置 (串流 API)
+[[edge_functions]]
+  function = "analyze"
+  path = "/api/analyze"
+
 # 將 /shopee 重定向到深色版 (shopee.html)
 [[redirects]]
   from = "/shopee"
   to = "/shopee.html"
   status = 301
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
 
 # 付款成功頁面
 [[redirects]]

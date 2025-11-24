@@ -585,9 +585,9 @@
             showToast(`${userName} 你好，BrotherG 正在為你的產品進行深度運算...`);
 
             try {
-                // 3) 呼叫 Netlify analyze（純文字模式）
-                console.log('📤 發送分析請求...');
-                const response = await fetch('/.netlify/functions/analyze', {
+                // 3) 呼叫 Edge Function 串流 API
+                console.log('📤 發送串流分析請求...');
+                const response = await fetch('/api/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -597,38 +597,50 @@
 
                 console.log('📥 收到響應:', response.status, response.statusText);
 
-                // 後端一律返回 200，所以不需要檢查 response.ok
-                const data = await response.json();
-                console.log('📝 API 返回數據:', data);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || '分析服務暫時無法使用');
+                }
 
-                // 4) 解析新的返回格式：{ ok: true/false, result: "text" }
-                let markdownContent = '';
+                // 4) ⚡️ 使用 Reader 一點一點讀取串流
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
                 
-                if (data.ok && data.result) {
-                    // 成功：使用後端返回的 Markdown 文字
-                    markdownContent = `### ${userName}，這是您的市場洞察報告\n\n`;
-                    markdownContent += data.result;
-                } else {
-                    // 失敗：使用後端的錯誤訊息
-                    markdownContent = `### 系統提示\n\n${data.result || '目前無法產生建議，請稍後再試。'}`;
+                // 清空並準備顯示區域
+                if (contentDiv) {
+                    contentDiv.innerHTML = `### ${userName}，這是您的市場洞察報告\n\n`;
+                }
+
+                let fullText = `### ${userName}，這是您的市場洞察報告\n\n`;
+
+                // 即時顯示串流內容
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const textChunk = decoder.decode(value, { stream: true });
+                    fullText += textChunk;
+
+                    // 即時顯示在畫面上
+                    if (contentDiv) {
+                        if (typeof marked !== 'undefined') {
+                            contentDiv.innerHTML = marked.parse(fullText);
+                        } else {
+                            contentDiv.innerHTML = fullText.replace(/\n/g, '<br>');
+                        }
+                        
+                        // 自動捲動到底部
+                        const scrollContainer = contentDiv.parentElement;
+                        if (scrollContainer) {
+                            scrollContainer.scrollTop = scrollContainer.scrollHeight;
+                        }
+                    }
                 }
 
                 loadingBlock.classList.add('hidden');
                 resultBlock.classList.remove('hidden');
 
-                if (contentDiv) {
-                    if(typeof marked !== 'undefined') {
-                        contentDiv.innerHTML = marked.parse(markdownContent);
-                    } else {
-                        contentDiv.innerHTML = markdownContent.replace(/\n/g, '<br>');
-                    }
-                }
-
-                if (data.ok) {
-                    showToast(`${userName}，分析報告已生成完畢！`);
-                } else {
-                    showToast(data.result || '分析時發生錯誤，請稍後再試');
-                }
+                showToast(`${userName}，分析報告已生成完畢！`);
             } catch (err) {
                 console.error('❌ 分析錯誤:', err);
                 loadingBlock.classList.add('hidden');
