@@ -1,34 +1,41 @@
 // netlify/functions/analyze.js
-// 穩定版：Edge Runtime + 非串流，專做 Shopee 決策卡
-
-export const config = {
-  runtime: "edge",
-};
+// 穩定版：Node.js Runtime + 非串流，專做 Shopee 決策卡
 
 const API_KEY =
-  Deno.env.get("GOOGLE_API_KEY") ||
-  Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
+  process.env.GOOGLE_API_KEY ||
+  process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
 const API_VERSION = "v1beta";
 const MODEL_NAME = "gemini-2.5-flash";
 
-export default async (request, context) => {
-  if (request.method === "OPTIONS") {
-    return new Response(null, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
-    });
+exports.handler = async (event, context) => {
+  context.callbackWaitsForEmptyEventLoop = false;
+
+  const headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Content-Type": "text/plain; charset=utf-8",
+  };
+
+  if (event.httpMethod === "OPTIONS") {
+    return {
+      statusCode: 200,
+      headers,
+      body: "",
+    };
   }
 
-  if (request.method !== "POST") {
-    return new Response("Method Not Allowed", { status: 405 });
+  if (event.httpMethod !== "POST") {
+    return {
+      statusCode: 405,
+      headers,
+      body: "Method Not Allowed",
+    };
   }
 
   try {
-    const body = await request.json();
+    const body = JSON.parse(event.body || "{}");
     const textPrompt = (body.textPrompt || "").toString();
 
     if (!API_KEY) {
@@ -66,10 +73,11 @@ export default async (request, context) => {
 請嚴格遵守以上章節與順序。
 `;
 
-    const fullPrompt =
-      `${systemInstruction}\n\n【賣家輸入】\n${textPrompt}\n`;
+    const fullPrompt = `${systemInstruction}\n\n【賣家輸入】\n${textPrompt}\n`;
 
     const apiUrl = `https://generativelanguage.googleapis.com/${API_VERSION}/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+
+    console.log(`📡 Calling: ${MODEL_NAME}`);
 
     const upstreamResponse = await fetch(apiUrl, {
       method: "POST",
@@ -92,33 +100,53 @@ export default async (request, context) => {
     if (!upstreamResponse.ok) {
       const errText = await upstreamResponse.text();
       console.error("Gemini API Error:", errText);
-      return new Response(
-        JSON.stringify({ error: "Gemini API Error", detail: errText }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
+      return {
+        statusCode: 500,
+        headers,
+        body: `### 系統錯誤
+
+抱歉，Gemini API 暫時無法使用。
+
+**錯誤詳情**：${errText.substring(0, 200)}
+
+**建議**：
+- 請檢查 API Key 是否正確設定
+- 稍後再試
+- 如果持續發生，請聯繫客服`,
+      };
     }
 
     const data = await upstreamResponse.json();
-    const parts =
-      data.candidates?.[0]?.content?.parts || [];
+    const parts = data.candidates?.[0]?.content?.parts || [];
     const text =
       parts.map((p) => p.text || "").join("") ||
       "目前無法產生建議，請稍後再試。";
 
-    console.log("✅ Success, length:", text.length);
+    console.log(`✅ Success, length: ${text.length}`);
 
-    return new Response(text, {
-      status: 200,
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "Access-Control-Allow-Origin": "*",
-      },
-    });
+    return {
+      statusCode: 200,
+      headers,
+      body: text,
+    };
   } catch (error) {
     console.error("Server Error:", error);
-    return new Response(
-      JSON.stringify({ error: error.message || "Server Error" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+    return {
+      statusCode: 500,
+      headers: {
+        ...headers,
+        "Content-Type": "text/plain; charset=utf-8",
+      },
+      body: `### 系統錯誤
+
+抱歉，分析服務暫時無法使用。
+
+**錯誤訊息**：${error.message}
+
+**建議**：
+- 請檢查網路連接
+- 稍後再試
+- 如果持續發生，請聯繫客服`,
+    };
   }
 };
