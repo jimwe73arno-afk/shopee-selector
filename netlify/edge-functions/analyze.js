@@ -17,17 +17,46 @@ export default async (request, context) => {
   if (request.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
 
   try {
-    // Edge 讀取環境變數的正確方式 (Netlify Edge Functions 使用 Netlify.env)
-    const API_KEY = await Netlify.env.get("GOOGLE_API_KEY") || await Netlify.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
+    // Edge 讀取環境變數的正確方式 (Netlify Edge Functions)
+    // 嘗試多種方式讀取環境變數
+    const API_KEY = Deno.env.get("GOOGLE_API_KEY") 
+      || Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY")
+      || (context.env && context.env.GOOGLE_API_KEY)
+      || (context.env && context.env.GOOGLE_GENERATIVE_AI_API_KEY);
+
     const body = await request.json();
     const { textPrompt, userEmail, userTier = "FREE" } = body; // 預設為 FREE
 
+    console.log("📥 Request received:", { 
+      hasTextPrompt: !!textPrompt, 
+      userEmail: userEmail || "N/A", 
+      userTier: userTier || "N/A",
+      hasApiKey: !!API_KEY 
+    });
+
     if (!API_KEY) {
-      throw new Error("Missing GOOGLE_API_KEY / GOOGLE_GENERATIVE_AI_API_KEY");
+      console.error("❌ Missing API Key");
+      return new Response(JSON.stringify({ 
+        error: "Server configuration error: Missing API Key" 
+      }), { 
+        status: 500, 
+        headers: { 
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        } 
+      });
     }
 
     if (!textPrompt) {
-      throw new Error("textPrompt is required");
+      return new Response(JSON.stringify({ 
+        error: "textPrompt is required" 
+      }), { 
+        status: 400, 
+        headers: { 
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        } 
+      });
     }
 
     // 2. 白名單檢查（暫時放行特定 email）
@@ -43,6 +72,8 @@ export default async (request, context) => {
     // 確保 userTier 是大寫格式
     const normalizedUserTier = (userTier || "FREE").toUpperCase();
     const actualTier = isWhitelisted ? "MASTER" : normalizedUserTier;
+    
+    console.log(`🔍 User Tier: ${actualTier} | Email: ${userEmail || 'N/A'} | Whitelisted: ${isWhitelisted}`);
 
     if (actualTier === "MASTER") {
       // 大師版提示詞（平面式敘述，避免 token 混亂）
@@ -139,7 +170,7 @@ export default async (request, context) => {
 
     const URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:streamGenerateContent?key=${API_KEY}`;
 
-    console.log(`🚀 Edge Streaming: ${MODEL} | Tier: ${actualTier} | Email: ${userEmail || 'N/A'}`);
+    console.log(`🚀 Edge Streaming: ${MODEL} | Tier: ${actualTier} | Email: ${userEmail || 'N/A'} | MaxTokens: ${maxTokens}`);
 
     // 4. 發送請求 (開啟串流模式)
     const response = await fetch(URL, {
@@ -164,7 +195,16 @@ export default async (request, context) => {
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`Google API Error: ${err}`);
+      console.error(`❌ Google API Error (${response.status}):`, err);
+      return new Response(JSON.stringify({ 
+        error: `Google API Error: ${response.status} - ${err.substring(0, 200)}` 
+      }), { 
+        status: response.status, 
+        headers: { 
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*"
+        } 
+      });
     }
 
     // 5. 建立串流管道 (Pipeline)
