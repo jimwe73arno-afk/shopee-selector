@@ -184,38 +184,92 @@ export default async (request, context) => {
     const encoder = new TextEncoder();
 
     (async () => {
+      let buffer = '';
       try {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n');
+          buffer += decoder.decode(value, { stream: true });
+          
+          // 按行分割，处理完整的 JSON 对象
+          const lines = buffer.split('\n');
+          // 保留最后一行（可能不完整）
+          buffer = lines.pop() || '';
+          
           for (const line of lines) {
-            if (line.trim() && line.includes('"text":')) {
-              try {
-                const jsonMatch = line.match(/\{[^}]*"text"[^}]*\}/);
-                if (jsonMatch) {
-                  const jsonObj = JSON.parse(jsonMatch[0]);
-                  if (jsonObj.text) {
-                    await writer.write(encoder.encode(jsonObj.text));
-                  }
-                } else {
-                  const match = line.match(/"text":\s*"(.*?)"/);
-                  if (match && match[1]) {
-                    const text = JSON.parse(`"${match[1]}"`);
-                    await writer.write(encoder.encode(text));
+            if (!line.trim()) continue;
+            
+            try {
+              // 尝试解析完整的 JSON 对象
+              const jsonObj = JSON.parse(line);
+              
+              // 检查是否是 candidates 数组
+              if (jsonObj.candidates && jsonObj.candidates.length > 0) {
+                const candidate = jsonObj.candidates[0];
+                if (candidate.content && candidate.content.parts) {
+                  for (const part of candidate.content.parts) {
+                    if (part.text) {
+                      await writer.write(encoder.encode(part.text));
+                    }
                   }
                 }
-              } catch (e) {
-                // 跳過解析失敗的行
+              }
+              
+              // 检查是否有直接的 text 字段
+              if (jsonObj.text) {
+                await writer.write(encoder.encode(jsonObj.text));
+              }
+              
+            } catch (e) {
+              // 如果不是完整的 JSON，尝试提取 text 字段
+              if (line.includes('"text"')) {
+                try {
+                  // 尝试提取 "text": "..." 格式
+                  const textMatches = line.match(/"text"\s*:\s*"([^"]*)"/g);
+                  if (textMatches) {
+                    for (const match of textMatches) {
+                      const textMatch = match.match(/"text"\s*:\s*"([^"]*)"/);
+                      if (textMatch && textMatch[1]) {
+                        // 处理转义字符
+                        const text = textMatch[1]
+                          .replace(/\\n/g, '\n')
+                          .replace(/\\t/g, '\t')
+                          .replace(/\\"/g, '"')
+                          .replace(/\\\\/g, '\\');
+                        await writer.write(encoder.encode(text));
+                      }
+                    }
+                  }
+                } catch (parseError) {
+                  // 跳过解析失败的行
+                }
               }
             }
           }
         }
+        
+        // 处理剩余的 buffer
+        if (buffer.trim()) {
+          try {
+            const jsonObj = JSON.parse(buffer);
+            if (jsonObj.candidates && jsonObj.candidates.length > 0) {
+              const candidate = jsonObj.candidates[0];
+              if (candidate.content && candidate.content.parts) {
+                for (const part of candidate.content.parts) {
+                  if (part.text) {
+                    await writer.write(encoder.encode(part.text));
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            // 忽略最后的解析错误
+          }
+        }
       } catch (e) {
         console.error("Stream Error:", e);
-        await writer.write(encoder.encode("\n[連線中斷]"));
+        await writer.write(encoder.encode("\n\n[串流處理錯誤，但部分內容可能已顯示]"));
       } finally {
         writer.close();
       }
