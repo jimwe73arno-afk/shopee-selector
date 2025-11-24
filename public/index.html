@@ -254,6 +254,11 @@
                     <span id="usage-count" class="text-aiBlue font-bold font-mono">5</span>
                     <span class="text-xs font-mono text-textSub ml-1" id="daily-counter">/ 5</span>
                 </div>
+                
+                <!-- 每日計數器顯示 -->
+                <div class="hidden md:block text-xs text-gray-400 font-mono" id="daily-counter-text">
+                    今天剩餘免費次數：5 / 5
+                </div>
 
                 <button onclick="openPricingModal()" class="flex items-center space-x-2 px-3 py-1.5 md:px-4 md:py-1.5 bg-gradient-to-r from-aiBlue to-blue-700 text-white rounded text-xs font-bold hover:shadow-[0_0_15px_rgba(0,160,233,0.4)] transition-all">
                     <i class="fa-solid fa-crown text-yellow-300 drop-shadow-md"></i>
@@ -415,6 +420,11 @@
                           class="w-full py-4 bg-gradient-to-r from-blue-600 to-aiBlue text-white font-bold text-sm rounded-lg hover:shadow-lg hover:scale-[1.02] transition-all tracking-widest border border-blue-400/30">
                     立即升級 PRO 賺錢
                   </button>
+                  
+                  <!-- 開通碼入口 -->
+                  <p class="text-center text-xs text-gray-400 mt-3 cursor-pointer hover:text-gray-300 transition-colors" onclick="showActivationModal()">
+                    已完成付款？點這裡輸入開通碼，由藍教主人工協助開通。
+                  </p>
                 </div>
 
                 <!-- MASTER 大師版：完全鎖死，只做展示 -->
@@ -550,49 +560,123 @@
             }
         }
 
+        // 全域狀態
+        window.currentUser = null;
+        window.userTier = 'basic';
+        window.usedToday = 0;
+        window.dailyLimit = 5;
+
+        // 更新用量 UI 顯示
+        function updateUsageUI() {
+            const counter = document.getElementById('usage-count');
+            const dailyCounter = document.getElementById('daily-counter');
+            const dailyCounterText = document.getElementById('daily-counter-text');
+            const remaining = window.dailyLimit - window.usedToday;
+
+            if (counter) {
+                counter.innerText = remaining;
+            }
+
+            if (dailyCounter) {
+                dailyCounter.innerText = `/${window.dailyLimit}`;
+            }
+
+            if (dailyCounterText) {
+                if (window.userTier === 'basic') {
+                    dailyCounterText.innerText = `今天剩餘免費次數：${remaining} / ${window.dailyLimit}`;
+                } else if (window.userTier === 'pro') {
+                    dailyCounterText.innerText = `今天剩餘 PRO 次數：${remaining} / ${window.dailyLimit}`;
+                } else {
+                    dailyCounterText.innerText = `今天已使用 ${window.usedToday}/${window.dailyLimit} 次`;
+                }
+            }
+        }
+        
+        // 開通碼 Modal（MVP 版本）
+        function showActivationModal() {
+            const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
+            if (!currentUser || !currentUser.email) {
+                showToast('請先登入以使用開通碼功能');
+                showLoginModal();
+                return;
+            }
+
+            const code = prompt('請輸入您的開通碼：');
+            if (!code || !code.trim()) {
+                return;
+            }
+
+            const message = `請把此畫面截圖＋付款證明傳給我們，由人工協助開通 Pro。\n\n用戶 Email: ${currentUser.email}\n開通碼: ${code.trim()}`;
+            alert(message);
+            showToast('已顯示開通碼資訊，請截圖傳送給客服');
+        }
+
         // --- 初始化 Shopee 頁面 ---
         async function initShopeePage(user) {
+            window.currentUser = user;
+
             if (!user) {
                 // 未登入狀態：顯示 BASIC
+                window.userTier = 'basic';
+                window.usedToday = 0;
+                window.dailyLimit = 5;
+
                 const badge = document.getElementById('user-tier-badge');
                 const btnText = document.getElementById('analyze-btn-text');
-                const counter = document.getElementById('usage-count');
-                const dailyCounter = document.getElementById('daily-counter');
                 
                 if (badge) {
                     badge.innerText = 'BASIC';
                     badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded tracking-wider hidden md:inline-block tier-badge-basic';
                 }
                 if (btnText) btnText.innerText = '開始深度分析 (BASIC)';
-                if (counter) counter.innerText = '0';
-                if (dailyCounter) dailyCounter.innerText = '今天已使用 0/5 次';
+                
+                updateUsageUI();
                 
                 // 顯示 PRO upsell 卡片（所有人可見）
                 const proCard = document.getElementById('pro-upsell-card');
                 if (proCard) proCard.classList.remove('hidden');
-                
-                window.userTier = 'FREE';
-                window.userCredits = 0;
                 return;
             }
 
-            // 使用新的 getUserTierAndCredits（基於 uid）
-            if (typeof window.getUserTierAndCredits !== 'function') {
-                console.warn('⚠️ getUserTierAndCredits 尚未載入');
+            // 確保用戶記錄存在並重置邏輯
+            if (typeof window.ensureUserRecord !== 'function') {
+                console.warn('⚠️ ensureUserRecord 尚未載入');
                 return;
             }
 
-            const { tier, remaining, baseLimit, usedToday } = await window.getUserTierAndCredits(user);
-            
+            const record = await window.ensureUserRecord(user);
+            if (!record) {
+                console.error('❌ 無法取得用戶記錄');
+                return;
+            }
+
+            // 從 Firestore 讀取 tier, usedToday, lastUsageDate
+            let tier = (record.tier || 'basic').toLowerCase();
+            let usedToday = record.usedToday || 0;
+            const lastUsageDate = record.lastUsageDate;
+            const todayKey = window.getTodayKey();
+
+            // 檢查是否需要重置每日用量
+            if (lastUsageDate !== todayKey) {
+                usedToday = 0;
+                // 已在 ensureUserRecord 中更新 Firestore
+            }
+
+            // master 邏輯當作 pro 處理
+            if (tier === 'master') {
+                tier = 'pro';
+            }
+
+            // 設定全域狀態
             window.userTier = tier;
-            window.userCredits = remaining;
+            window.usedToday = usedToday;
+            window.dailyLimit = window.getDailyLimitForTier ? window.getDailyLimitForTier(tier) : (tier === 'pro' ? 20 : 5);
 
+            // 更新 UI
             const badge = document.getElementById('user-tier-badge');
             const btnText = document.getElementById('analyze-btn-text');
             const proLink = document.getElementById('pro-strategy-link');
             const upsell = document.getElementById('upsell-banner');
-            const counter = document.getElementById('usage-count');
-            const dailyCounter = document.getElementById('daily-counter');
 
             // Reset classes
             if (badge) {
@@ -602,7 +686,7 @@
                 proLink.className = 'hidden text-[10px] md:text-xs font-bold text-white px-3 py-1.5 rounded-full flex items-center hover:opacity-80 transition-opacity shadow-lg';
             }
 
-            if (tier === 'PRO') {
+            if (tier === 'pro') {
                 if (badge) {
                     badge.innerText = 'PRO';
                     badge.classList.add('tier-badge-pro');
@@ -616,7 +700,7 @@
                 
                 if (upsell) upsell.classList.add('hidden');
             } else {
-                // FREE (BASIC)
+                // basic
                 if (badge) {
                     badge.innerText = 'BASIC';
                     badge.classList.add('tier-badge-basic');
@@ -625,17 +709,18 @@
                 if (upsell) upsell.classList.remove('hidden');
             }
 
-            // 更新剩餘次數顯示
-            if (counter) {
-                counter.innerText = remaining;
-            }
-            if (dailyCounter) {
-                dailyCounter.innerText = `今天已使用 ${usedToday || 0}/${baseLimit} 次`;
-            }
+            updateUsageUI();
 
             // 顯示 PRO upsell 卡片（所有人可見）
             const proCard = document.getElementById('pro-upsell-card');
-            if (proCard) proCard.classList.remove('hidden');
+            if (proCard) {
+                if (tier === 'basic') {
+                    proCard.classList.remove('hidden');
+                } else {
+                    // Pro 顯示不同文案或隱藏
+                    proCard.classList.add('hidden');
+                }
+            }
         }
 
         // --- UI Logic for Tiers（向後兼容）---
@@ -664,92 +749,77 @@
         // API endpoint 統一走傳統 Netlify Function
         const ANALYZE_ENDPOINT = '/.netlify/functions/analyze';
 
-        // 預設方案：free（之後 Gmail + Firebase 完成再從登入狀態帶入）
-        window.userTier = window.userTier || 'free';
+        // 全域狀態已在上面定義，這裡移除重複定義
 
-        // 假裝有「剩餘免費次數」，目前先給 5；之後接 Firebase 再換掉
-        window.userCredits = window.userCredits ?? 5;
+        // 添加 PRO Upsell 區塊（Basic tier 使用）
+        function appendProUpsellBlock(remaining) {
+            const contentDiv = document.getElementById('shopee-markdown-content');
+            const block = document.createElement('div');
+            block.innerHTML = `
+                <div class="mt-8 border-t-2 border-dashed border-slate-700 pt-6">
+                    <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-xl p-5 relative overflow-hidden group cursor-pointer" onclick="openPricingModal()">
+                        <div class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-10 backdrop-blur-[2px] group-hover:backdrop-blur-none transition-all duration-500">
+                            <div class="bg-aiBlue/20 border border-aiBlue/50 text-aiBlue px-4 py-2 rounded-full font-bold text-xs flex items-center gap-2 shadow-[0_0_20px_rgba(0,160,233,0.4)] animate-pulse">
+                                <i class="fa-solid fa-lock"></i> 解鎖 PRO 版完整策略
+                            </div>
+                            <p class="text-gray-400 text-[10px] mt-2">點一下，看看 $688 怎麼幫你把 3 萬分潤做到頂...</p>
+                        </div>
+
+                        <h4 class="text-gray-500 font-bold mb-2">💎 [PRO 專屬] 進階利潤放大術：</h4>
+                        <p class="text-gray-600 text-xs leading-relaxed blur-sm select-none">
+                            這裡會放進階的選品組合、爆品疊加策略與直播腳本，但在 Basic 版中被模糊隱藏。
+                        </p>
+                    </div>
+                    <p class="text-center text-xs text-slate-500 mt-3">
+                        您今日剩餘免費次數：<span class="text-aiBlue font-bold">${remaining}</span> 次
+                    </p>
+                </div>
+            `;
+            contentDiv.appendChild(block);
+        }
 
         async function runShopeeAnalysis() {
-            // 1) 登入檢查（降級模式：未登入也允許使用）
-            let currentUser = null;
-            let userEmail = null;
-
-            if (window.isLoggedIn && window.isLoggedIn()) {
-                currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
-                if (currentUser && currentUser.email) {
-                    userEmail = currentUser.email;
-                    console.log('✅ 已登入用戶:', userEmail);
-                } else {
-                    console.warn('⚠️ 登入狀態異常，繼續使用匿名模式');
-                }
-            } else {
-                console.warn('⚠️ 未登入，使用匿名模式（允許基本使用）');
-                // 未登入也可以使用，但會限制功能
-            }
-
-            const inputEl = document.getElementById('shopee-keyword');
-            const contentDiv = document.getElementById('shopee-markdown-content');
-            const btn = document.getElementById('analyze-btn');
-
-            const textPrompt = (inputEl.value || '').trim();
+            const promptInput = document.getElementById('shopee-keyword');
+            const textPrompt = promptInput.value.trim();
+            
             if (!textPrompt) {
-                showToast('先隨便打幾句：類別＋利潤＋目前遇到的瓶頸。');
+                showToast('請輸入產品描述或目前遇到的銷售瓶頸。');
                 return;
             }
 
-            // 2) 檢查配額（前端預檢，但錯誤不阻擋請求）
-            if (currentUser && typeof window.getUserTierAndCredits === 'function') {
-                try {
-                    const { remaining, baseLimit } = await window.getUserTierAndCredits(currentUser);
-                    if (remaining <= 0) {
-                        showToast(`今日已用完 ${baseLimit} 次額度，請升級方案或明日再試`);
-                        openPricingModal();
-                        return;
-                    }
-                    // 更新 UI 顯示剩餘次數
-                    const usageCountEl = document.getElementById('usage-count');
-                    if (usageCountEl) {
-                        usageCountEl.innerText = remaining;
-                    }
-                } catch (quotaError) {
-                    console.warn('⚠️ 配額檢查失敗，繼續執行請求:', quotaError);
-                    // 配額檢查失敗不阻擋請求，讓後端處理
-                }
-            } else {
-                console.log('ℹ️ 匿名用戶跳過配額檢查');
-            }
-
-            // 3) UI 狀態切換
+            const reportContainer = document.getElementById('shopee-markdown-content');
             const emptyBlock = document.getElementById('shopee-empty');
             const resultBlock = document.getElementById('shopee-results');
             const loadingBlock = document.getElementById('shopee-loading');
+            const btn = document.getElementById('analyze-btn');
 
+            // 顯示「分析中...」狀態
             emptyBlock.classList.add('hidden');
             resultBlock.classList.add('hidden');
             loadingBlock.classList.remove('hidden');
-            contentDiv.innerHTML = '';
+            reportContainer.innerHTML = '系統正在分析，請稍候...';
 
             // 按鈕進入 loading 狀態
             const oldLabel = btn.innerText;
             btn.disabled = true;
             btn.innerText = '分析中…';
 
+            // 1) 先檢查額度，不足就直接 return，不呼叫後端
+            if (window.currentUser && window.usedToday >= window.dailyLimit) {
+                loadingBlock.classList.add('hidden');
+                resultBlock.classList.remove('hidden');
+                reportContainer.innerHTML = '<p class="text-red-400 text-sm">今天的分析次數已用完，歡迎升級 PRO 版解鎖更多次數。</p>';
+                openPricingModal();
+                btn.disabled = false;
+                btn.innerText = oldLabel;
+                return;
+            }
+
             try {
-                // 4) 呼叫後端 API（傳遞 email，如果有的話）
-                const requestBody = {
-                    textPrompt: textPrompt
-                };
-                if (userEmail) {
-                    requestBody.email = userEmail;
-                }
-
-                console.log('📤 發送分析請求:', { hasEmail: !!userEmail, hasPrompt: !!textPrompt });
-
-                const resp = await fetch(ANALYZE_ENDPOINT, {
+                const resp = await fetch('/.netlify/functions/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestBody)
+                    body: JSON.stringify({ textPrompt }),
                 });
 
                 if (!resp.ok) {
@@ -757,83 +827,54 @@
                 }
 
                 const data = await resp.json();
-                const result = data.result || data.text || '目前無法產生建議，稍後再試。';
+                const { success, result } = data;
 
-                // 5) 顯示 AI 主體內容
+                // 2) 將 AI 回覆顯示到右側報告區
                 if (typeof marked !== 'undefined') {
-                    contentDiv.innerHTML = marked.parse(result);
+                    reportContainer.innerHTML = marked.parse(result || '');
                 } else {
-                    contentDiv.textContent = result;
+                    reportContainer.textContent = result || '';
                 }
 
-                // 6) 扣減配額並更新 UI（使用新的 consumeOneCredit）
-                if (currentUser && typeof window.consumeOneCredit === 'function') {
-                    await window.consumeOneCredit(currentUser);
+                // 3) 只有 success === true 時才扣次 & 寫回 Firestore
+                if (success && window.currentUser && window.currentUser.uid) {
+                    window.usedToday += 1;
+                    if (typeof window.updateUsageInFirestore === 'function') {
+                        await window.updateUsageInFirestore(window.currentUser.uid, window.usedToday);
+                    }
                 }
 
-                // 7) 重新獲取用戶資料（更新配額顯示）
-                if (currentUser && typeof window.getUserTierAndCredits === 'function') {
-                    const { tier, remaining, baseLimit, usedToday } = await window.getUserTierAndCredits(currentUser);
+                // 4) 更新畫面上的「今日剩餘次數」顯示
+                updateUsageUI();
 
-                    // 免費版：在底下插一塊「模糊上鎖」催付
-                    if (tier === 'FREE') {
-                        const upsellHTML = `
-                            <div class="mt-8 border-t-2 border-dashed border-slate-700 pt-6">
-                                <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-xl p-5 relative overflow-hidden group cursor-pointer"
-                                     onclick="openPricingModal()">
-                                  
-                                    <div class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-10 backdrop-blur-[2px] group-hover:backdrop-blur-none transition-all duration-500">
-                                        <div class="bg-aiBlue/20 border border-aiBlue/50 text-aiBlue px-4 py-2 rounded-full font-bold text-[10px] flex items-center gap-2 shadow-[0_0_20px_rgba(0,160,233,0.4)] animate-pulse">
-                                            <i class="fa-solid fa-lock"></i> 解鎖 PRO 版完整「利潤放大術」
-                                        </div>
-                                        <p class="text-gray-400 text-[10px] mt-2">點一下，看看 $688 怎麼幫你把 3 萬分潤做到頂。</p>
-                                    </div>
-
-                                    <h4 class="text-gray-500 font-bold mb-2">💎 [PRO 專屬] 進階利潤放大策略：</h4>
-                                    <p class="text-gray-600 text-xs leading-relaxed blur-sm select-none">
-                                      針對這個品類，其實還有一個「隱藏 C-A-B 排品組合」可以把客單價再拉 30%…<br>
-                                      詳細拆解僅提供給 PRO 專業版，用作長期操盤策略與直播話術腳本…
-                                    </p>
-                                </div>
-                                
-                                <p class="text-center text-xs text-slate-500 mt-3">
-                                    今日剩餘免費次數：<span class="text-aiBlue font-bold">${remaining}</span> / ${baseLimit}
-                                </p>
-                            </div>
-                        `;
-                        contentDiv.innerHTML += upsellHTML;
-                    }
-
-                    // 更新剩餘次數顯示
-                    const usageCountEl = document.getElementById('usage-count');
-                    const dailyCounter = document.getElementById('daily-counter');
-                    if (usageCountEl) {
-                        usageCountEl.innerText = remaining;
-                    }
-                    if (dailyCounter) {
-                        dailyCounter.innerText = `今天已使用 ${usedToday}/${baseLimit} 次`;
-                    }
-                    
-                    // 重新初始化頁面 UI
-                    await initShopeePage(currentUser);
+                // 5) Basic tier 額外顯示「模糊的 PRO 區塊」作為 Upsell
+                if (success && window.userTier === 'basic') {
+                    const remaining = window.dailyLimit - window.usedToday;
+                    appendProUpsellBlock(remaining);
                 }
 
                 // 自動捲到底
-                const panel = contentDiv.parentElement;
+                const panel = reportContainer.parentElement;
                 if (panel) {
                     panel.scrollTop = panel.scrollHeight;
                 }
 
                 loadingBlock.classList.add('hidden');
                 resultBlock.classList.remove('hidden');
-                showToast('分析報告生成完畢');
+                
+                if (success) {
+                    showToast('分析報告生成完畢');
+                } else {
+                    showToast('分析失敗，請稍後再試');
+                }
 
             } catch (err) {
-                console.error(err);
+                console.error('runShopeeAnalysis error:', err);
                 loadingBlock.classList.add('hidden');
                 resultBlock.classList.remove('hidden');
-                contentDiv.innerHTML = `<p class="text-red-400 text-sm">系統忙碌中，請稍後再試。<br>${err.message}</p>`;
+                reportContainer.innerHTML = `<p class="text-red-400 text-sm">⚠️ 系統暫時忙碌，請稍後再試。<br>${err.message}</p>`;
                 showToast('分析時發生錯誤，請稍後再試');
+                // 注意：這裡 **不要** 修改 usedToday，也不要寫 Firestore
             } finally {
                 btn.disabled = false;
                 btn.innerText = oldLabel;
