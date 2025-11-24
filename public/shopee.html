@@ -604,59 +604,14 @@
                     throw new Error(`分析服務錯誤 (${response.status})，請稍後再試`);
                 }
 
-                // 4) 讀取響應文本（後端返回的是 JSON 字符串）
+                // 4) 讀取響應文本（後端返回的是 Markdown 格式的決策卡，不再是 JSON）
                 const responseText = await response.text();
                 console.log('📝 響應文本長度:', responseText.length);
-                console.log('📝 響應文本前 200 字:', responseText.substring(0, 200));
+                console.log('📝 響應文本前 300 字:', responseText.substring(0, 300));
 
-                // 5) 解析 JSON（後端可能返回 JSON 字符串，需要解析）
-                let data;
-                try {
-                    // 先嘗試直接解析
-                    data = JSON.parse(responseText);
-                } catch (e) {
-                    // 如果解析失敗，可能是字符串格式的 JSON，再試一次
-                    console.warn('第一次 JSON 解析失敗，嘗試清理後再解析');
-                    const cleanText = responseText.replace(/```json|```/g, "").trim();
-                    try {
-                        data = JSON.parse(cleanText);
-                    } catch (e2) {
-                        // 如果還是失敗，就當作純文本處理
-                        console.error('JSON 解析失敗，使用原始文本');
-                        data = { summary: responseText };
-                    }
-                }
-
-                console.log('✅ 解析後的數據:', data);
-
-                // 6) 解析並顯示結果（禮貌使用用戶名字）
-                let markdownContent = '';
-                
-                markdownContent += `### ${userName}，這是您的市場洞察報告\n\n`;
-                
-                if (data.summary) {
-                    markdownContent += data.summary + '\n\n';
-                }
-                
-                if (data.recommendations && Array.isArray(data.recommendations)) {
-                    markdownContent += `### 銷售組合策略 (C-A-B 模型應用)\n\n`;
-                    data.recommendations.forEach(rec => {
-                        const recText = typeof rec === 'string' ? rec : (rec.item || rec.reason || JSON.stringify(rec));
-                        markdownContent += `* ${recText}\n`;
-                    });
-                    markdownContent += '\n';
-                } else if (data.recommendations && typeof data.recommendations === 'string') {
-                    markdownContent += `### 銷售組合策略 (C-A-B 模型應用)\n\n${data.recommendations}\n\n`;
-                }
-                
-                if (data.plan) {
-                    markdownContent += `### 轉化率優化建議 (文案話術)\n\n${data.plan}\n`;
-                }
-
-                // 如果沒有有效內容，顯示原始數據
-                if (!data.summary && !data.recommendations && !data.plan) {
-                    markdownContent += responseText + '\n';
-                }
+                // 5) 後端返回的是 Markdown 格式的決策卡，直接使用
+                let markdownContent = `### ${userName}，這是您的市場洞察報告\n\n`;
+                markdownContent += responseText;
 
                 loadingBlock.classList.add('hidden');
                 resultBlock.classList.remove('hidden');
