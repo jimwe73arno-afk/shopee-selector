@@ -1,27 +1,58 @@
 // netlify/functions/analyze.js
-// BrotherG AI - Edge Runtime (支持串流、无超时限制)
+// BrotherG AI - Node.js 版本（纯 fetch，无 SDK）
+// 关键：使用 process.env，不使用 Deno
 
-export const config = { runtime: "edge" };
-
-const API_KEY = Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY") || Deno.env.get("GEMINI_API_KEY");
+const API_KEY = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
 const API_VERSION = "v1beta";
 const BASE_URL = `https://generativelanguage.googleapis.com/${API_VERSION}/models`;
 const MODEL_NAME = "gemini-2.5-flash";
 
-export default async (request, context) => {
-  // CORS
-  if (request.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+async function callGemini(contents) {
+  const url = `${BASE_URL}/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+  
+  console.log(`📡 Calling: ${MODEL_NAME}`);
+  
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents,
+      generationConfig: {
+        maxOutputTokens: 4096,
+        temperature: 0.7
       }
-    });
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`❌ API Error (${response.status}):`, errorText.substring(0, 500));
+    throw new Error(`API Error: ${response.status}`);
   }
 
-  if (request.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405 });
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  console.log(`✅ Success (${text.length} chars)`);
+  return text;
+}
+
+// Node.js 标准入口
+exports.handler = async (event, context) => {
+  context.callbackWaitsForEmptyEventLoop = false;
+  
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Content-Type': 'application/json'
+  };
+
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers, body: '' };
+  }
+
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, headers, body: 'Method Not Allowed' };
   }
 
   const startTime = Date.now();
@@ -31,10 +62,10 @@ export default async (request, context) => {
       throw new Error('Missing API Key');
     }
 
-    const body = await request.json();
+    const body = JSON.parse(event.body || '{}');
     const { textPrompt, images = [] } = body;
 
-    console.log(`🚀 Edge Function: ${images.length} images (One-Shot Mode)`);
+    console.log(`🚀 Request: ${images.length} images`);
 
     const jsonStructure = `{
   "summary": "观众画像分析",
@@ -46,7 +77,7 @@ export default async (request, context) => {
   "plan": "完整主播带货口播稿"
 }`;
 
-    const systemInstruction = `你是"蝦皮直播戰術分析師"。
+    const prompt = `你是"蝦皮直播戰術分析師"。
 
 任務：
 1. 分析上傳的圖片（商品清單/截圖）
@@ -56,119 +87,45 @@ export default async (request, context) => {
 
 輸出：嚴格 JSON 格式：${jsonStructure}`;
 
-    // 純文字模式
-    if (!images || images.length === 0) {
-      console.log(`📝 Text-only mode`);
-      
-      const contents = [{ 
-        role: "user", 
-        parts: [{ text: systemInstruction }] 
-      }];
-      
-      const url = `${BASE_URL}/${MODEL_NAME}:generateContent?key=${API_KEY}`;
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents,
-          generationConfig: {
-            maxOutputTokens: 8192,
-            temperature: 0.7
-          }
-        })
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API Error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      const cleanJson = text.replace(/```json|```/g, "").trim();
-      
-      const textTime = Date.now() - startTime;
-      console.log(`⏱️ Text-only完成: ${textTime}ms`);
-      
-      return new Response(cleanJson, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
-      });
-    }
-
-    // One-Shot 模式：一次性发送所有图片
-    const MAX_IMAGES = 3;
-    const imagesToProcess = images.slice(0, MAX_IMAGES);
-    
-    if (images.length > MAX_IMAGES) {
-      console.log(`⚠️ 圖片數量 ${images.length} > ${MAX_IMAGES}，只處理前 ${MAX_IMAGES} 張`);
-    }
-    
-    console.log(`⚡ One-Shot 模式: ${imagesToProcess.length} 張圖片`);
+    // 只处理 1 张图片（速度优先）
+    const imageToProcess = images.length > 0 ? [images[0]] : [];
 
     const contents = [{
       role: "user",
       parts: [
-        ...imagesToProcess.map(img => ({
+        ...imageToProcess.map(img => ({
           inline_data: {
             mime_type: "image/jpeg",
             data: img.replace(/^data:image\/\w+;base64,/, "")
           }
         })),
-        { text: systemInstruction }
+        { text: prompt }
       ]
     }];
 
-    const url = `${BASE_URL}/${MODEL_NAME}:generateContent?key=${API_KEY}`;
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents,
-        generationConfig: {
-          maxOutputTokens: 8192,
-          temperature: 0.7
-        }
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`❌ API Error (${response.status}):`, errorText.substring(0, 500));
-      throw new Error(`API Error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    console.log(`✅ Success (${text.length} chars)`);
-
-    const cleanJson = text.replace(/```json|```/g, "").trim();
-
+    const result = await callGemini(contents);
+    
     const totalTime = Date.now() - startTime;
     console.log(`✅ 完成: ${totalTime}ms (${(totalTime / 1000).toFixed(2)}s)`);
 
-    return new Response(cleanJson, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      }
-    });
+    const cleanJson = result.replace(/```json|```/g, "").trim();
+
+    return {
+      statusCode: 200,
+      headers,
+      body: cleanJson
+    };
 
   } catch (error) {
     console.error("🔥 Error:", error);
-    return new Response(JSON.stringify({
-      summary: "系統錯誤",
-      recommendations: ["Gemini 處理中", "請嘗試減少圖片數量"],
-      plan: `Error: ${error.message}`
-    }), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      }
-    });
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        summary: "系統錯誤",
+        recommendations: ["請稍後再試", error.message],
+        plan: `Error: ${error.message}`
+      })
+    };
   }
 };
