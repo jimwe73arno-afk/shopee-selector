@@ -17,8 +17,8 @@ export default async (request, context) => {
   if (request.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
 
   try {
-    // Edge 讀取環境變數的正確方式
-    const API_KEY = Deno.env.get("GOOGLE_API_KEY") || Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
+    // Edge 讀取環境變數的正確方式 (Netlify Edge Functions 使用 Netlify.env)
+    const API_KEY = await Netlify.env.get("GOOGLE_API_KEY") || await Netlify.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
     const body = await request.json();
     const { textPrompt, userEmail, userTier = "FREE" } = body; // 預設為 FREE
 
