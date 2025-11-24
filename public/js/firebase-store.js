@@ -1,7 +1,6 @@
 // public/js/firebase-store.js
-// Firebase Firestore 用戶資料管理模組（與 auth.js 配合使用）
+// Firebase Firestore 用戶資料管理模組（統一使用 uid 作為 docId）
 
-// 等待 auth.js 載入後再初始化
 (function() {
   // 檢查 Firebase 是否已初始化
   if (typeof firebase === 'undefined') {
@@ -27,47 +26,39 @@
 
   const db = firebase.firestore();
 
-  // 🧩 登入後建立/更新用戶紀錄
+  function todayString() {
+    return new Date().toISOString().slice(0, 10); // e.g. "2025-11-24"
+  }
+
+  // 🧩 建立或取得 user 記錄（使用 uid 作為 docId）
   window.ensureUserRecord = async function(user) {
-    if (!user || !user.email) {
-      console.warn('⚠️ ensureUserRecord: 無用戶 email');
+    if (!user || !user.uid) {
+      console.warn('⚠️ ensureUserRecord: 無用戶 uid');
       return null;
     }
-    
+
     try {
-      const userRef = db.collection('users').doc(user.email);
+      const userRef = db.collection('users').doc(user.uid);
       const userDoc = await userRef.get();
-      
+
       if (!userDoc.exists) {
-        // 初次登入 → 新增為 FREE 用戶
-        const today = new Date().toISOString().slice(0, 10);
-        await userRef.set({
-          tier: 'FREE',
-          quota: 5,
+        // 新用戶 → 建立為 FREE
+        const data = {
+          email: user.email || "",
+          displayName: user.displayName || "",
+          tier: "FREE",          // FREE / PRO （MASTER 先關閉）
+          dailyLimitFree: 5,     // Basic 每天 5 次
+          dailyLimitPro: 20,     // Pro 每天 20 次
           usedToday: 0,
-          lastReset: today,
+          lastResetDate: todayString(),
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        console.log('✅ 新用戶已建立:', user.email);
-        return { tier: 'FREE', quota: 5, usedToday: 0, lastReset: today };
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        };
+        await userRef.set(data);
+        console.log('✅ 新用戶已建立:', user.uid);
+        return { id: userRef.id, ...data };
       } else {
-        // 檢查是否需要重置每日配額
-        const data = userDoc.data();
-        const today = new Date().toISOString().slice(0, 10);
-        
-        if (data.lastReset !== today) {
-          await userRef.update({
-            usedToday: 0,
-            lastReset: today,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-          data.usedToday = 0;
-          data.lastReset = today;
-          console.log('✅ 每日配額已重置:', user.email);
-        }
-        
-        return data;
+        return { id: userRef.id, ...userDoc.data() };
       }
     } catch (error) {
       console.error('❌ ensureUserRecord 錯誤:', error);
@@ -75,78 +66,120 @@
     }
   };
 
-  // 🧩 取得用戶 tier
-  window.getUserTier = async function(email) {
-    if (!email) return 'FREE';
-    
+  // 🧩 取得 tier + 今日剩餘次數
+  window.getUserTierAndCredits = async function(user) {
+    if (!user || !user.uid) {
+      return { tier: "FREE", remaining: 0, baseLimit: 5 };
+    }
+
+    const record = await window.ensureUserRecord(user);
+    if (!record) {
+      return { tier: "FREE", remaining: 0, baseLimit: 5 };
+    }
+
+    let tier = record.tier || "FREE";
+
+    // 🔒 不管資料裡是不是 MASTER，前端一律當 PRO 使用，避免跑進未完成功能
+    if (tier === "MASTER") {
+      tier = "PRO";
+      console.warn('⚠️ 偵測到 MASTER tier，前端自動降級為 PRO');
+    }
+
+    let usedToday = record.usedToday || 0;
+    let lastResetDate = record.lastResetDate;
+
+    // 檢查是否需要重置每日配額
+    if (lastResetDate !== todayString()) {
+      usedToday = 0;
+      lastResetDate = todayString();
+      try {
+        await db.collection('users').doc(user.uid).update({
+          usedToday: 0,
+          lastResetDate: todayString(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        console.log('✅ 每日配額已重置:', user.uid);
+      } catch (error) {
+        console.error('❌ 重置配額失敗:', error);
+      }
+    }
+
+    const baseLimit = tier === "PRO"
+      ? (record.dailyLimitPro || 20)
+      : (record.dailyLimitFree || 5);
+
+    const remaining = Math.max(baseLimit - usedToday, 0);
+
+    return { tier, remaining, baseLimit, usedToday };
+  };
+
+  // 🧩 成功分析一次後呼叫，扣掉一次額度
+  window.consumeOneCredit = async function(user) {
+    if (!user || !user.uid) {
+      console.warn('⚠️ consumeOneCredit: 無用戶 uid');
+      return;
+    }
+
     try {
-      const userRef = db.collection('users').doc(email);
+      const userRef = db.collection('users').doc(user.uid);
       const userDoc = await userRef.get();
       
-      if (!userDoc.exists) return 'FREE';
-      
-      const data = userDoc.data();
-      return data.tier || 'FREE';
+      if (!userDoc.exists) {
+        console.warn('⚠️ 用戶記錄不存在，無法扣減配額');
+        return;
+      }
+
+      let data = userDoc.data();
+      let usedToday = data.usedToday || 0;
+      let lastResetDate = data.lastResetDate;
+
+      // 檢查是否需要重置每日配額
+      if (lastResetDate !== todayString()) {
+        usedToday = 0;
+        lastResetDate = todayString();
+      }
+
+      usedToday += 1;
+
+      await userRef.update({
+        usedToday: usedToday,
+        lastResetDate: lastResetDate,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+
+      console.log('✅ 配額已扣減:', user.uid, `(${usedToday}/${data.tier === 'PRO' ? 20 : 5})`);
     } catch (error) {
-      console.error('❌ getUserTier 錯誤:', error);
-      return 'FREE';
+      console.error('❌ consumeOneCredit 錯誤:', error);
     }
   };
 
-  // 🧩 取得用戶完整資料
-  window.getUserData = async function(email) {
-    if (!email) return null;
-    
-    try {
-      const userRef = db.collection('users').doc(email);
-      const userDoc = await userRef.get();
-      
-      if (!userDoc.exists) return null;
-      
-      const data = userDoc.data();
-      // 檢查是否需要重置
-      const today = new Date().toISOString().slice(0, 10);
-      if (data.lastReset !== today) {
-        await userRef.update({
-          usedToday: 0,
-          lastReset: today,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        data.usedToday = 0;
-        data.lastReset = today;
-      }
-      
-      return data;
-    } catch (error) {
-      console.error('❌ getUserData 錯誤:', error);
+  // 🧩 向後兼容：舊的函數名稱
+  window.getUserTier = async function(user) {
+    const result = await window.getUserTierAndCredits(user || window.getCurrentUser?.());
+    return result.tier || 'FREE';
+  };
+
+  window.getUserData = async function(user) {
+    if (!user || !user.uid) {
       return null;
     }
+    const record = await window.ensureUserRecord(user);
+    return record;
   };
 
-  // 🧩 檢查配額（前端檢查，實際扣減在後端）
-  window.checkQuota = async function(email) {
-    if (!email) return { canUse: false, remaining: 0, tier: 'FREE' };
-    
-    try {
-      const userData = await window.getUserData(email);
-      if (!userData) return { canUse: false, remaining: 0, tier: 'FREE' };
-      
-      const limit = userData.tier === 'PRO' ? 20 : 5;
-      const remaining = Math.max(0, limit - (userData.usedToday || 0));
-      const canUse = remaining > 0;
-      
-      return {
-        canUse,
-        remaining,
-        tier: userData.tier,
-        usedToday: userData.usedToday || 0,
-        quota: limit
-      };
-    } catch (error) {
-      console.error('❌ checkQuota 錯誤:', error);
+  window.checkQuota = async function(user) {
+    if (!user || !user.uid) {
       return { canUse: false, remaining: 0, tier: 'FREE' };
     }
+    const result = await window.getUserTierAndCredits(user);
+    return {
+      canUse: result.remaining > 0,
+      remaining: result.remaining,
+      tier: result.tier,
+      usedToday: result.usedToday || 0,
+      quota: result.baseLimit
+    };
   };
 
-  console.log('📦 Firebase Store 模組已載入');
+  console.log('📦 Firebase Store 模組已載入（使用 uid 作為 docId）');
 })();

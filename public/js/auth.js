@@ -42,13 +42,18 @@ auth.onAuthStateChanged(user => {
       photoURL: user.photoURL
     }));
     
-    // 確保 Firestore 中有用戶紀錄（如果 firebase-store.js 已載入）
+    // 確保 Firestore 中有用戶紀錄（使用 uid 作為 docId）
     if (typeof window.ensureUserRecord === 'function') {
       window.ensureUserRecord(user).then(userData => {
         if (userData) {
           console.log('📊 用戶資料已同步:', userData);
           // 觸發更新事件
           window.dispatchEvent(new CustomEvent('userDataUpdated', { detail: { user, userData } }));
+          
+          // 初始化 Shopee 頁面 UI
+          if (typeof initShopeePage === 'function') {
+            initShopeePage(user);
+          }
         }
       }).catch(err => {
         console.error('❌ 同步用戶資料失敗:', err);
