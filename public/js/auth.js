@@ -41,10 +41,24 @@ auth.onAuthStateChanged(user => {
       email: user.email,
       photoURL: user.photoURL
     }));
+    
+    // 確保 Firestore 中有用戶紀錄（如果 firebase-store.js 已載入）
+    if (typeof window.ensureUserRecord === 'function') {
+      window.ensureUserRecord(user).then(userData => {
+        if (userData) {
+          console.log('📊 用戶資料已同步:', userData);
+          // 觸發更新事件
+          window.dispatchEvent(new CustomEvent('userDataUpdated', { detail: { user, userData } }));
+        }
+      }).catch(err => {
+        console.error('❌ 同步用戶資料失敗:', err);
+      });
+    }
   } else {
     console.log('⚪ 未登入');
     localStorage.removeItem('userId');
     localStorage.removeItem('userData');
+    localStorage.removeItem('userPlan'); // 清除舊的 plan
   }
 });
 
@@ -113,6 +127,19 @@ window.handleGoogleLogin = async function() {
 
     if (typeof showToast === 'function') {
       showToast(`${user.displayName || '用戶'} 登入成功！`);
+    }
+
+    // 確保 Firestore 中有用戶紀錄（如果 firebase-store.js 已載入）
+    if (typeof window.ensureUserRecord === 'function') {
+      window.ensureUserRecord(user).then(userData => {
+        if (userData) {
+          console.log('📊 用戶資料已同步:', userData);
+          // 觸發更新事件
+          window.dispatchEvent(new CustomEvent('userDataUpdated', { detail: { user, userData } }));
+        }
+      }).catch(err => {
+        console.error('❌ 同步用戶資料失敗:', err);
+      });
     }
 
     return user;

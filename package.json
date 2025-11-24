@@ -15,7 +15,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "ecpay_aio_nodejs": "^1.2.2"
+    "ecpay_aio_nodejs": "^1.2.2",
+    "firebase-admin": "^12.7.0"
   },
   "_note": "Using native fetch() API (Node 18+) - no additional dependencies required",
   "engines": {

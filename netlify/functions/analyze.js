@@ -1,9 +1,27 @@
 // netlify/functions/analyze.js
-// Shopee Analyst 穩定版：全部用 gemini-2.5-flash（文字版）
+// Shopee Analyst 穩定版：整合 Firebase 驗證身份與配額
 
-const API_KEY =
-  process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+const admin = require('firebase-admin');
 
+// 初始化 Firebase Admin（如果還沒初始化）
+if (!admin.apps.length) {
+  try {
+    // 從環境變數讀取 Firebase Service Account（JSON 字串）
+    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+    if (serviceAccount) {
+      admin.initializeApp({
+        credential: admin.credential.cert(JSON.parse(serviceAccount))
+      });
+      console.log('✅ Firebase Admin 已初始化');
+    } else {
+      console.warn('⚠️ FIREBASE_SERVICE_ACCOUNT 環境變數未設置，將跳過 Firebase 驗證');
+    }
+  } catch (error) {
+    console.error('❌ Firebase Admin 初始化失敗:', error.message);
+  }
+}
+
+const API_KEY = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 const API_VERSION = 'v1beta';
 const MODEL = 'gemini-2.5-flash';
 
@@ -13,6 +31,9 @@ const headers = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Content-Type': 'application/json',
 };
+
+// 白名單（只有這些 email 才能使用 MASTER）
+const WHITELIST_EMAILS = ['jimwe73arno@gmail.com'];
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
@@ -24,11 +45,10 @@ exports.handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body || '{}');
+    const email = (body.email || '').trim();
     const textPrompt = (body.textPrompt || '').trim();
-    const tier = (body.tier || 'FREE').toUpperCase();
 
     if (!API_KEY) {
-      console.error('❌ Missing GOOGLE_API_KEY');
       throw new Error('Missing GOOGLE_API_KEY');
     }
     if (!textPrompt) {
@@ -39,9 +59,92 @@ exports.handler = async (event) => {
       };
     }
 
-    console.log('📥 Request:', { tier, hasPrompt: !!textPrompt });
+    let userTier = 'FREE';
+    let quota = 5;
+    let usedToday = 0;
+    let canUse = true;
 
-    // 統一用「Pro 等級」的指令，Master 先不上線
+    // 🧩 Firebase 驗證（如果有設置）
+    if (admin.apps.length && email) {
+      try {
+        const db = admin.firestore();
+        const userRef = db.collection('users').doc(email);
+        const userDoc = await userRef.get();
+
+        const today = new Date().toISOString().slice(0, 10);
+
+        if (!userDoc.exists) {
+          // 新用戶 → 建立為 FREE
+          await userRef.set({
+            tier: 'FREE',
+            quota: 5,
+            usedToday: 0,
+            lastReset: today,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+          console.log('✅ 新用戶已建立:', email);
+        } else {
+          const userData = userDoc.data();
+          
+          // 檢查是否需要重置每日配額
+          if (userData.lastReset !== today) {
+            await userRef.update({
+              usedToday: 0,
+              lastReset: today,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+            userData.usedToday = 0;
+            userData.lastReset = today;
+          }
+
+          userTier = userData.tier || 'FREE';
+          quota = userData.tier === 'PRO' ? 20 : 5;
+          usedToday = userData.usedToday || 0;
+
+          // 白名單檢查（只有白名單用戶才能使用 MASTER）
+          const isWhitelisted = WHITELIST_EMAILS.includes(email);
+          if (userTier === 'MASTER' && !isWhitelisted) {
+            console.warn(`⚠️ 用戶 ${email} 試圖使用 MASTER 但不在白名單，降級為 PRO`);
+            userTier = 'PRO';
+            quota = 20;
+          } else if (isWhitelisted) {
+            userTier = 'MASTER';
+            quota = 50; // Master 配額更高
+          }
+
+          // 檢查配額
+          if (usedToday >= quota) {
+            canUse = false;
+            return {
+              statusCode: 200,
+              headers,
+              body: JSON.stringify({
+                result: `⚠️ 今日已用完 ${quota} 次額度，請明日再試或升級方案。`
+              })
+            };
+          }
+        }
+      } catch (firebaseError) {
+        console.error('❌ Firebase 操作錯誤:', firebaseError);
+        // Firebase 錯誤不阻擋，繼續使用默認值
+      }
+    }
+
+    // 🧩 Master 鎖死（如果前端傳來的 tier 是 MASTER 但不在白名單）
+    if (body.tier === 'MASTER' && email && !WHITELIST_EMAILS.includes(email)) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          result: '🚧 Master 模式暫未開放，請升級 PRO 專業版。'
+        })
+      };
+    }
+
+    console.log(`📥 Request: ${email || 'anonymous'} | Tier: ${userTier} | Used: ${usedToday}/${quota}`);
+
+    // 統一用「Pro 等級」的指令
     const systemInstruction = `
 你是 BrotherG 的【Shopee 直播選品戰術顧問】。
 
@@ -78,8 +181,8 @@ exports.handler = async (event) => {
         },
       ],
       generationConfig: {
-        maxOutputTokens: 900, // 控制在安全長度內，避免 MAX_TOKENS
-        temperature: tier === 'FREE' ? 0.65 : 0.75,
+        maxOutputTokens: userTier === 'MASTER' ? 8192 : 900,
+        temperature: userTier === 'FREE' ? 0.65 : 0.75,
       },
       safetySettings: [
         { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
@@ -89,7 +192,7 @@ exports.handler = async (event) => {
       ],
     };
 
-    console.log(`🚀 Calling Gemini API: ${MODEL} | Tier: ${tier}`);
+    console.log(`🚀 Calling Gemini API: ${MODEL} | Tier: ${userTier}`);
 
     const response = await fetch(url, {
       method: 'POST',
@@ -108,6 +211,21 @@ exports.handler = async (event) => {
       data.candidates?.[0]?.content?.parts?.[0]?.text ||
       '目前沒有產生內容，請稍後再試。';
 
+    // 🧩 扣減配額（如果有 Firebase）
+    if (admin.apps.length && email && canUse) {
+      try {
+        const db = admin.firestore();
+        const userRef = db.collection('users').doc(email);
+        await userRef.update({
+          usedToday: admin.firestore.FieldValue.increment(1),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        console.log('✅ 配額已扣減:', email);
+      } catch (firebaseError) {
+        console.error('❌ 扣減配額失敗:', firebaseError);
+      }
+    }
+
     console.log(`✅ Response generated: ${resultText.length} characters`);
 
     return {
@@ -118,7 +236,7 @@ exports.handler = async (event) => {
   } catch (err) {
     console.error('🔥 analyze error:', err);
     return {
-      statusCode: 200, // 前端一律當成功處理，只是提示錯誤訊息
+      statusCode: 200,
       headers,
       body: JSON.stringify({
         result: `⚠️ 分析服務暫時忙碌，請稍後再試。\n\n錯誤訊息：${err.message}`,

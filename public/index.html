@@ -457,9 +457,13 @@
     <!-- Firebase SDK (放在 </body> 之前) -->
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
 
     <!-- 全站共用登入模組 -->
     <script src="/js/auth.js"></script>
+    
+    <!-- Firebase Firestore 用戶資料管理模組 -->
+    <script src="/js/firebase-store.js"></script>
 
     <script>
         let remainingUsage = 5;
@@ -538,25 +542,47 @@
         }
 
         // --- UI Logic for Tiers ---
-        function getUserPlan() {
-            return localStorage.getItem('userPlan') || 'FREE';
-        }
-
-        function updateTierUI() {
-            const userPlan = getUserPlan();
-            const normalizedPlan = userPlan.toUpperCase();
+        async function updateTierUI() {
             const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
-            
+            if (!currentUser || !currentUser.email) {
+                // 未登入狀態
+                const badge = document.getElementById('user-tier-badge');
+                const btnText = document.getElementById('analyze-btn-text');
+                if (badge) {
+                    badge.innerText = 'BASIC';
+                    badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded tracking-wider hidden md:inline-block tier-badge-basic';
+                }
+                if (btnText) btnText.innerText = '開始深度分析 (Basic)';
+                return;
+            }
+
+            // 從 Firebase 獲取用戶 tier
+            let userTier = 'FREE';
+            let quota = 5;
+            let usedToday = 0;
+            let remaining = 5;
+
+            if (typeof window.getUserData === 'function') {
+                const userData = await window.getUserData(currentUser.email);
+                if (userData) {
+                    userTier = userData.tier || 'FREE';
+                    quota = userTier === 'PRO' ? 20 : 5;
+                    usedToday = userData.usedToday || 0;
+                    remaining = Math.max(0, quota - usedToday);
+                }
+            }
+
             const badge = document.getElementById('user-tier-badge');
             const btnText = document.getElementById('analyze-btn-text');
             const proLink = document.getElementById('pro-strategy-link');
             const upsell = document.getElementById('upsell-banner');
+            const usageCount = document.getElementById('usage-count');
 
             // Reset classes
             badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded tracking-wider hidden md:inline-block';
             proLink.className = 'hidden text-[10px] md:text-xs font-bold text-white px-3 py-1.5 rounded-full flex items-center hover:opacity-80 transition-opacity shadow-lg';
 
-            if (normalizedPlan === 'PRO') {
+            if (userTier === 'PRO') {
                 badge.innerText = 'PRO';
                 badge.classList.add('tier-badge-pro');
                 btnText.innerText = '啟動 Pro 級戰術運算';
@@ -566,7 +592,7 @@
                 
                 if(upsell) upsell.classList.add('hidden');
                 
-            } else if (normalizedPlan === 'MASTER') {
+            } else if (userTier === 'MASTER') {
                 badge.innerText = 'MASTER';
                 badge.classList.add('tier-badge-master');
                 btnText.innerText = '執行 Master 高階推演';
@@ -583,10 +609,20 @@
                 btnText.innerText = '開始深度分析 (Basic)';
                 if(upsell) upsell.classList.remove('hidden');
             }
+
+            // 更新剩餘次數顯示
+            if (usageCount) {
+                usageCount.innerText = remaining;
+            }
         }
 
         // Listen to auth state changes and update UI
         window.addEventListener('authStateChanged', function(event) {
+            updateTierUI();
+        });
+
+        // Listen to user data updates
+        window.addEventListener('userDataUpdated', function(event) {
             updateTierUI();
         });
 
@@ -607,6 +643,19 @@
         window.userCredits = window.userCredits ?? 5;
 
         async function runShopeeAnalysis() {
+            // 1) 登入檢查
+            if (!window.isLoggedIn || !window.isLoggedIn()) {
+                showToast('請先登入以使用分析功能');
+                showLoginModal();
+                return;
+            }
+
+            const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
+            if (!currentUser || !currentUser.email) {
+                showToast('無法取得用戶資訊，請重新登入');
+                return;
+            }
+
             const inputEl = document.getElementById('shopee-keyword');
             const contentDiv = document.getElementById('shopee-markdown-content');
             const btn = document.getElementById('analyze-btn');
@@ -617,7 +666,22 @@
                 return;
             }
 
-            // UI 狀態切換
+            // 2) 檢查配額（前端預檢）
+            if (typeof window.checkQuota === 'function') {
+                const quotaInfo = await window.checkQuota(currentUser.email);
+                if (!quotaInfo.canUse) {
+                    showToast(`今日已用完 ${quotaInfo.quota} 次額度，請升級方案或明日再試`);
+                    openPricingModal();
+                    return;
+                }
+                // 更新 UI 顯示剩餘次數
+                const usageCountEl = document.getElementById('usage-count');
+                if (usageCountEl) {
+                    usageCountEl.innerText = quotaInfo.remaining;
+                }
+            }
+
+            // 3) UI 狀態切換
             const emptyBlock = document.getElementById('shopee-empty');
             const resultBlock = document.getElementById('shopee-results');
             const loadingBlock = document.getElementById('shopee-loading');
@@ -633,14 +697,13 @@
             btn.innerText = '分析中…';
 
             try {
-                const tier = (window.userTier || getUserPlan() || 'free').toUpperCase();
-
+                // 4) 呼叫後端 API（傳遞 email）
                 const resp = await fetch(ANALYZE_ENDPOINT, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        textPrompt,
-                        tier
+                        email: currentUser.email,
+                        textPrompt: textPrompt
                     })
                 });
 
@@ -651,40 +714,56 @@
                 const data = await resp.json();
                 const result = data.result || data.text || '目前無法產生建議，稍後再試。';
 
-                // 顯示 AI 主體內容
+                // 5) 顯示 AI 主體內容
                 if (typeof marked !== 'undefined') {
                     contentDiv.innerHTML = marked.parse(result);
                 } else {
                     contentDiv.textContent = result;
                 }
 
-                // 免費版：在底下插一塊「模糊上鎖」催付
-                if (tier === 'FREE') {
-                    const upsellHTML = `
-                        <div class="mt-8 border-t-2 border-dashed border-slate-700 pt-6">
-                            <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-xl p-5 relative overflow-hidden group cursor-pointer"
-                                 onclick="openPricingModal()">
-                              
-                                <div class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-10 backdrop-blur-[2px] group-hover:backdrop-blur-none transition-all duration-500">
-                                    <div class="bg-aiBlue/20 border border-aiBlue/50 text-aiBlue px-4 py-2 rounded-full font-bold text-[10px] flex items-center gap-2 shadow-[0_0_20px_rgba(0,160,233,0.4)] animate-pulse">
-                                        <i class="fa-solid fa-lock"></i> 解鎖 PRO 版完整「利潤放大術」
-                                    </div>
-                                    <p class="text-gray-400 text-[10px] mt-2">點一下，看看 $688 怎麼幫你把 3 萬分潤做到頂。</p>
-                                </div>
+                // 6) 重新獲取用戶資料（更新配額顯示）
+                if (typeof window.getUserData === 'function') {
+                    const userData = await window.getUserData(currentUser.email);
+                    if (userData) {
+                        const tier = userData.tier || 'FREE';
+                        const limit = tier === 'PRO' ? 20 : 5;
+                        const remaining = Math.max(0, limit - userData.usedToday);
 
-                                <h4 class="text-gray-500 font-bold mb-2">💎 [PRO 專屬] 進階利潤放大策略：</h4>
-                                <p class="text-gray-600 text-xs leading-relaxed blur-sm select-none">
-                                  針對這個品類，其實還有一個「隱藏 C-A-B 排品組合」可以把客單價再拉 30%…<br>
-                                  詳細拆解僅提供給 PRO 專業版，用作長期操盤策略與直播話術腳本…
-                                </p>
-                            </div>
-                            
-                            <p class="text-center text-xs text-slate-500 mt-3">
-                                今日剩餘免費次數：<span class="text-aiBlue font-bold">${window.userCredits}</span> 次
-                            </p>
-                        </div>
-                    `;
-                    contentDiv.innerHTML += upsellHTML;
+                        // 免費版：在底下插一塊「模糊上鎖」催付
+                        if (tier === 'FREE') {
+                            const upsellHTML = `
+                                <div class="mt-8 border-t-2 border-dashed border-slate-700 pt-6">
+                                    <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-xl p-5 relative overflow-hidden group cursor-pointer"
+                                         onclick="openPricingModal()">
+                                      
+                                        <div class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-10 backdrop-blur-[2px] group-hover:backdrop-blur-none transition-all duration-500">
+                                            <div class="bg-aiBlue/20 border border-aiBlue/50 text-aiBlue px-4 py-2 rounded-full font-bold text-[10px] flex items-center gap-2 shadow-[0_0_20px_rgba(0,160,233,0.4)] animate-pulse">
+                                                <i class="fa-solid fa-lock"></i> 解鎖 PRO 版完整「利潤放大術」
+                                            </div>
+                                            <p class="text-gray-400 text-[10px] mt-2">點一下，看看 $688 怎麼幫你把 3 萬分潤做到頂。</p>
+                                        </div>
+
+                                        <h4 class="text-gray-500 font-bold mb-2">💎 [PRO 專屬] 進階利潤放大策略：</h4>
+                                        <p class="text-gray-600 text-xs leading-relaxed blur-sm select-none">
+                                          針對這個品類，其實還有一個「隱藏 C-A-B 排品組合」可以把客單價再拉 30%…<br>
+                                          詳細拆解僅提供給 PRO 專業版，用作長期操盤策略與直播話術腳本…
+                                        </p>
+                                    </div>
+                                    
+                                    <p class="text-center text-xs text-slate-500 mt-3">
+                                        今日剩餘免費次數：<span class="text-aiBlue font-bold">${remaining}</span> / ${limit}
+                                    </p>
+                                </div>
+                            `;
+                            contentDiv.innerHTML += upsellHTML;
+                        }
+
+                        // 更新剩餘次數顯示
+                        const usageCountEl = document.getElementById('usage-count');
+                        if (usageCountEl) {
+                            usageCountEl.innerText = remaining;
+                        }
+                    }
                 }
 
                 // 自動捲到底
