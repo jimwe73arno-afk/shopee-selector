@@ -290,6 +290,24 @@
                         <textarea id="shopee-keyword" class="w-full cyber-input p-4 text-base rounded-lg resize-none flex-1 min-h-[200px] lg:min-h-[300px] mb-4 focus:ring-0" 
                             placeholder="請輸入產品描述、規格或目前遇到的銷售瓶頸..."></textarea>
                         
+                        <!-- 開通碼輸入區域 -->
+                        <div class="mb-4 p-4 bg-bgCard/50 border border-borderDark rounded-lg">
+                            <label class="text-xs font-bold text-aiBlue mb-2 block tracking-widest">
+                                <i class="fa-solid fa-key mr-2"></i> 開通碼（付款後取得）
+                            </label>
+                            <div class="flex gap-2">
+                                <input type="text" id="activation-code-input" 
+                                    placeholder="輸入開通碼" 
+                                    class="flex-1 cyber-input p-2 text-sm rounded-lg"
+                                    onkeypress="if(event.key==='Enter') activateCode()">
+                                <button onclick="activateCode()" 
+                                    class="px-4 py-2 bg-aiBlue text-white text-sm font-bold rounded-lg hover:bg-blue-600 transition-colors">
+                                    開通
+                                </button>
+                            </div>
+                            <p class="text-[10px] text-textSub mt-2">支援開通碼：bg888, bg688, bg1688, bg588</p>
+                        </div>
+                        
                         <button onclick="runShopeeAnalysis()" class="w-full py-4 bg-aiBlue text-white font-display font-bold hover:bg-blue-600 transition-all duration-300 tracking-widest uppercase text-lg relative overflow-hidden shadow-[0_0_15px_rgba(0,160,233,0.3)] rounded-lg group active:scale-95">
                             <span class="relative z-10 flex items-center justify-center gap-2">
                                 <i class="fa-solid fa-bolt text-yellow-300 group-hover:animate-pulse"></i> 開始深度分析
@@ -499,6 +517,85 @@
     <script>
         let remainingUsage = 5;
         let currentPlan = null;
+        
+        // 開通碼列表（四組輪流使用）
+        const activationCodes = ['bg888', 'bg688', 'bg1688', 'bg588'];
+        let currentCodeIndex = 0;
+        
+        // 驗證開通碼的函數
+        function verifyActivationCode(code) {
+            const normalizedCode = code.toLowerCase().trim();
+            const isValid = activationCodes.includes(normalizedCode);
+            
+            if (isValid) {
+                // 根據開通碼判斷方案
+                let plan = 'FREE';
+                if (normalizedCode === 'bg888' || normalizedCode === 'bg688') {
+                    plan = 'PRO';
+                } else if (normalizedCode === 'bg1688' || normalizedCode === 'bg588') {
+                    plan = 'MASTER';
+                }
+                
+                // 儲存到 localStorage
+                localStorage.setItem('userPlan', plan);
+                localStorage.setItem('activationCode', normalizedCode);
+                
+                return { valid: true, plan: plan };
+            }
+            
+            return { valid: false, plan: null };
+        }
+        
+        // 獲取當前用戶方案
+        function getUserPlan() {
+            return localStorage.getItem('userPlan') || 'FREE';
+        }
+        
+        // 開通碼驗證函數
+        function activateCode() {
+            const input = document.getElementById('activation-code-input');
+            const code = input.value.trim();
+            
+            if (!code) {
+                showToast('請輸入開通碼');
+                return;
+            }
+            
+            const result = verifyActivationCode(code);
+            
+            if (result.valid) {
+                showToast(`✅ 開通成功！已升級為 ${result.plan} 方案`);
+                input.value = '';
+                
+                // 更新使用次數（PRO 和 MASTER 有更多次數）
+                if (result.plan === 'PRO') {
+                    remainingUsage = 50;
+                    document.getElementById('usage-count').innerText = remainingUsage;
+                } else if (result.plan === 'MASTER') {
+                    remainingUsage = 999;
+                    document.getElementById('usage-count').innerText = remainingUsage;
+                }
+                
+                // 刷新頁面以更新 UI
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            } else {
+                showToast('❌ 開通碼無效，請確認後再試');
+                input.value = '';
+            }
+        }
+        
+        // 頁面載入時檢查是否有已儲存的方案
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedPlan = getUserPlan();
+            if (savedPlan !== 'FREE') {
+                const code = localStorage.getItem('activationCode');
+                if (code) {
+                    console.log(`已檢測到 ${savedPlan} 方案，開通碼：${code}`);
+                }
+            }
+        });
 
         function showToast(msg) {
             const toast = document.getElementById('toast');
@@ -544,8 +641,8 @@
             }
         }
 
-        // 處理結帳（PRO 和 MASTER）
-        async function handleCheckout(plan) {
+        // 處理結帳（PRO 和 MASTER）- 暫時直接跳轉到綠界連結
+        function handleCheckout(plan) {
             const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
             
             if (!currentUser) {
@@ -554,39 +651,19 @@
                 return;
             }
 
-            const userId = currentUser.uid || currentUser.email || 'anonymous';
-            
-            try {
-                showToast(`正在準備 ${plan} 方案付款...`);
-                
-                // 呼叫 payment-checkout API
-                const response = await fetch('/.netlify/functions/payment-checkout', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        plan: plan,
-                        userId: userId
-                    })
-                });
+            // 直接跳轉到綠界付款頁面
+            const paymentUrls = {
+                'PRO': 'https://p.ecpay.com.tw/E149ADE',
+                'MASTER': 'https://p.ecpay.com.tw/91B478A'
+            };
 
-                if (!response.ok) {
-                    throw new Error('付款服務暫時無法使用');
-                }
-
-                // 取得 HTML 表單
-                const html = await response.text();
-                
-                // 建立新視窗並寫入 HTML
-                const newWindow = window.open('', '_blank');
-                newWindow.document.write(html);
-                newWindow.document.close();
-                
-                // 關閉定價模態框
+            const url = paymentUrls[plan];
+            if (url) {
+                window.open(url, '_blank');
                 closePricingModal();
-                
-            } catch (error) {
-                console.error('❌ Checkout Error:', error);
-                showToast(`付款處理失敗：${error.message}`);
+                showToast(`已開啟 ${plan} 方案付款頁面，付款完成後請輸入開通碼`);
+            } else {
+                showToast('無效的方案類型');
             }
         }
 
@@ -636,7 +713,7 @@
                 
                 // 獲取用戶資訊
                 const userEmail = currentUser ? (currentUser.email || null) : null;
-                const userTier = "FREE"; // TODO: 從後端或 localStorage 獲取用戶等級
+                const userTier = getUserPlan(); // 從 localStorage 獲取用戶等級
                 
                 const response = await fetch('/api/analyze', {
                     method: 'POST',
