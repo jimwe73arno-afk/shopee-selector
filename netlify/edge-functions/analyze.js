@@ -192,7 +192,7 @@ export default async (request, context) => {
 
           buffer += decoder.decode(value, { stream: true });
           
-          // 按行分割，处理完整的 JSON 对象
+          // 按行分割，处理完整的 JSON 对象（Google API 每行一个 JSON）
           const lines = buffer.split('\n');
           // 保留最后一行（可能不完整）
           buffer = lines.pop() || '';
@@ -204,10 +204,10 @@ export default async (request, context) => {
               // 尝试解析完整的 JSON 对象
               const jsonObj = JSON.parse(line);
               
-              // 检查是否是 candidates 数组
-              if (jsonObj.candidates && jsonObj.candidates.length > 0) {
+              // Google Gemini 串流格式：{"candidates":[{"content":{"parts":[{"text":"..."}]}}]}
+              if (jsonObj.candidates && Array.isArray(jsonObj.candidates) && jsonObj.candidates.length > 0) {
                 const candidate = jsonObj.candidates[0];
-                if (candidate.content && candidate.content.parts) {
+                if (candidate.content && candidate.content.parts && Array.isArray(candidate.content.parts)) {
                   for (const part of candidate.content.parts) {
                     if (part.text) {
                       await writer.write(encoder.encode(part.text));
@@ -215,47 +215,43 @@ export default async (request, context) => {
                   }
                 }
               }
-              
-              // 检查是否有直接的 text 字段
-              if (jsonObj.text) {
-                await writer.write(encoder.encode(jsonObj.text));
-              }
-              
-            } catch (e) {
-              // 如果不是完整的 JSON，尝试提取 text 字段
+            } catch (parseError) {
+              // 如果 JSON 解析失败，尝试用正则提取 text 字段（备选方案）
               if (line.includes('"text"')) {
                 try {
-                  // 尝试提取 "text": "..." 格式
-                  const textMatches = line.match(/"text"\s*:\s*"([^"]*)"/g);
-                  if (textMatches) {
-                    for (const match of textMatches) {
-                      const textMatch = match.match(/"text"\s*:\s*"([^"]*)"/);
-                      if (textMatch && textMatch[1]) {
-                        // 处理转义字符
-                        const text = textMatch[1]
-                          .replace(/\\n/g, '\n')
-                          .replace(/\\t/g, '\t')
-                          .replace(/\\"/g, '"')
-                          .replace(/\\\\/g, '\\');
+                  // 匹配 "text": "..." 但需要处理转义字符
+                  const textRegex = /"text"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
+                  let match;
+                  while ((match = textRegex.exec(line)) !== null) {
+                    if (match[1]) {
+                      // 处理转义字符
+                      const text = match[1]
+                        .replace(/\\n/g, '\n')
+                        .replace(/\\t/g, '\t')
+                        .replace(/\\r/g, '\r')
+                        .replace(/\\"/g, '"')
+                        .replace(/\\\\/g, '\\');
+                      if (text) {
                         await writer.write(encoder.encode(text));
                       }
                     }
                   }
-                } catch (parseError) {
-                  // 跳过解析失败的行
+                } catch (regexError) {
+                  // 跳过提取失败的行
+                  console.warn("Failed to extract text from line:", line.substring(0, 100));
                 }
               }
             }
           }
         }
         
-        // 处理剩余的 buffer
+        // 处理剩余的 buffer（最后一行）
         if (buffer.trim()) {
           try {
             const jsonObj = JSON.parse(buffer);
-            if (jsonObj.candidates && jsonObj.candidates.length > 0) {
+            if (jsonObj.candidates && Array.isArray(jsonObj.candidates) && jsonObj.candidates.length > 0) {
               const candidate = jsonObj.candidates[0];
-              if (candidate.content && candidate.content.parts) {
+              if (candidate.content && candidate.content.parts && Array.isArray(candidate.content.parts)) {
                 for (const part of candidate.content.parts) {
                   if (part.text) {
                     await writer.write(encoder.encode(part.text));
@@ -264,14 +260,33 @@ export default async (request, context) => {
               }
             }
           } catch (e) {
-            // 忽略最后的解析错误
+            // 最后的 buffer 解析失败，尝试正则提取
+            if (buffer.includes('"text"')) {
+              const textRegex = /"text"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
+              let match;
+              while ((match = textRegex.exec(buffer)) !== null) {
+                if (match[1]) {
+                  const text = match[1]
+                    .replace(/\\n/g, '\n')
+                    .replace(/\\t/g, '\t')
+                    .replace(/\\r/g, '\r')
+                    .replace(/\\"/g, '"')
+                    .replace(/\\\\/g, '\\');
+                  if (text) {
+                    await writer.write(encoder.encode(text));
+                  }
+                }
+              }
+            }
           }
         }
+        
+        console.log("✅ Stream completed successfully");
       } catch (e) {
-        console.error("Stream Error:", e);
-        await writer.write(encoder.encode("\n\n[串流處理錯誤，但部分內容可能已顯示]"));
+        console.error("❌ Stream Error:", e);
+        await writer.write(encoder.encode("\n\n[串流處理發生錯誤，部分內容可能已顯示]"));
       } finally {
-        writer.close();
+        await writer.close();
       }
     })();
 
