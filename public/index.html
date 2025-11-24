@@ -666,19 +666,26 @@
                 return;
             }
 
-            // 2) 檢查配額（前端預檢）
-            if (typeof window.checkQuota === 'function') {
-                const quotaInfo = await window.checkQuota(currentUser.email);
-                if (!quotaInfo.canUse) {
-                    showToast(`今日已用完 ${quotaInfo.quota} 次額度，請升級方案或明日再試`);
-                    openPricingModal();
-                    return;
+            // 2) 檢查配額（前端預檢，但錯誤不阻擋請求）
+            try {
+                if (typeof window.checkQuota === 'function') {
+                    const quotaInfo = await window.checkQuota(currentUser.email);
+                    if (quotaInfo && !quotaInfo.canUse) {
+                        showToast(`今日已用完 ${quotaInfo.quota} 次額度，請升級方案或明日再試`);
+                        openPricingModal();
+                        return;
+                    }
+                    // 更新 UI 顯示剩餘次數
+                    if (quotaInfo) {
+                        const usageCountEl = document.getElementById('usage-count');
+                        if (usageCountEl) {
+                            usageCountEl.innerText = quotaInfo.remaining || 0;
+                        }
+                    }
                 }
-                // 更新 UI 顯示剩餘次數
-                const usageCountEl = document.getElementById('usage-count');
-                if (usageCountEl) {
-                    usageCountEl.innerText = quotaInfo.remaining;
-                }
+            } catch (quotaError) {
+                console.warn('⚠️ 配額檢查失敗，繼續執行請求:', quotaError);
+                // 配額檢查失敗不阻擋請求，讓後端處理
             }
 
             // 3) UI 狀態切換

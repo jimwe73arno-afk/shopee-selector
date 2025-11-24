@@ -84,6 +84,7 @@ exports.handler = async (event) => {
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
           });
           console.log('✅ 新用戶已建立:', email);
+          // 新用戶默認可以繼續使用
         } else {
           const userData = userDoc.data();
           
@@ -108,27 +109,42 @@ exports.handler = async (event) => {
             console.warn(`⚠️ 用戶 ${email} 試圖使用 MASTER 但不在白名單，降級為 PRO`);
             userTier = 'PRO';
             quota = 20;
-          } else if (isWhitelisted) {
+          } else if (isWhitelisted && userTier !== 'MASTER') {
+            // 白名單用戶自動升級為 MASTER
             userTier = 'MASTER';
+            quota = 50; // Master 配額更高
+          } else if (userTier === 'MASTER') {
             quota = 50; // Master 配額更高
           }
 
-          // 檢查配額
+          // 檢查配額（只有當配額真的用完時才阻擋）
           if (usedToday >= quota) {
             canUse = false;
             return {
               statusCode: 200,
               headers,
               body: JSON.stringify({
-                result: `⚠️ 今日已用完 ${quota} 次額度，請明日再試或升級方案。`
+                result: `⚠️ 今日已用完 ${quota} 次額度，請明日再試或升級方案。\n\n（剩餘配額：${quota - usedToday}/${quota}）`
               })
             };
           }
         }
       } catch (firebaseError) {
         console.error('❌ Firebase 操作錯誤:', firebaseError);
-        // Firebase 錯誤不阻擋，繼續使用默認值
+        console.warn('⚠️ 繼續使用默認值（FREE tier，允許使用）');
+        // Firebase 錯誤不阻擋，繼續使用默認值（允許免費使用）
+        userTier = 'FREE';
+        quota = 5;
+        usedToday = 0;
+        canUse = true;
       }
+    } else {
+      // 沒有 Firebase 或沒有 email，使用默認值（允許使用）
+      console.warn('⚠️ Firebase 未初始化或無 email，使用默認 FREE tier');
+      userTier = 'FREE';
+      quota = 5;
+      usedToday = 0;
+      canUse = true;
     }
 
     // 🧩 Master 鎖死（如果前端傳來的 tier 是 MASTER 但不在白名單）
