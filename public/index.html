@@ -778,6 +778,9 @@
             contentDiv.appendChild(block);
         }
 
+        // 強制設定 MODE 常數
+        const MODE = "shopee";
+
         async function runShopeeAnalysis() {
             const promptInput = document.getElementById('shopee-keyword');
             const textPrompt = promptInput.value.trim();
@@ -816,28 +819,44 @@
             }
 
             try {
-                const resp = await fetch('/.netlify/functions/analyze', {
+                // 獲取用戶信息
+                const userId = window.currentUser?.uid || 'guest';
+                const userEmail = window.currentUser?.email || '';
+
+                // 調用統一的 ask.js API
+                const resp = await fetch('/.netlify/functions/ask', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ textPrompt }),
+                    body: JSON.stringify({
+                        q: textPrompt,  // ask.js 接受 q, query, textPrompt, input
+                        mode: MODE,
+                        uid: userId,    // ask.js 接受 uid 或 userId
+                        userId: userId,
+                        userEmail: userEmail
+                    }),
                 });
 
                 if (!resp.ok) {
-                    throw new Error('分析服務暫時無法使用，請稍後再試');
+                    const errorData = await resp.json().catch(() => ({ error: 'Unknown error' }));
+                    throw new Error(errorData.message || errorData.error || '分析服務暫時無法使用，請稍後再試');
                 }
 
                 const data = await resp.json();
-                const { success, result } = data;
+                
+                // 處理 ask.js 的回傳格式（可能有 output 或 result）
+                const { success, result, output, error } = data;
+                const finalResult = output || result || error || '';
+                const finalSuccess = success !== false && !!finalResult;
 
                 // 2) 將 AI 回覆顯示到右側報告區
                 if (typeof marked !== 'undefined') {
-                    reportContainer.innerHTML = marked.parse(result || '');
+                    reportContainer.innerHTML = marked.parse(finalResult || '');
                 } else {
-                    reportContainer.textContent = result || '';
+                    reportContainer.textContent = finalResult || '';
                 }
 
                 // 3) 只有 success === true 時才扣次 & 寫回 Firestore
-                if (success && window.currentUser && window.currentUser.uid) {
+                if (finalSuccess && window.currentUser && window.currentUser.uid) {
                     window.usedToday += 1;
                     if (typeof window.updateUsageInFirestore === 'function') {
                         await window.updateUsageInFirestore(window.currentUser.uid, window.usedToday);
@@ -848,7 +867,7 @@
                 updateUsageUI();
 
                 // 5) Basic tier 額外顯示「模糊的 PRO 區塊」作為 Upsell
-                if (success && window.userTier === 'basic') {
+                if (finalSuccess && window.userTier === 'basic') {
                     const remaining = window.dailyLimit - window.usedToday;
                     appendProUpsellBlock(remaining);
                 }
@@ -862,7 +881,7 @@
                 loadingBlock.classList.add('hidden');
                 resultBlock.classList.remove('hidden');
                 
-                if (success) {
+                if (finalSuccess) {
                     showToast('分析報告生成完畢');
                 } else {
                     showToast('分析失敗，請稍後再試');
