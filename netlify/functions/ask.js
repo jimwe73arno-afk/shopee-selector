@@ -165,9 +165,21 @@ function isValidMode(mode) {
   return ALLOWED_MODES.includes(mode);
 }
 
+// ★ Pro 白名單（這些 UID 直接當作 Pro）
+const PRO_WHITELIST = [
+  'GwaJ2Rey2hhIWwBtW5lHQE7Ay4B3',  // BrotherG 測試帳號
+];
+
 // ★ 解析用戶 plan（優先讀取 tier，向後兼容 plan）
-function resolvePlan(userDoc, isLoggedIn) {
+function resolvePlan(userDoc, isLoggedIn, uid) {
   if (!isLoggedIn) return 'guest';
+  
+  // ★ 白名單直接給 Pro
+  if (uid && PRO_WHITELIST.includes(uid)) {
+    console.log(`🌟 白名單用戶: ${uid} → pro`);
+    return 'pro';
+  }
+  
   // 優先讀取 tier（新欄位），其次 plan（舊欄位）
   const rawTier = userDoc?.tier || userDoc?.plan || 'free';
   // 統一轉小寫
@@ -364,7 +376,7 @@ exports.handler = async (event) => {
 
     if (isLoggedIn) {
       userDoc = await getUserProfile(uid);
-      plan = resolvePlan(userDoc, isLoggedIn);
+      plan = resolvePlan(userDoc, isLoggedIn, uid);  // ★ 傳入 uid 檢查白名單
       dailyLimit = getDailyLimitForPlan(plan);
       dailyCount = userDoc.daily_count || 0;
     } else {
