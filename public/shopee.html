@@ -314,6 +314,11 @@
                             </span>
                         </button>
                         
+                        <!-- 🟢 Pro 升級提醒 (Free 用戶顯示) -->
+                        <div id="pro-hint" class="mt-3 text-xs text-yellow-400 text-center animate-pulse cursor-pointer hover:text-yellow-300" onclick="openPricingModal()">
+                            ⚡ 進階「選品分析」功能僅限 Pro 會員使用，<span class="underline">升級後解鎖完整分析報告</span>
+                        </div>
+                        
                         <div class="mt-4 flex justify-center items-center space-x-2 text-[10px] text-aiBlue opacity-50 hidden md:flex">
                             <i class="fa-solid fa-microchip"></i>
                             <span class="font-mono">BrotherG Intelligence Node</span>
@@ -343,7 +348,13 @@
                             <h3 class="text-base md:text-lg font-bold text-textMain flex items-center">
                                 <i class="fa-solid fa-file-code text-aiBlue mr-3"></i> 戰略分析報告
                             </h3>
-                            <span class="text-[10px] md:text-xs font-bold text-green-400 bg-green-900/20 px-3 py-1 rounded-full border border-green-900/50">COMPLETED</span>
+                            <div class="flex items-center gap-3">
+                                <!-- 🟢 Pro 升級按鈕 (Free 用戶顯示) -->
+                                <button id="upgrade-btn" onclick="openPricingModal()" class="text-xs text-yellow-300 hover:text-yellow-200 bg-yellow-900/20 px-3 py-1 rounded-full border border-yellow-700/50 transition-all hover:bg-yellow-900/40">
+                                    💎 升級 Pro 解鎖選品分析 →
+                                </button>
+                                <span class="text-[10px] md:text-xs font-bold text-green-400 bg-green-900/20 px-3 py-1 rounded-full border border-green-900/50">COMPLETED</span>
+                            </div>
                         </div>
                         <div id="shopee-markdown-content" class="markdown-output text-sm text-textMain space-y-4 leading-relaxed pb-10">
                             <!-- Content injected here -->
@@ -522,6 +533,10 @@
         async function callAsk(question, currentUser) {
             const userId = currentUser?.uid || "guest";
             const userEmail = currentUser?.email || "";
+            const userTier = getUserPlan();
+            
+            // 🔵 Pro 用戶附帶上下文
+            const contextMessages = getContextMessages();
 
             const res = await fetch("/.netlify/functions/ask", {
                 method: "POST",
@@ -532,7 +547,9 @@
                     mode: MODE,
                     uid: userId,
                     userId,
-                    userEmail
+                    userEmail,
+                    tier: userTier,
+                    context: contextMessages  // 🔵 上下文（Pro 用戶有值）
                 })
             });
 
@@ -558,7 +575,138 @@
         function getUserPlan() {
             return localStorage.getItem('userPlan') || 'FREE';
         }
-        
+
+        // 🟢 更新 Pro 升級提醒顯示狀態
+        function updateProHints() {
+            const userPlan = getUserPlan();
+            const proHint = document.getElementById('pro-hint');
+            const upgradeBtn = document.getElementById('upgrade-btn');
+            
+            if (userPlan === 'PRO' || userPlan === 'MASTER') {
+                // Pro/Master 用戶隱藏升級提醒
+                if (proHint) proHint.classList.add('hidden');
+                if (upgradeBtn) upgradeBtn.classList.add('hidden');
+            } else {
+                // Free 用戶顯示升級提醒
+                if (proHint) proHint.classList.remove('hidden');
+                if (upgradeBtn) upgradeBtn.classList.remove('hidden');
+            }
+        }
+
+        // 🟠 付款完成後自動開通 Pro（寫入 Firebase）
+        async function activatePro(uid, paymentCode) {
+            try {
+                // 使用 Firebase compat SDK
+                if (typeof firebase !== 'undefined' && firebase.firestore) {
+                    const db = firebase.firestore();
+                    const userRef = db.collection('users').doc(uid);
+                    
+                    await userRef.set({
+                        tier: 'pro',
+                        activationCode: paymentCode,
+                        activatedAt: Date.now(),
+                    }, { merge: true });
+                    
+                    // 更新本地存儲
+                    localStorage.setItem('userPlan', 'PRO');
+                    
+                    // 更新 UI
+                    updateProHints();
+                    remainingUsage = 50;
+                    document.getElementById('usage-count').innerText = remainingUsage;
+                    
+                    showToast('🎉 Pro 會員開通成功！已解鎖完整功能。');
+                    return true;
+                } else {
+                    console.error('Firebase Firestore 未初始化');
+                    return false;
+                }
+            } catch (error) {
+                console.error('Pro 開通失敗:', error);
+                showToast('開通失敗，請聯繫客服');
+                return false;
+            }
+        }
+
+        // 🔵 聊天記錄管理（tier-based）
+        let chatHistory = [];
+        const MAX_MESSAGES_FREE = 5;
+        const MAX_MESSAGES_PRO = 20;
+
+        // 獲取聊天記錄上限
+        function getMaxMessages() {
+            const userPlan = getUserPlan();
+            return (userPlan === 'PRO' || userPlan === 'MASTER') ? MAX_MESSAGES_PRO : MAX_MESSAGES_FREE;
+        }
+
+        // 添加訊息到歷史記錄
+        function addToChatHistory(role, content) {
+            const maxMessages = getMaxMessages();
+            chatHistory.push({ role, content, timestamp: Date.now() });
+            
+            // 超過上限時移除最舊的訊息
+            if (chatHistory.length > maxMessages) {
+                chatHistory = chatHistory.slice(-maxMessages);
+            }
+            
+            // 儲存到 localStorage
+            saveChatHistory();
+        }
+
+        // 儲存聊天記錄
+        function saveChatHistory() {
+            const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
+            if (currentUser?.uid) {
+                localStorage.setItem(`chatHistory_${currentUser.uid}`, JSON.stringify(chatHistory));
+            }
+        }
+
+        // 載入聊天記錄
+        function loadChatHistory() {
+            const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
+            if (currentUser?.uid) {
+                const saved = localStorage.getItem(`chatHistory_${currentUser.uid}`);
+                if (saved) {
+                    chatHistory = JSON.parse(saved);
+                    
+                    // 檢查是否需要每日清空（Free 用戶）
+                    const userPlan = getUserPlan();
+                    if (userPlan === 'FREE') {
+                        const today = new Date().toDateString();
+                        const lastDate = localStorage.getItem(`chatDate_${currentUser.uid}`);
+                        
+                        if (lastDate !== today) {
+                            // 新的一天，清空 Free 用戶的聊天記錄
+                            chatHistory = [];
+                            localStorage.setItem(`chatDate_${currentUser.uid}`, today);
+                            saveChatHistory();
+                            console.log('🔄 Free 用戶每日聊天記錄已重置');
+                        }
+                    }
+                }
+            }
+        }
+
+        // 獲取上下文（Pro 用戶才有）
+        function getContextMessages() {
+            const userPlan = getUserPlan();
+            if (userPlan === 'PRO' || userPlan === 'MASTER') {
+                // Pro 用戶：附帶最近 5 條訊息作為上下文
+                return chatHistory.slice(-5).map(m => ({
+                    role: m.role,
+                    content: m.content
+                }));
+            }
+            // Free 用戶：不保留上下文
+            return [];
+        }
+
+        // 頁面載入時初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            loadChatHistory();
+            updateProHints();
+        });
+
         // 開通碼驗證函數（改為後端驗證）
         async function activateCode() {
             const input = document.getElementById('activation-code-input');
@@ -778,6 +926,10 @@
 
                 loadingBlock.classList.add('hidden');
                 resultBlock.classList.remove('hidden');
+
+                // 🔵 保存到聊天記錄
+                addToChatHistory('user', input);
+                addToChatHistory('assistant', aiText);
 
                 showToast(`${userName}，分析報告已生成完畢！`);
             } catch (err) {
