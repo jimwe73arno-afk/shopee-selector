@@ -117,6 +117,11 @@ async function updateUsage(uid) {
 }
 
 exports.handler = async (event) => {
+  // 🚀 調用診斷日誌
+  console.log("🚀 Function invoked:", event.path || event.rawUrl);
+  console.log("🚀 Method:", event.httpMethod);
+  console.log("🚀 Body preview:", (event.body || '').slice(0, 300));
+
   // OPTIONS 請求（CORS preflight）
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
@@ -144,7 +149,7 @@ exports.handler = async (event) => {
       params = JSON.parse(event.body || '{}');
     }
 
-    const uid = params.uid || params.userId || 'guest';
+    const uid = params.uid || params.userId || params.userEmail || 'guest';
     const mode = (params.mode || params.m || 'shopee').toLowerCase();
     const input = params.q || params.query || params.textPrompt || params.input || '';
 
@@ -195,16 +200,14 @@ exports.handler = async (event) => {
     const systemPrompt = loadPrompt(mode);
     console.log(`🚀 載入 mode: ${mode} | uid: ${uid}`);
 
-    // 呼叫 Gemini API
-    const url = `https://generativelanguage.googleapis.com/${API_VERSION}/models/${MODEL}:generateContent?key=${API_KEY}`;
-
-    const payload = {
+    // 建立 Gemini 請求 Payload
+    const createPayload = (prompt, userQuery) => ({
       contents: [
         {
           role: 'user',
           parts: [
-            { text: systemPrompt },
-            { text: `【用戶輸入】: ${input}` },
+            { text: prompt },
+            { text: `【用戶輸入】: ${userQuery}` },
           ],
         },
       ],
@@ -218,33 +221,58 @@ exports.handler = async (event) => {
         { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
         { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
       ],
-    };
-
-    // 🚀 [ASK] 調用前日誌
-    console.log("🚀 [ASK] 模式:", mode);
-    console.log("🚀 [ASK] 問題:", input);
-    console.log("🚀 [ASK] URL:", url.replace(API_KEY, '***KEY***'));
-    console.log("🚀 [ASK] Payload:", JSON.stringify(payload).slice(0, 500));
-
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
     });
 
-    console.log("🚀 [ASK] 響應狀態:", resp.status, resp.statusText);
+    // 封裝呼叫 Gemini 的函式
+    async function callGemini(modelName) {
+      const url = `https://generativelanguage.googleapis.com/${API_VERSION}/models/${modelName}:generateContent?key=${API_KEY}`;
+      console.log(`📤 [Gemini] 嘗試呼叫模型: ${modelName}`);
+      console.log(`📤 [Gemini] URL: ${url.replace(API_KEY, '***')}`);
 
-    if (!resp.ok) {
-      const text = await resp.text();
-      console.error("❌ [ASK] Gemini API 錯誤:", resp.status, text);
-      throw new Error(`Gemini API error: ${resp.status} ${text}`);
+      const payload = createPayload(systemPrompt, input);
+      console.log(`📤 [Gemini] Payload preview:`, JSON.stringify(payload).slice(0, 400));
+
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      console.log(`📥 [Gemini] 響應狀態: ${resp.status} ${resp.statusText}`);
+
+      if (!resp.ok) {
+        const text = await resp.text();
+        console.error(`❌ [Gemini] API 錯誤: ${resp.status}`, text.slice(0, 500));
+        throw new Error(`Gemini API error (${modelName}): ${resp.status} ${text}`);
+      }
+
+      const data = await resp.json();
+      const outputText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+      console.log(`📥 [Gemini] 回傳內容長度: ${outputText.length}`);
+      console.log(`📥 [Gemini] 回傳預覽:`, outputText.slice(0, 200));
+      
+      return outputText;
     }
 
-    const data = await resp.json();
-    console.log("✅ [Gemini 回傳成功]", JSON.stringify(data).slice(0, 400));
-    
-    const output = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-    console.log("✅ [ASK] 輸出長度:", output.length);
+    let output = '';
+
+    // 嘗試主要模型 (2.5-flash)
+    try {
+      output = await callGemini('gemini-2.5-flash');
+    } catch (err) {
+      console.warn('⚠️ 主要模型 gemini-2.5-flash 失敗:', err.message);
+    }
+
+    // 如果失敗或為空，嘗試備用模型 (1.5-flash)
+    if (!output) {
+      console.log('🔄 切換至備用模型 gemini-1.5-flash...');
+      try {
+        output = await callGemini('gemini-1.5-flash');
+      } catch (err) {
+        console.error('❌ 備用模型 gemini-1.5-flash 也失敗:', err.message);
+        throw err; // 兩個都失敗才拋出錯誤
+      }
+    }
 
     if (!output) {
       return {

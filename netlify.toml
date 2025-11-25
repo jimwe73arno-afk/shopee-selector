@@ -18,6 +18,12 @@
   to = "/shopee.html"
   status = 301
 
+# API 重定向 (修復前端呼叫不到 function 的問題)
+[[redirects]]
+  from = "/api/analyze"
+  to = "/.netlify/functions/ask"
+  status = 200
+
 # 付款成功頁面
 [[redirects]]
   from = "/payment/success"
