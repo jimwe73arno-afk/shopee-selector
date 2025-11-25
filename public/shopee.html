@@ -735,11 +735,20 @@
 
             try {
                 const data = await callAsk(input, currentUser);
-                const aiText = data?.output || data?.result || data?.answer || '';
+                console.log("[Shopee] response from ask:", data);
+                
+                // 統一解析：優先 answer，其次 output/result
+                const aiText = (data?.answer && data.answer.trim()) 
+                    || (data?.output && data.output.trim()) 
+                    || (data?.result && data.result.trim()) 
+                    || '';
 
-                if (!aiText.trim()) {
+                if (!aiText) {
+                    console.warn("[Shopee] empty answer data:", data);
                     throw new Error('AI 回傳內容為空，請稍後再試');
                 }
+                
+                console.log("[Shopee] aiText length:", aiText.length);
 
                 const finalText = aiText.trim().startsWith('#')
                     ? aiText.trim()

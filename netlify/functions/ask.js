@@ -291,7 +291,9 @@ exports.handler = async (event) => {
     }
 
     console.log(`✅ 成功產生分析: mode=${mode}, uid=${uid}, length=${output.length}`);
+    console.log(`✅ 回傳預覽:`, output.slice(0, 300));
 
+    // 統一回傳格式：同時提供 answer 和 output（前端可能讀任一個）
     return {
       statusCode: 200,
       headers,
@@ -299,7 +301,9 @@ exports.handler = async (event) => {
         success: true,
         mode,
         uid,
-        output,
+        answer: output,   // ★ 前端可能讀 answer
+        output: output,   // ★ 前端可能讀 output
+        result: output,   // ★ 前端可能讀 result
         timestamp: Date.now(),
       }),
     };
