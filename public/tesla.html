@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tesla Decision Core | BrotherGAi</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="apple-touch-icon" href="/logo.png">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&family=JetBrains+Mono:wght@400;500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Markdown Parser -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Rajdhani', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        aiBlue: '#00A0E9',
+                        panel: '#F8FAFC',
+                        border: '#E2E8F0',
+                        textMain: '#0F172A',
+                        textSub: '#64748B',
+                    },
+                    animation: {
+                        'typing': 'typing 1.5s infinite',
+                    },
+                    keyframes: {
+                        typing: {
+                            '0%, 100%': { opacity: '0.3' },
+                            '50%': { opacity: '1' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #FFFFFF; color: #0F172A; overflow: hidden; }
+        ::-webkit-scrollbar { width: 4px; background: #FFF; }
+        ::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 2px; }
+        
+        .cosmos-bg {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at 10% 10%, rgba(0, 160, 233, 0.03) 0%, transparent 40%),
+                        radial-gradient(circle at 90% 90%, rgba(0, 160, 233, 0.03) 0%, transparent 40%);
+            z-index: -1; pointer-events: none;
+        }
+
+        .core-card {
+            background: #FFFFFF; border: 1px solid #E2E8F0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative; overflow: hidden; display: flex;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        .cyber-input {
+            background: #FFFFFF; border: 1px solid #E2E8F0; color: #0F172A;
+        }
+        .cyber-input:focus {
+            border-color: #00A0E9; outline: none; box-shadow: 0 0 0 3px rgba(0,160,233,0.1);
+        }
+
+        .chat-msg-bot {
+            background: #F1F5F9; color: #0F172A; border-radius: 0 12px 12px 12px;
+            padding: 12px 16px; max-width: 85%; margin-bottom: 12px; font-size: 0.95rem;
+        }
+        .chat-msg-user {
+            background: #00A0E9; color: white; border-radius: 12px 0 12px 12px;
+            padding: 12px 16px; max-width: 85%; margin-left: auto; margin-bottom: 12px; font-size: 0.95rem;
+        }
+        
+        .decision-card-content h3 { font-weight: 700; color: #00A0E9; margin-top: 0.8rem; }
+        .decision-card-content ul { list-style: disc; padding-left: 1.2rem; }
+        .decision-card-content a { color: #00A0E9; text-decoration: underline; }
+        
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden selection:bg-aiBlue selection:text-white">
+
+    <div class="cosmos-bg"></div>
+
+    <!-- Sidebar -->
+    <aside class="w-20 bg-white/90 backdrop-blur-md border-r border-border flex flex-col items-center py-8 z-30 flex-shrink-0">
+        <div class="w-14 h-14 mb-10 cursor-pointer group" onclick="window.location.href='https://brotherg.ai'" title="返回 BrotherG 首頁">
+            <img src="/logo.png" alt="BrotherG" class="w-full h-full rounded-xl shadow-lg shadow-blue-500/30 group-hover:shadow-blue-500/50 group-hover:scale-105 transition-all">
+        </div>
+        <nav class="flex-1 flex flex-col space-y-10 w-full items-center">
+            <!-- Active Icon for Tesla (Model X Wing style) -->
+            <div class="w-12 h-12 flex items-center justify-center text-aiBlue bg-blue-50 rounded-xl transition-colors shadow-sm">
+                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 17h14" />
+                    <path d="M6 17l1.5-5h9l1.5 5" />
+                    <path d="M7.5 12 L3 5" />
+                    <path d="M3 5 L9 7" />
+                    <path d="M16.5 12 L21 5" />
+                    <path d="M21 5 L15 7" />
+                    <circle cx="7" cy="17" r="1.5" />
+                    <circle cx="17" cy="17" r="1.5" />
+                </svg>
+            </div>
+        </nav>
+        <div class="flex flex-col items-center space-y-2">
+            <div class="text-[8px] font-mono text-aiBlue font-bold">ON</div>
+            <div class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 relative overflow-hidden flex flex-col">
+        <header class="h-16 px-8 flex justify-between items-center z-20 border-b border-border bg-white/80 backdrop-blur-md">
+            <div class="flex items-center space-x-4">
+                <div class="h-2 w-2 bg-aiBlue rotate-45"></div>
+                <span class="text-textMain font-display text-xl tracking-[0.1em] font-bold">BROTHER<span class="text-aiBlue">GAi</span></span>
+            </div>
+            <div class="text-xs font-mono text-aiBlue bg-blue-50 px-3 py-1 rounded border border-aiBlue/20 font-bold">TESLA CORE V.7</div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto scroll-smooth p-8 md:p-16 flex flex-col relative">
+            
+            <!-- TESLA CHAT VIEW (Default) -->
+            <div id="view-tesla" class="h-full flex flex-col max-w-4xl mx-auto w-full fade-in">
+                <div class="flex items-center space-x-4 mb-6">
+                    <div class="w-8 h-8 rounded-full bg-aiBlue flex items-center justify-center text-white shadow-lg">
+                        <i class="fa-solid fa-robot text-sm"></i>
+                    </div>
+                    <div class="h-px flex-1 bg-border"></div>
+                    <span class="text-xs font-mono text-aiBlue font-bold" id="tesla-status">INTAKE PHASE</span>
+                </div>
+
+                <div class="flex-1 core-card flex-col p-0 relative bg-slate-50 overflow-hidden rounded-xl shadow-lg border-0">
+                    <div class="h-1 w-full bg-gray-200"><div id="tesla-progress" class="h-full bg-aiBlue transition-all duration-500" style="width: 5%"></div></div>
+                    
+                    <div id="tesla-messages" class="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50"></div>
+
+                    <div class="p-4 bg-white border-t border-gray-200 z-10">
+                        <div class="relative flex items-center">
+                            <textarea id="tesla-input" rows="1" placeholder="輸入你的回答..." class="w-full cyber-input p-4 pr-16 text-sm rounded-lg border-gray-300 resize-none" onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendTeslaMessage(); }"></textarea>
+                            <button onclick="sendTeslaMessage()" class="absolute right-2 top-2 bottom-2 w-12 bg-textMain text-white rounded hover:bg-aiBlue transition-colors"><i class="fa-solid fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Paywall Modal -->
+    <div id="paywall-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center fade-in">
+        <div class="bg-white p-8 max-w-md w-full border-t-4 border-aiBlue shadow-2xl relative m-4 rounded-lg">
+            <div class="text-center">
+                <div class="w-16 h-16 bg-blue-50 text-aiBlue rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-lock text-2xl"></i></div>
+                <h3 class="text-2xl font-bold text-textMain mb-2">解鎖決策卡</h3>
+                <p class="text-textSub text-sm mb-6">獲取你的個人化 Tesla 分析、風險評估，以及最終車型推薦。</p>
+                <button onclick="processPayment()" class="w-full bg-aiBlue text-white font-bold py-3 rounded hover:bg-blue-600 transition-colors shadow-lg">支付 NT$ 99</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-8 right-8 bg-textMain text-white px-6 py-3 rounded-lg shadow-xl transform translate-y-24 opacity-0 transition-all duration-300 z-50 flex items-center gap-3">
+        <i class="fa-solid fa-info-circle text-aiBlue"></i>
+        <span id="toast-msg" class="font-medium text-sm">Notification</span>
+    </div>
+
+    <script>
+        // Data & State
+        const TESLA_QUESTIONS = [
+            "Q1：你現在考慮的是哪些 Tesla 車款？", 
+            "Q2：你的預算大概在哪個區間？", 
+            "Q3：主要使用場景是什麼？",
+            "Q4：你家裡可以裝家用充電樁嗎？", 
+            "Q5：一年大概會開多少公里？", 
+            "Q6：家裡成員狀況？",
+            "Q7：你目前對電車或 Tesla 最大的擔心？", 
+            "Q8：你現在有開什麼車嗎？", 
+            "Q9：你理想的購車時間？"
+        ];
+        const TESLA_KEYS = ["models", "budget", "use_case", "home_charging", "mileage", "family", "concerns", "current_car", "timeline"];
+        
+        let teslaState = { step: 0, answers: [], messages: [], paid: false, loading: false };
+
+        // Init on load
+        window.onload = initTesla;
+
+        function initTesla() {
+            teslaState = { step: 1, answers: [], messages: [], paid: false, loading: false };
+            document.getElementById('tesla-messages').innerHTML = '';
+            addBotMessage("歡迎來到 BrotherG Tesla 決策顧問！我會透過 9 個問題了解你的需求，然後給你最精準的購車建議。");
+            setTimeout(() => addBotMessage(TESLA_QUESTIONS[0]), 800);
+            updateUI();
+        }
+
+        function updateUI() {
+            const pct = Math.min((teslaState.step / 20) * 100, 100);
+            document.getElementById('tesla-progress').style.width = pct + '%';
+            
+            let statusText = "INTAKE PHASE";
+            if(teslaState.step === 10) statusText = "ADVERTISING";
+            else if(teslaState.step > 10 && teslaState.step < 20) statusText = "FREE CHAT";
+            else if(teslaState.step >= 20) statusText = "DECISION";
+            
+            document.getElementById('tesla-status').innerText = `${statusText} (${teslaState.step}/20)`;
+        }
+
+        function addBotMessage(text, isMarkdown = false) {
+            const div = document.createElement('div');
+            div.className = 'chat-msg-bot fade-in';
+            div.innerHTML = (isMarkdown && window.marked) ? marked.parse(text) : text;
+            if(isMarkdown) div.classList.add('decision-card-content');
+            document.getElementById('tesla-messages').append(div);
+            document.getElementById('tesla-messages').scrollTop = 99999;
+        }
+
+        function addUserMessage(text) {
+            const div = document.createElement('div');
+            div.className = 'chat-msg-user fade-in';
+            div.innerText = text;
+            document.getElementById('tesla-messages').append(div);
+            document.getElementById('tesla-messages').scrollTop = 99999;
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('translate-y-24', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-24', 'opacity-0');
+            }, 3000);
+        }
+
+        // Call Backend API
+        async function callTeslaAPI(state) {
+            try {
+                const res = await fetch('/.netlify/functions/tesla-chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        messages: state.messages,
+                        intakeAnswers: state.answers,
+                        messageCount: state.step,
+                        paid: state.paid
+                    })
+                });
+                
+                if (!res.ok) throw new Error("API Fail");
+                return await res.json();
+            } catch (e) {
+                console.log("Backend failed, using mock:", e);
+                return await simulateBackend(state);
+            }
+        }
+
+        // Mock Backend Simulation (Fallback)
+        async function simulateBackend(state) {
+            await new Promise(r => setTimeout(r, 800));
+            const s = state.step;
+            
+            // Steps 1-9: Intake
+            if(s <= 9) return { ok: true, reply: "收到，這點很重要。那下一題..." };
+            
+            // Step 10: Ad Card
+            if(s === 10) return { 
+                ok: true, 
+                reply: `
+### 階段總結
+感謝你的回答！目前看來你的條件很適合 Model Y。
+
+**專屬優惠**
+- 導購連結：[ts.la/arno873937](https://ts.la/arno873937) (使用可獲積分)
+- **BrotherG Travel AI**：未來出國旅遊，可以用我們的 AI 規劃行程。
+
+**下一步**
+我們先不急著下定論。你可以繼續問我任何關於 Tesla 的問題，第 20 輪時我會給你最終決策卡。`
+            };
+
+            // Steps 11-19: Free Chat
+            if(s > 10 && s < 20) return { ok: true, reply: "這是個好問題，關於這點..." };
+
+            // Step 20: Paywall (Decision)
+            if(s === 20 && !state.paid) return { ok: true, reply: "...", needPaywall: true };
+            if(s === 20 && state.paid) return { 
+                ok: true, 
+                reply: `### 最終決策卡\n\n**結論：推薦 Model Y Long Range**\n\n依據：...\n\n下一步：預約試駕。` 
+            };
+            
+            return { ok: true, reply: "..." };
+        }
+
+        async function sendTeslaMessage() {
+            const input = document.getElementById('tesla-input');
+            const text = input.value.trim();
+            
+            // Block conditions
+            if(teslaState.loading) return;
+            if(!text && teslaState.step !== 10 && teslaState.step !== 20) return;
+
+            // Handle User Input
+            if(text) {
+                addUserMessage(text);
+                input.value = '';
+                teslaState.messages.push({role:'user', content:text});
+                
+                // Save Intake Answer
+                if(teslaState.step <= 9) {
+                    teslaState.answers.push({ key: TESLA_KEYS[teslaState.step-1], question: TESLA_QUESTIONS[teslaState.step-1], answer: text });
+                }
+            }
+
+            teslaState.loading = true;
+            
+            // Show typing indicator
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'chat-msg-bot fade-in';
+            typingDiv.id = 'typing-indicator';
+            typingDiv.innerHTML = '<span class="animate-typing">思考中...</span>';
+            document.getElementById('tesla-messages').append(typingDiv);
+            
+            try {
+                const data = await callTeslaAPI(teslaState);
+                
+                // Remove typing indicator
+                document.getElementById('typing-indicator')?.remove();
+
+                if(data.ok) {
+                    if(data.needPaywall) {
+                        document.getElementById('paywall-modal').classList.remove('hidden');
+                    } else {
+                        // Display Reply
+                        const isCard = teslaState.step === 10 || teslaState.step === 20;
+                        addBotMessage(data.reply, isCard); 
+
+                        // Handle Transitions
+                        if(teslaState.step < 20) {
+                            teslaState.step++;
+                            
+                            // Auto-ask next Q (Intake)
+                            if(teslaState.step <= 9) {
+                                setTimeout(() => addBotMessage(TESLA_QUESTIONS[teslaState.step-1]), 600);
+                            }
+                            // Trigger Ad Card (Transition 9 -> 10)
+                            else if (teslaState.step === 10) {
+                                setTimeout(() => sendTeslaMessage(), 800);
+                            }
+                            // Transition Ad -> Free Chat (10 -> 11)
+                            else if (teslaState.step === 11) {
+                                addBotMessage("現在進入自由對話模式。你可以問我任何細節，例如保險、充電或配件。到第 20 輪時我會給你最終建議。");
+                            }
+                        }
+                    }
+                }
+            } catch(e) { 
+                console.error(e);
+                document.getElementById('typing-indicator')?.remove();
+                addBotMessage("抱歉，發生了一些問題，請稍後再試。");
+            }
+            
+            // Cleanup
+            const isPaywallBlocking = !document.getElementById('paywall-modal').classList.contains('hidden');
+            if(!isPaywallBlocking) teslaState.loading = false;
+            updateUI();
+        }
+
+        function processPayment() {
+            const btn = document.querySelector('#paywall-modal button');
+            btn.innerHTML = '處理中...';
+            setTimeout(() => {
+                document.getElementById('paywall-modal').classList.add('hidden');
+                teslaState.paid = true;
+                addBotMessage("付款成功！正在生成你的專屬決策卡...");
+                teslaState.loading = false;
+                sendTeslaMessage();
+            }, 1000);
+        }
+
+        // Debug Tool
+        window.jumpToStep = (n) => { 
+            teslaState.step = n; 
+            updateUI(); 
+            console.log(`Jumped to step ${n}`); 
+            if(n===10 || n===20) sendTeslaMessage();
+        };
+
+    </script>
+</body>
+</html>
+
