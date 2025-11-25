@@ -256,21 +256,19 @@ exports.handler = async (event) => {
 
     let output = '';
 
-    // 嘗試主要模型 (2.5-flash)
+    // 🔒 固定使用 gemini-2.5-flash（用戶指定，不要亂改）
     try {
       output = await callGemini('gemini-2.5-flash');
     } catch (err) {
-      console.warn('⚠️ 主要模型 gemini-2.5-flash 失敗:', err.message);
-    }
-
-    // 如果失敗或為空，嘗試備用模型 (1.5-flash)
-    if (!output) {
-      console.log('🔄 切換至備用模型 gemini-1.5-flash...');
+      console.warn('⚠️ gemini-2.5-flash 失敗:', err.message);
+      
+      // 備用模型：gemini-2.0-flash（不要用已棄用的 1.5-flash）
+      console.log('🔄 切換至備用模型 gemini-2.0-flash...');
       try {
-        output = await callGemini('gemini-1.5-flash');
-      } catch (err) {
-        console.error('❌ 備用模型 gemini-1.5-flash 也失敗:', err.message);
-        throw err; // 兩個都失敗才拋出錯誤
+        output = await callGemini('gemini-2.0-flash');
+      } catch (err2) {
+        console.error('❌ 備用模型 gemini-2.0-flash 也失敗:', err2.message);
+        throw err2;
       }
     }
 
