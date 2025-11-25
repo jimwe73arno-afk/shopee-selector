@@ -148,6 +148,12 @@ exports.handler = async (event) => {
     const mode = (params.mode || params.m || 'shopee').toLowerCase();
     const input = params.q || params.query || params.textPrompt || params.input || '';
 
+    console.log('🚀 ASK invoked', {
+      mode,
+      uid,
+      preview: input ? input.slice(0, 60) : ''
+    });
+
     if (!input || !input.trim()) {
       return {
         statusCode: 400,

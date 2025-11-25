@@ -746,11 +746,6 @@
             updateTierUI();
         }
 
-        // API endpoint 統一走傳統 Netlify Function
-        const ANALYZE_ENDPOINT = '/.netlify/functions/analyze';
-
-        // 全域狀態已在上面定義，這裡移除重複定義
-
         // 添加 PRO Upsell 區塊（Basic tier 使用）
         function appendProUpsellBlock(remaining) {
             const contentDiv = document.getElementById('shopee-markdown-content');

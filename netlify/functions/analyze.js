@@ -1,3 +1,8 @@
+/**
+ * [DEPRECATED] Shopee 分析舊版 function。
+ * 現在所有前端頁面都應改用 netlify/functions/ask.js (mode="shopee")。
+ * 此檔僅作歷史參考，不再被前端呼叫。
+ */
 // netlify/functions/analyze.js
 // Shopee Analyst 穩定版：統一使用 gemini-2.5-flash，回傳 success flag
 

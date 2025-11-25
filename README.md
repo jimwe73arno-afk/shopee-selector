@@ -1,5 +1,7 @@
 # BrotherG AI - Shopee Analyst
 
+> **Note:** 本文件原先描述舊版 `netlify/functions/analyze.js`。目前所有前端頁面都應呼叫 `/.netlify/functions/ask` 並加上對應 `mode`（Shopee 頁面為 `shopee`）。
+
 ## Map-Reduce Architecture for Image Analysis
 
 ### Architecture Overview
@@ -11,7 +13,7 @@ This Netlify Function implements a **Map-Reduce** pattern to handle image analys
 
 ### API Endpoint
 
-- **URL**: `/api/analyze`
+- **URL**: `/.netlify/functions/ask`
 - **Method**: `POST`
 - **Content-Type**: `application/json`
 
@@ -71,7 +73,7 @@ Modify `checkUserTier(event)` function in `netlify/functions/analyze.js`.
 1. Push to GitHub
 2. Netlify auto-deploys
 3. Set environment variables in Netlify dashboard
-4. Function available at: `https://your-site.netlify.app/api/analyze`
+4. Function available at: `https://your-site.netlify.app/.netlify/functions/ask`
 
 ### Timeout Configuration
 

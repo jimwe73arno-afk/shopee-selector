@@ -1,5 +1,7 @@
 # Deployment Guide - Map-Reduce Architecture
 
+> **Note:** 舊版 `netlify/functions/analyze.js` 已停止對外服務，所有流量統一改走 `/.netlify/functions/ask` 並傳入對應 `mode`（Shopee 頁面= `shopee`）。以下內容僅保留歷史背景與部署步驟參考。
+
 ## 🚀 Quick Start
 
 ### 1. Environment Variables Setup
@@ -17,18 +19,15 @@ GEMINI_API_KEY=your_api_key_here
 
 ### 2. API Route Configuration
 
-前端调用：`POST /api/analyze`
+前端调用：`POST /.netlify/functions/ask`（Body 必須包含 `mode`）
 
-Netlify 自动路由：
-- `/api/analyze` → `/.netlify/functions/analyze`
-
-已在 `netlify.toml` 中配置重定向规则。
+Netlify Functions 直接對應 `ask.js`，無需額外重定向。
 
 ### 3. Frontend Integration
 
 ```javascript
-// 在前端 ask.js 中调用
-fetch('/api/analyze', {
+// 在前端問答模組中调用
+fetch('/.netlify/functions/ask', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -36,8 +35,9 @@ fetch('/api/analyze', {
     'X-User-Tier': 'pro'  // 或 'master', 'free' (用于测试)
   },
   body: JSON.stringify({
-    textPrompt: "帮我看这些商品数据，接下来7天我该选什么？",
-    images: ["base64_string_1", "base64_string_2"]  // 可选
+    q: "帮我看这些商品数据，接下来7天我该选什么？",
+    mode: "shopee",
+    uid: "user-123"
   })
 })
 .then(res => res.json())
@@ -85,31 +85,35 @@ async function checkUserTier(event) {
 
 #### Test Free Tier (Text Only)
 ```bash
-curl -X POST https://your-site.netlify.app/api/analyze \
+curl -X POST https://your-site.netlify.app/.netlify/functions/ask \
   -H "Content-Type: application/json" \
   -d '{
-    "textPrompt": "我在虾皮卖 eSIM，接下来该选什么？"
+    "q": "我在蝦皮賣 eSIM，接下來該選什麼？",
+    "mode": "shopee",
+    "uid": "tester-free"
   }'
 ```
 
 #### Test Pro Tier (1 Image)
 ```bash
-curl -X POST https://your-site.netlify.app/api/analyze \
+curl -X POST https://your-site.netlify.app/.netlify/functions/ask \
   -H "Content-Type: application/json" \
-  -H "X-User-Tier: pro" \
   -d '{
-    "textPrompt": "分析这张图",
+    "q": "分析這張圖",
+    "mode": "shopee",
+    "uid": "tester-pro",
     "images": ["base64_image_string"]
   }'
 ```
 
 #### Test Master Tier (Multiple Images)
 ```bash
-curl -X POST https://your-site.netlify.app/api/analyze \
+curl -X POST https://your-site.netlify.app/.netlify/functions/ask \
   -H "Content-Type: application/json" \
-  -H "X-User-Tier: master" \
   -d '{
-    "textPrompt": "批量分析这些报表",
+    "q": "批量分析這些報表",
+    "mode": "shopee",
+    "uid": "tester-master",
     "images": ["base64_1", "base64_2", "base64_3"]
   }'
 ```

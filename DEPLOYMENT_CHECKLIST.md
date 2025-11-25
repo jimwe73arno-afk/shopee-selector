@@ -2,23 +2,24 @@
 
 ## Critical Fixes Applied
 
+> **Reminder:** `netlify/functions/analyze.js` 已標記為舊版。請確保前端僅呼叫 `/.netlify/functions/ask`（Shopee 模式需傳 `mode: "shopee"`）。
+
 ### ✅ 1. Backend File Location
-- **Location**: `netlify/functions/analyze.js` ✅
+- **Primary Function**: `netlify/functions/ask.js` ✅
+- **Legacy Reference**: `netlify/functions/analyze.js`（僅保留備查）
 - **Size**: 11KB (385 lines)
-- **Status**: Correctly placed in Netlify's expected directory
+- **Status**: Functions 皆位於 Netlify 預期的 `netlify/functions` 目錄
 
 ### ✅ 2. Netlify Configuration (`netlify.toml`)
 ```toml
 [build]
+  command = ""
+  publish = "public"
   functions = "netlify/functions"
 
-[functions."*"]
-  timeout = 60
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
+[functions]
+  node_bundler = "esbuild"
+  included_files = ["netlify/functions/**", "lib/**", "prompts/**"]
 
 [[redirects]]
   from = "/*"
@@ -28,9 +29,8 @@
 
 **Key Points:**
 - ✅ Functions directory properly configured
-- ✅ API redirect rule: `/api/*` → `/.netlify/functions/:splat`
-- ✅ Function timeout: 60 seconds
-- ✅ SPA fallback routing
+- ✅ 不再需要 `/api/*` 轉址，直接呼叫 `/.netlify/functions/ask`
+- ✅ SPA fallback routing 保持
 
 ### ✅ 3. Package Dependencies (`package.json`)
 ```json
@@ -46,9 +46,7 @@
 **Note:** Code uses native `fetch()` API (available in Node.js 18+), so **no additional dependencies required**. The `@google/generative-ai` SDK is not needed since we're calling the REST API directly.
 
 ### ✅ 4. Frontend API Call
-Frontend should call: `POST /api/analyze`
-
-The redirect rule automatically maps this to: `/.netlify/functions/analyze`
+Frontend should call: `POST /.netlify/functions/ask`（Body 需包含 `mode`、`q`）
 
 ## Deployment Steps
 
@@ -65,15 +63,15 @@ The redirect rule automatically maps this to: `/.netlify/functions/analyze`
 
 3. **Verify Deployment:**
    - Check Netlify Deploy Logs
-   - Should see: "Functions detected: analyze"
-   - Test endpoint: `https://your-site.netlify.app/.netlify/functions/analyze`
+   - Should see: "Functions detected: ask"
+   - Test endpoint: `https://your-site.netlify.app/.netlify/functions/ask`
 
 ## Expected Deploy Output
 
 ```
 Deploying functions...
 Functions detected:
-  - analyze
+  - ask
 Deploy complete!
 ```
 
@@ -88,19 +86,19 @@ Deploy complete!
 
 ### If API call fails:
 
-1. **Check redirect rule:** Verify `/api/*` redirect exists
-2. **Check function name:** Must match file name (analyze.js = analyze function)
-3. **Test direct URL:** Try `/.netlify/functions/analyze` directly
+1. **確認前端路徑：** 必須呼叫 `/.netlify/functions/ask`
+2. **Check function name:** Must match file name (`ask.js` → `ask`)
+3. **Test direct URL:** Try `/.netlify/functions/ask` directly
 4. **Check CORS:** Function includes CORS headers
 
 ## Verification Commands
 
 ```bash
 # Check file exists
-ls -lh netlify/functions/analyze.js
+ls -lh netlify/functions/ask.js
 
 # Check syntax
-node -c netlify/functions/analyze.js
+node -c netlify/functions/ask.js
 
 # Check config
 cat netlify.toml

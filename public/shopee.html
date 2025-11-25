@@ -517,6 +517,42 @@
     <script>
         let remainingUsage = 5;
         let currentPlan = null;
+        const MODE = "shopee";
+
+        async function callAsk(question, currentUser) {
+            const userId = currentUser?.uid || "guest";
+            const userEmail = currentUser?.email || "";
+
+            const res = await fetch("/.netlify/functions/ask", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    question,
+                    q: question,
+                    mode: MODE,
+                    uid: userId,
+                    userId,
+                    userEmail
+                })
+            });
+
+            let data = {};
+            try {
+                data = await res.json();
+            } catch (err) {
+                console.error("❌ ask API JSON 解析失敗:", err);
+            }
+
+            if (!res.ok) {
+                throw new Error(data?.message || data?.error || "AI 服務暫時無法使用");
+            }
+
+            if (data?.success === false) {
+                throw new Error(data?.error || data?.output || "AI 服務暫時忙碌，請稍後再試");
+            }
+
+            return data || {};
+        }
         
         // 獲取當前用戶方案
         function getUserPlan() {
@@ -694,78 +730,42 @@
 
             contentDiv.innerHTML = '';
 
-            remainingUsage--;
-            document.getElementById('usage-count').innerText = remainingUsage;
-
             const userName = currentUser.displayName || currentUser.email || '賣家';
             showToast(`${userName} 你好，BrotherG 正在為你的產品進行深度運算...`);
 
             try {
-                // 3) 呼叫 Edge Function 串流 API
-                console.log('📤 發送串流分析請求...');
-                
-                // 獲取用戶資訊
-                const userEmail = currentUser ? (currentUser.email || null) : null;
-                const userTier = getUserPlan(); // 從 localStorage 獲取用戶等級
-                
-                console.log('📧 發送請求 - Email:', userEmail, '| Tier:', userTier);
-                
-                // 確保 userTier 是大寫（PRO, MASTER, FREE）
-                const normalizedTier = userTier.toUpperCase();
-                
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        textPrompt: input,
-                        userEmail: userEmail, // 確保傳遞 email
-                        userTier: normalizedTier // 確保是大寫格式
-                    })
-                });
-                
-                console.log('📥 API 請求已發送 - Tier:', normalizedTier);
+                const data = await callAsk(input, currentUser);
+                const aiText = data?.output || data?.result || data?.answer || '';
 
-                console.log('📥 收到響應:', response.status, response.statusText);
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || '分析服務暫時無法使用');
+                if (!aiText.trim()) {
+                    throw new Error('AI 回傳內容為空，請稍後再試');
                 }
 
-                // 4) ⚡️ 使用 Reader 一點一點讀取串流
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                
-                // 清空並準備顯示區域
+                const finalText = aiText.trim().startsWith('#')
+                    ? aiText.trim()
+                    : `### ${userName}，這是您的市場洞察報告\n\n${aiText.trim()}`;
+
                 if (contentDiv) {
-                    contentDiv.innerHTML = `### ${userName}，這是您的市場洞察報告\n\n`;
-                }
+                    if (typeof marked !== 'undefined') {
+                        contentDiv.innerHTML = marked.parse(finalText);
+                    } else {
+                        contentDiv.innerHTML = finalText.replace(/\n/g, '<br>');
+                    }
 
-                let fullText = `### ${userName}，這是您的市場洞察報告\n\n`;
-
-                // 即時顯示串流內容
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    
-                    const textChunk = decoder.decode(value, { stream: true });
-                    fullText += textChunk;
-
-                    // 即時顯示在畫面上
-                    if (contentDiv) {
-                        if (typeof marked !== 'undefined') {
-                            contentDiv.innerHTML = marked.parse(fullText);
-                        } else {
-                            contentDiv.innerHTML = fullText.replace(/\n/g, '<br>');
-                        }
-                        
-                        // 自動捲動到底部
-                        const scrollContainer = contentDiv.parentElement;
-                        if (scrollContainer) {
-                            scrollContainer.scrollTop = scrollContainer.scrollHeight;
-                        }
+                    const scrollContainer = contentDiv.parentElement;
+                    if (scrollContainer) {
+                        scrollContainer.scrollTop = scrollContainer.scrollHeight;
                     }
                 }
+
+                if (typeof data.remaining === 'number') {
+                    remainingUsage = data.remaining;
+                } else if (data.quota && typeof data.quota.remaining === 'number') {
+                    remainingUsage = data.quota.remaining;
+                } else {
+                    remainingUsage = Math.max(remainingUsage - 1, 0);
+                }
+                document.getElementById('usage-count').innerText = remainingUsage;
 
                 loadingBlock.classList.add('hidden');
                 resultBlock.classList.remove('hidden');
