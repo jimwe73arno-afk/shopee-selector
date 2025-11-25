@@ -35,11 +35,17 @@
     return `${yyyy}-${mm}-${dd}`;
   };
 
-  // 取得每日配額上限（依 tier）
+  // ★ 取得每日配額上限（依 tier，與 PLAN_CONFIG 同步）
+  const PLAN_CONFIG = {
+    guest:  { dailyLimit: 1 },
+    free:   { dailyLimit: 5 },
+    basic:  { dailyLimit: 5 },  // 向後兼容
+    pro:    { dailyLimit: 20 },
+    master: { dailyLimit: 50 },
+  };
+
   window.getDailyLimitForTier = function(tier) {
-    if (tier === 'pro') return 20;
-    if (tier === 'master') return 20; // 目前 master 不開放，但邏輯先對齊 pro
-    return 5; // basic
+    return PLAN_CONFIG[tier]?.dailyLimit || PLAN_CONFIG.free.dailyLimit;
   };
 
   // 🧩 建立或取得 user 記錄（使用 uid 作為 docId）

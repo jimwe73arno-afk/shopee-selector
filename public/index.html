@@ -416,7 +416,7 @@
                     <li class="flex items-start"><i class="fa-solid fa-check w-5 text-aiBlue mt-0.5"></i> <span>優先算力通道（不排隊）</span></li>
                   </ul>
 
-                  <button onclick="window.open('https://p.ecpay.com.tw/B9C31CF', '_blank')"
+                  <button onclick="handleUpgradeToPro()"
                           class="w-full py-4 bg-gradient-to-r from-blue-600 to-aiBlue text-white font-bold text-sm rounded-lg hover:shadow-lg hover:scale-[1.02] transition-all tracking-widest border border-blue-400/30">
                     立即升級 PRO 賺錢
                   </button>
@@ -480,6 +480,14 @@
     <script>
         let remainingUsage = 5;
         let currentPlan = null;
+
+        // ★ PLAN_CONFIG：與後端同步（guest/free/pro/master）
+        const PLAN_CONFIG = {
+            guest:  { dailyLimit: 1 },
+            free:   { dailyLimit: 5 },
+            pro:    { dailyLimit: 20 },
+            master: { dailyLimit: 50 },
+        };
 
         function navigateTo(target) {
             if (target === 'home') {
@@ -566,117 +574,261 @@
         window.usedToday = 0;
         window.dailyLimit = 5;
 
-        // 更新用量 UI 顯示
+        // ★ 更新用量 UI 顯示（根據 tier 顯示不同格式）
         function updateUsageUI() {
             const counter = document.getElementById('usage-count');
             const dailyCounter = document.getElementById('daily-counter');
             const dailyCounterText = document.getElementById('daily-counter-text');
-            const remaining = window.dailyLimit - window.usedToday;
+            const remaining = Math.max(0, window.dailyLimit - window.usedToday);
 
             if (counter) {
                 counter.innerText = remaining;
             }
 
             if (dailyCounter) {
-                dailyCounter.innerText = `/${window.dailyLimit}`;
+                dailyCounter.innerText = `/ ${window.dailyLimit}`;
             }
 
             if (dailyCounterText) {
-                if (window.userTier === 'basic') {
-                    dailyCounterText.innerText = `今天剩餘免費次數：${remaining} / ${window.dailyLimit}`;
-                } else if (window.userTier === 'pro') {
-                    dailyCounterText.innerText = `今天剩餘 PRO 次數：${remaining} / ${window.dailyLimit}`;
-                } else {
-                    dailyCounterText.innerText = `今天已使用 ${window.usedToday}/${window.dailyLimit} 次`;
+                switch (window.userTier) {
+                    case 'guest':
+                        dailyCounterText.innerText = `訪客模式｜登入後每天 5 次免費`;
+                        break;
+                    case 'free':
+                        dailyCounterText.innerText = `方案：Free｜今日 ${remaining}/${window.dailyLimit} 次`;
+                        break;
+                    case 'pro':
+                        dailyCounterText.innerText = `方案：Pro｜今日 ${remaining}/${window.dailyLimit} 次`;
+                        break;
+                    default:
+                        dailyCounterText.innerText = `今日剩餘：${remaining}/${window.dailyLimit} 次`;
                 }
             }
         }
         
-        // 開通碼 Modal（MVP 版本）
-        function showActivationModal() {
+        // ★ 開通碼驗證（呼叫後端 API，真正升級）
+        async function showActivationModal() {
             const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
             if (!currentUser || !currentUser.email) {
                 showToast('請先登入以使用開通碼功能');
-                showLoginModal();
+                if (typeof showLoginModal === 'function') {
+                    showLoginModal();
+                } else {
+                    document.getElementById('login-overlay').classList.remove('hidden');
+                }
                 return;
             }
+
+            // 清除 pending 標記
+            localStorage.removeItem('brotherg_pending_payment');
 
             const code = prompt('請輸入您的開通碼：');
             if (!code || !code.trim()) {
                 return;
             }
 
-            const message = `請把此畫面截圖＋付款證明傳給我們，由人工協助開通 Pro。\n\n用戶 Email: ${currentUser.email}\n開通碼: ${code.trim()}`;
-            alert(message);
-            showToast('已顯示開通碼資訊，請截圖傳送給客服');
+            showToast('正在驗證開通碼...');
+
+            try {
+                // ★ 呼叫後端 API 驗證開通碼
+                const resp = await fetch('/.netlify/functions/verify-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        code: code.trim(),
+                        userId: currentUser.uid,
+                        email: currentUser.email
+                    })
+                });
+
+                const data = await resp.json();
+
+                if (data.valid && data.plan) {
+                    // ★ 開通成功！
+                    const newTier = data.plan.toLowerCase(); // 'pro' or 'master'
+                    const effectiveTier = (newTier === 'master') ? 'pro' : newTier;
+                    
+                    // 更新 Firestore（前端也寫一次，確保即時）
+                    if (typeof firebase !== 'undefined' && firebase.firestore) {
+                        const db = firebase.firestore();
+                        await db.collection('users').doc(currentUser.uid).set({
+                            tier: newTier,
+                            activatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            activationCode: code.trim(),
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
+                    }
+
+                    // ★ 立即更新本地狀態
+                    window.userTier = effectiveTier;
+                    window.usedToday = 0; // 升級後重置用量
+                    window.dailyLimit = PLAN_CONFIG[effectiveTier]?.dailyLimit || 20;
+
+                    // ★ 立即更新 UI（不等 Firestore）
+                    const badge = document.getElementById('user-tier-badge');
+                    const btnText = document.getElementById('analyze-btn-text');
+                    const proCard = document.getElementById('pro-upsell-card');
+                    const proLink = document.getElementById('pro-strategy-link');
+
+                    if (badge) {
+                        badge.innerText = 'PRO';
+                        badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded tracking-wider hidden md:inline-block tier-badge-pro';
+                    }
+                    if (btnText) btnText.innerText = '開始深度分析 (PRO)';
+                    if (proCard) proCard.classList.add('hidden');
+                    if (proLink) {
+                        proLink.classList.remove('hidden');
+                        proLink.classList.add('bg-gradient-to-r', 'from-aiBlue', 'to-blue-600');
+                    }
+
+                    updateUsageUI();
+
+                    showToast(`🎉 恭喜！已成功升級為 PRO 會員！每天 ${window.dailyLimit} 次深度分析`);
+                    
+                    // 關閉 pricing modal（如果開著的話）
+                    closePricingModal();
+
+                } else {
+                    // 開通碼無效
+                    showToast('❌ 開通碼無效，請確認後再試');
+                }
+
+            } catch (error) {
+                console.error('開通碼驗證錯誤:', error);
+                showToast('開通碼驗證失敗，請稍後再試');
+            }
+        }
+
+        // ★ 升級 Pro 按鈕點擊：設置 pending 標記 + 跳轉付款
+        function handleUpgradeToPro() {
+            const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
+            if (!currentUser) {
+                showToast('請先登入 Google 帳號');
+                if (typeof showLoginModal === 'function') {
+                    showLoginModal();
+                } else {
+                    document.getElementById('login-overlay').classList.remove('hidden');
+                }
+                return;
+            }
+
+            // 設置 pending 標記
+            localStorage.setItem('brotherg_pending_payment', '1');
+            
+            // 跳轉付款頁面
+            window.open('https://p.ecpay.com.tw/B9C31CF', '_blank');
+            
+            closePricingModal();
+            showToast('已開啟付款頁面，付款完成後請回來輸入開通碼');
+        }
+
+        // ★ 頁面載入時檢查是否有待處理的付款
+        function checkPendingPayment() {
+            const pending = localStorage.getItem('brotherg_pending_payment');
+            if (pending === '1') {
+                const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
+                if (currentUser) {
+                    // 延遲 1 秒彈出，讓頁面先載入完成
+                    setTimeout(() => {
+                        showToast('偵測到您剛完成付款，請輸入開通碼');
+                        showActivationModal();
+                    }, 1000);
+                }
+            }
         }
 
         // --- 初始化 Shopee 頁面 ---
         async function initShopeePage(user) {
             window.currentUser = user;
 
-            if (!user) {
-                // 未登入狀態：顯示 BASIC
-                window.userTier = 'basic';
-                window.usedToday = 0;
-                window.dailyLimit = 5;
+            const badge = document.getElementById('user-tier-badge');
+            const btnText = document.getElementById('analyze-btn-text');
+            const proLink = document.getElementById('pro-strategy-link');
+            const proCard = document.getElementById('pro-upsell-card');
+            const loginBtnHeader = document.getElementById('login-btn-header');
+            const userInfo = document.getElementById('user-info');
+            const dailyCounterText = document.getElementById('daily-counter-text');
 
-                const badge = document.getElementById('user-tier-badge');
-                const btnText = document.getElementById('analyze-btn-text');
-                
+            if (!user) {
+                // ★ 未登入狀態：guest，只有 1 次
+                window.userTier = 'guest';
+                window.usedToday = parseInt(localStorage.getItem('brotherg_guest_used') || '0');
+                window.dailyLimit = PLAN_CONFIG.guest.dailyLimit;
+
+                // 檢查是否需要重置 guest 每日用量
+                const todayKey = getTodayKeyLocal();
+                const guestLastDate = localStorage.getItem('brotherg_guest_date');
+                if (guestLastDate !== todayKey) {
+                    window.usedToday = 0;
+                    localStorage.setItem('brotherg_guest_used', '0');
+                    localStorage.setItem('brotherg_guest_date', todayKey);
+                }
+
                 if (badge) {
-                    badge.innerText = 'BASIC';
+                    badge.innerText = 'GUEST';
                     badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded tracking-wider hidden md:inline-block tier-badge-basic';
                 }
-                if (btnText) btnText.innerText = '開始深度分析 (BASIC)';
+                if (btnText) btnText.innerText = '開始分析（登入後獲得 5 次）';
+                
+                // 顯示登入按鈕
+                if (loginBtnHeader) loginBtnHeader.classList.remove('hidden');
+                if (userInfo) userInfo.classList.add('hidden');
+                
+                // 更新提示文字
+                if (dailyCounterText) {
+                    dailyCounterText.innerText = '登入 Google 後每天可免費用 5 次';
+                }
                 
                 updateUsageUI();
                 
-                // 顯示 PRO upsell 卡片（所有人可見）
-                const proCard = document.getElementById('pro-upsell-card');
+                // 顯示 PRO upsell 卡片
                 if (proCard) proCard.classList.remove('hidden');
                 return;
             }
 
+            // ★ 已登入：隱藏登入按鈕，顯示用戶資訊
+            if (loginBtnHeader) loginBtnHeader.classList.add('hidden');
+            if (userInfo) userInfo.classList.remove('hidden');
+
             // 確保用戶記錄存在並重置邏輯
             if (typeof window.ensureUserRecord !== 'function') {
                 console.warn('⚠️ ensureUserRecord 尚未載入');
+                // Fallback：直接用 free
+                window.userTier = 'free';
+                window.usedToday = 0;
+                window.dailyLimit = PLAN_CONFIG.free.dailyLimit;
+                updateUsageUI();
                 return;
             }
 
             const record = await window.ensureUserRecord(user);
             if (!record) {
                 console.error('❌ 無法取得用戶記錄');
+                window.userTier = 'free';
+                window.usedToday = 0;
+                window.dailyLimit = PLAN_CONFIG.free.dailyLimit;
+                updateUsageUI();
                 return;
             }
 
             // 從 Firestore 讀取 tier, usedToday, lastUsageDate
-            let tier = (record.tier || 'basic').toLowerCase();
-            let usedToday = record.usedToday || 0;
-            const lastUsageDate = record.lastUsageDate;
-            const todayKey = window.getTodayKey();
+            let tier = (record.tier || record.plan || 'free').toLowerCase();
+            let usedToday = record.usedToday || record.daily_count || 0;
+            const lastUsageDate = record.lastUsageDate || record.last_used_date;
+            const todayKey = getTodayKeyLocal();
 
             // 檢查是否需要重置每日用量
             if (lastUsageDate !== todayKey) {
                 usedToday = 0;
-                // 已在 ensureUserRecord 中更新 Firestore
             }
 
-            // master 邏輯當作 pro 處理
-            if (tier === 'master') {
-                tier = 'pro';
-            }
+            // ★ master 邏輯當作 pro 處理（限額相同）
+            const effectiveTier = (tier === 'master') ? 'pro' : tier;
 
             // 設定全域狀態
-            window.userTier = tier;
+            window.userTier = effectiveTier;
             window.usedToday = usedToday;
-            window.dailyLimit = window.getDailyLimitForTier ? window.getDailyLimitForTier(tier) : (tier === 'pro' ? 20 : 5);
-
-            // 更新 UI
-            const badge = document.getElementById('user-tier-badge');
-            const btnText = document.getElementById('analyze-btn-text');
-            const proLink = document.getElementById('pro-strategy-link');
-            const upsell = document.getElementById('upsell-banner');
+            window.dailyLimit = PLAN_CONFIG[effectiveTier]?.dailyLimit || PLAN_CONFIG.free.dailyLimit;
 
             // Reset classes
             if (badge) {
@@ -686,7 +838,8 @@
                 proLink.className = 'hidden text-[10px] md:text-xs font-bold text-white px-3 py-1.5 rounded-full flex items-center hover:opacity-80 transition-opacity shadow-lg';
             }
 
-            if (tier === 'pro') {
+            if (effectiveTier === 'pro') {
+                // ★ PRO 用戶
                 if (badge) {
                     badge.innerText = 'PRO';
                     badge.classList.add('tier-badge-pro');
@@ -698,29 +851,30 @@
                     proLink.classList.add('bg-gradient-to-r', 'from-aiBlue', 'to-blue-600');
                 }
                 
-                if (upsell) upsell.classList.add('hidden');
+                // PRO 用戶隱藏 upsell
+                if (proCard) proCard.classList.add('hidden');
             } else {
-                // basic
+                // ★ FREE 用戶
                 if (badge) {
-                    badge.innerText = 'BASIC';
+                    badge.innerText = 'FREE';
                     badge.classList.add('tier-badge-basic');
                 }
-                if (btnText) btnText.innerText = '開始深度分析 (BASIC)';
-                if (upsell) upsell.classList.remove('hidden');
+                if (btnText) btnText.innerText = '開始深度分析 (FREE)';
+                
+                // 顯示 PRO upsell 卡片
+                if (proCard) proCard.classList.remove('hidden');
             }
 
             updateUsageUI();
+        }
 
-            // 顯示 PRO upsell 卡片（所有人可見）
-            const proCard = document.getElementById('pro-upsell-card');
-            if (proCard) {
-                if (tier === 'basic') {
-                    proCard.classList.remove('hidden');
-                } else {
-                    // Pro 顯示不同文案或隱藏
-                    proCard.classList.add('hidden');
-                }
-            }
+        // 取得本地日期 key（與後端同步）
+        function getTodayKeyLocal() {
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
         }
 
         // --- UI Logic for Tiers（向後兼容）---
@@ -803,11 +957,29 @@
             btn.innerText = '分析中…';
 
             // 1) 先檢查額度，不足就直接 return，不呼叫後端
-            if (window.currentUser && window.usedToday >= window.dailyLimit) {
+            if (window.usedToday >= window.dailyLimit) {
                 loadingBlock.classList.add('hidden');
                 resultBlock.classList.remove('hidden');
-                reportContainer.innerHTML = '<p class="text-red-400 text-sm">今天的分析次數已用完，歡迎升級 PRO 版解鎖更多次數。</p>';
-                openPricingModal();
+                
+                if (window.userTier === 'guest') {
+                    // ★ Guest 用完 1 次：引導登入
+                    reportContainer.innerHTML = `
+                        <div class="text-center py-8">
+                            <i class="fa-solid fa-user-lock text-4xl text-aiBlue mb-4"></i>
+                            <p class="text-yellow-400 text-sm mb-4">訪客試用次數已用完</p>
+                            <p class="text-gray-400 text-xs mb-6">登入 Google 帳號後，每天可免費使用 5 次深度分析</p>
+                            <button onclick="handleGoogleLogin()" class="px-6 py-3 bg-white text-gray-900 rounded-lg font-bold text-sm hover:bg-gray-100 transition-colors inline-flex items-center gap-2">
+                                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google">
+                                登入 Google 帳號
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    // ★ Free/Pro 用完：引導升級
+                    reportContainer.innerHTML = '<p class="text-red-400 text-sm">今天的分析次數已用完，歡迎升級 PRO 版解鎖更多次數。</p>';
+                    openPricingModal();
+                }
+                
                 btn.disabled = false;
                 btn.innerText = oldLabel;
                 return;
@@ -850,11 +1022,19 @@
                     reportContainer.textContent = finalResult || '';
                 }
 
-                // 3) 只有 success === true 時才扣次 & 寫回 Firestore
-                if (finalSuccess && window.currentUser && window.currentUser.uid) {
+                // 3) 只有 success === true 時才扣次
+                if (finalSuccess) {
                     window.usedToday += 1;
-                    if (typeof window.updateUsageInFirestore === 'function') {
-                        await window.updateUsageInFirestore(window.currentUser.uid, window.usedToday);
+                    
+                    if (window.currentUser && window.currentUser.uid) {
+                        // ★ 已登入用戶：寫回 Firestore
+                        if (typeof window.updateUsageInFirestore === 'function') {
+                            await window.updateUsageInFirestore(window.currentUser.uid, window.usedToday);
+                        }
+                    } else {
+                        // ★ Guest 用戶：寫回 localStorage
+                        localStorage.setItem('brotherg_guest_used', window.usedToday.toString());
+                        localStorage.setItem('brotherg_guest_date', getTodayKeyLocal());
                     }
                 }
 
@@ -898,6 +1078,9 @@
         window.onload = function() { 
             console.log("Shopee Analyst Module Loaded");
             updateTierUI();
+            
+            // ★ 檢查是否有待處理的付款
+            setTimeout(checkPendingPayment, 1500);
         };
     </script>
 </body>

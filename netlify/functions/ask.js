@@ -3,24 +3,70 @@
 
 const admin = require('firebase-admin');
 
-// ★ 內嵌 Prompt（避免 Netlify 部署路徑問題）
+// ★ PLAN_CONFIG：統一管理所有方案的配額
+const PLAN_CONFIG = {
+  guest:  { dailyLimit: 1 },
+  free:   { dailyLimit: 5 },
+  pro:    { dailyLimit: 20 },
+  master: { dailyLimit: 50 },
+};
+
+// ★ Shopee Prompt：Free/Pro 分流
+const SHOPEE_PROMPT_FREE = `
+你是蝦皮直播選品顧問。
+
+【嚴格規定】
+- 不要提到任何「框架」「模型」「方法論」「策略名稱」
+- 不要用字母代號（例如 C、A、B）
+- 直接給結果，不要教學
+
+【輸出格式】
+
+🎯 **今日主題**（1 句話講這場賣什麼）
+
+🛒 **推薦上架**（列 3 個商品就好）
+1. [商品名] — 簡短理由
+2. [商品名] — 簡短理由
+3. [商品名] — 簡短理由
+
+🎤 **開場話術**（30 秒，可以直接念）
+
+💡 **下次可以問**（1 句提示）
+
+【規則】
+- 用「你」稱呼
+- 簡短有力，不囉嗦
+`;
+
+const SHOPEE_PROMPT_PRO = `
+你是「蝦皮直播實戰軍師」，只服務 BrotherG 一個人。
+這是 Pro 版，可以講更深入的戰術框架。
+
+【Pro 版輸出格式】
+
+📊 **市場判斷**（1 小段犀利點評）
+
+🎯 **C-A-B 排品策略**
+- **C軌（誘餌/引流品）**：3-5 個商品建議，說明為什麼是引流品
+- **A軌（利潤品）**：3-5 個商品建議，說明為什麼能賺錢
+- **B軌（湊單品）**：3-5 個商品建議，說明為什麼必帶
+
+🧠 **直播運營建議**（2-3 條進階策略）
+
+🎙 **金牌主播話術**
+- **開場段**（30-45 秒，可以直接念）
+- **促單段**（30-45 秒，製造緊迫感）
+
+📌 **實戰 Checklist**（3-5 點）
+
+【規則】
+- 用第二人稱「你」，好像在對 BrotherG 說話。
+- 每一次回答都要幫助他「今天那一場直播可以多賺多少」。
+- 不要提到「我是一個 AI」。
+`;
+
+// ★ 其他模式的 Prompt
 const PROMPTS = {
-  shopee: `你是 BrotherG 的【蝦皮直播戰術分析師】。
-針對用戶輸入，產出高含金量的「直播決策卡」。
-
-格式 (Markdown)：
-
-### 📊 市場判斷 (一句話犀利點評)
-
-### 🎯 C-A-B 黃金排品
-* 🪝 **C軌 (誘餌):** [品名] - 為什麼吸睛?
-* 💰 **A軌 (利潤):** [品名] - 為什麼賺錢?
-* 📦 **B軌 (湊單):** [品名] - 為什麼必帶?
-
-### 🗣️ 金牌主播話術 (直接寫出約 150 字口播稿)
-
-語氣：興奮、專業、帶有急迫感。`,
-
   tesla: `你是 Brother G 決策顧問，專精 Tesla 汽車購買決策。
 回答格式：【結論→依據→風險→行動】。
 請根據用戶問題，結合 Model 3/Y/S/X 車型差異、預算、場景、家充條件給建議。`,
@@ -40,12 +86,23 @@ const PROMPTS = {
 
 const ALLOWED_MODES = ['tesla', 'travel', 'shopee', 'esim', 'image', 'landlord'];
 
-function loadPrompt(mode) {
-  return PROMPTS[mode] || PROMPTS.shopee;
+// ★ 根據 mode 和 plan 載入對應 Prompt
+function loadPrompt(mode, plan = 'free') {
+  if (mode === 'shopee') {
+    // Shopee 模式：Free/Pro 分流
+    return (plan === 'pro' || plan === 'master') ? SHOPEE_PROMPT_PRO : SHOPEE_PROMPT_FREE;
+  }
+  return PROMPTS[mode] || SHOPEE_PROMPT_FREE;
 }
 
 function isValidMode(mode) {
   return ALLOWED_MODES.includes(mode);
+}
+
+// ★ 解析用戶 plan
+function resolvePlan(userDoc, isLoggedIn) {
+  if (!isLoggedIn) return 'guest';
+  return userDoc?.tier || userDoc?.plan || 'free';
 }
 
 // 初始化 Firebase Admin（如果還沒初始化）
@@ -85,11 +142,9 @@ function getTodayKey() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// 取得每日配額上限（依 plan）
+// 取得每日配額上限（依 plan，使用 PLAN_CONFIG）
 function getDailyLimitForPlan(plan) {
-  if (plan === 'pro') return 20;
-  if (plan === 'master') return 50;
-  return 5; // free
+  return PLAN_CONFIG[plan]?.dailyLimit || PLAN_CONFIG.free.dailyLimit;
 }
 
 // 取得或建立用戶資料
@@ -220,29 +275,45 @@ exports.handler = async (event) => {
       };
     }
 
-    // 使用次數控制（非 guest 用戶）
-    if (uid !== 'guest') {
-      const user = await getUserProfile(uid);
-      const limit = getDailyLimitForPlan(user.plan || 'free');
-      const dailyCount = user.daily_count || 0;
+    // ★ 判斷是否已登入 & 解析 plan
+    const isLoggedIn = uid && uid !== 'guest' && uid !== '';
+    let userDoc = null;
+    let plan = 'guest';
+    let dailyCount = 0;
+    let dailyLimit = PLAN_CONFIG.guest.dailyLimit;
 
-      if (dailyCount >= limit) {
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({
-            success: false,
-            error: `使用次數已達上限（${dailyCount}/${limit}），請升級方案或明日再試。`,
-            mode,
-            uid,
-          }),
-        };
-      }
+    if (isLoggedIn) {
+      userDoc = await getUserProfile(uid);
+      plan = resolvePlan(userDoc, isLoggedIn);
+      dailyLimit = getDailyLimitForPlan(plan);
+      dailyCount = userDoc.daily_count || 0;
+    } else {
+      // Guest 用戶：使用 localStorage（前端控制），後端只給 1 次
+      plan = 'guest';
+      dailyLimit = PLAN_CONFIG.guest.dailyLimit;
     }
 
-    // 載入對應 prompt
-    const systemPrompt = loadPrompt(mode);
-    console.log(`🚀 載入 mode: ${mode} | uid: ${uid}`);
+    console.log(`🚀 Plan 解析: uid=${uid}, isLoggedIn=${isLoggedIn}, plan=${plan}, usage=${dailyCount}/${dailyLimit}`);
+
+    // 使用次數檢查
+    if (dailyCount >= dailyLimit) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          error: `使用次數已達上限（${dailyCount}/${dailyLimit}），請升級方案或明日再試。`,
+          mode,
+          uid,
+          plan,
+          usage: { used: dailyCount, limit: dailyLimit },
+        }),
+      };
+    }
+
+    // ★ 載入對應 prompt（Shopee 會根據 plan 分流）
+    const systemPrompt = loadPrompt(mode, plan);
+    console.log(`🚀 載入 mode: ${mode} | uid: ${uid} | plan: ${plan}`);
 
     // 建立 Gemini 請求 Payload
     const createPayload = (prompt, userQuery) => ({
@@ -350,14 +421,16 @@ exports.handler = async (event) => {
     }
 
     // 成功產生分析 → 更新使用次數
-    if (uid !== 'guest') {
+    let newUsedCount = dailyCount;
+    if (isLoggedIn) {
       await updateUsage(uid);
+      newUsedCount = dailyCount + 1;
     }
 
-    console.log(`✅ 成功產生分析: mode=${mode}, uid=${uid}, length=${output.length}`);
+    console.log(`✅ 成功產生分析: mode=${mode}, uid=${uid}, plan=${plan}, length=${output.length}`);
     console.log(`✅ 回傳預覽:`, output.slice(0, 300));
 
-    // 統一回傳格式：同時提供 answer 和 output（前端可能讀任一個）
+    // ★ 統一回傳格式：包含 plan 和 usage 資訊
     return {
       statusCode: 200,
       headers,
@@ -365,6 +438,11 @@ exports.handler = async (event) => {
         success: true,
         mode,
         uid,
+        plan,                           // ★ 回傳 plan
+        usage: {                        // ★ 回傳 usage 資訊
+          used: newUsedCount,
+          limit: dailyLimit,
+        },
         answer: output,   // ★ 前端可能讀 answer
         output: output,   // ★ 前端可能讀 output
         result: output,   // ★ 前端可能讀 result
