@@ -189,9 +189,12 @@
 
     <!-- Left Sidebar (App Shell) -->
     <aside id="app-sidebar" class="w-20 bg-bgDark/95 backdrop-blur border-r border-borderDark flex flex-col items-center py-8 z-30 flex-shrink-0">
-        <!-- Logo -->
-        <div class="w-12 h-12 mb-10 cursor-pointer relative group" onclick="window.location.href='https://brotherg.ai'">
-            <div class="w-full h-full bg-aiBlue rounded-xl flex items-center justify-center text-white text-xl font-bold font-display shadow-lg shadow-blue-500/20">G</div>
+        <!-- Logo（點擊回首頁）-->
+        <div class="mb-10 cursor-pointer relative group" onclick="window.location.href='https://brotherg.ai'" title="返回 BrotherG 首頁">
+            <div class="w-14 h-14 bg-gradient-to-br from-aiBlue to-blue-700 rounded-xl flex flex-col items-center justify-center text-white shadow-lg shadow-blue-500/30 group-hover:shadow-blue-500/50 transition-shadow">
+                <span class="text-lg font-bold font-display leading-none">G</span>
+                <span class="text-[8px] font-mono opacity-70 mt-0.5">BrotherG</span>
+            </div>
         </div>
 
         <!-- Home Button -->
@@ -293,6 +296,13 @@
                                 <span id="analyze-btn-text">開始深度分析 (Basic)</span>
                             </span>
                         </button>
+                        
+                        <!-- ★ 選品策略分析入口（Pro 專屬，放在按鈕下方更明顯）-->
+                        <a href="/strategy.html" target="_blank" id="pro-strategy-btn" 
+                           class="hidden w-full mt-3 py-3 bg-gradient-to-r from-amber-600 to-amber-500 text-white font-bold rounded-lg flex items-center justify-center gap-2 hover:from-amber-500 hover:to-amber-400 transition-all shadow-lg shadow-amber-500/20">
+                            <i class="fa-solid fa-compass"></i>
+                            <span>選品策略分析（Pro 專屬）</span>
+                        </a>
                         
                         <div class="mt-4 flex justify-center items-center space-x-2 text-[10px] text-aiBlue opacity-50 hidden md:flex">
                             <i class="fa-solid fa-microchip"></i>
@@ -677,9 +687,15 @@
                     if (btnText) btnText.innerText = '開始深度分析 (PRO)';
                     if (proCard) proCard.classList.add('hidden');
                     
-                    // ★ 顯示選品策略分析連結（Pro 專屬）
+                    // ★ 顯示選品策略分析連結（右上角小連結）
                     if (proLink) {
                         proLink.className = 'text-[10px] md:text-xs font-bold text-white px-3 py-1.5 rounded-full flex items-center hover:opacity-80 transition-opacity bg-gradient-to-r from-aiBlue to-blue-600 shadow-lg';
+                    }
+                    
+                    // ★ 顯示選品策略分析按鈕（按鈕下方大按鈕）
+                    const proStrategyBtn = document.getElementById('pro-strategy-btn');
+                    if (proStrategyBtn) {
+                        proStrategyBtn.classList.remove('hidden');
                     }
 
                     updateUsageUI();
@@ -847,9 +863,15 @@
                 }
                 if (btnText) btnText.innerText = '開始深度分析 (PRO)';
                 
-                // ★ 顯示選品策略分析連結（Pro 專屬功能）
+                // ★ 顯示選品策略分析連結（右上角小連結）
                 if (proLink) {
                     proLink.className = 'text-[10px] md:text-xs font-bold text-white px-3 py-1.5 rounded-full flex items-center hover:opacity-80 transition-opacity bg-gradient-to-r from-aiBlue to-blue-600 shadow-lg';
+                }
+                
+                // ★ 顯示選品策略分析按鈕（按鈕下方大按鈕）
+                const proStrategyBtn = document.getElementById('pro-strategy-btn');
+                if (proStrategyBtn) {
+                    proStrategyBtn.classList.remove('hidden');
                 }
                 
                 // PRO 用戶隱藏 upsell
