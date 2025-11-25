@@ -10,7 +10,7 @@
 
 [functions]
   node_bundler = "esbuild"
-  included_files = ["netlify/functions/**"]
+  included_files = ["netlify/functions/**", "lib/**", "prompts/**"]
 
 # 將 /shopee 重定向到深色版 (shopee.html)
 [[redirects]]
