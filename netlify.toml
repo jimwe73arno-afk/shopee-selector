@@ -18,11 +18,11 @@
   to = "/shopee.html"
   status = 301
 
-# API 重定向 (修復前端呼叫不到 function 的問題)
+# 將 /tesla 重定向到 Tesla Decision Core
 [[redirects]]
-  from = "/api/analyze"
-  to = "/.netlify/functions/ask"
-  status = 200
+  from = "/tesla"
+  to = "/tesla.html"
+  status = 301
 
 # 付款成功頁面
 [[redirects]]
