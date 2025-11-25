@@ -214,19 +214,31 @@ exports.handler = async (event) => {
       ],
     };
 
+    // 🚀 [ASK] 調用前日誌
+    console.log("🚀 [ASK] 模式:", mode);
+    console.log("🚀 [ASK] 問題:", input);
+    console.log("🚀 [ASK] URL:", url.replace(API_KEY, '***KEY***'));
+    console.log("🚀 [ASK] Payload:", JSON.stringify(payload).slice(0, 500));
+
     const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
+    console.log("🚀 [ASK] 響應狀態:", resp.status, resp.statusText);
+
     if (!resp.ok) {
       const text = await resp.text();
+      console.error("❌ [ASK] Gemini API 錯誤:", resp.status, text);
       throw new Error(`Gemini API error: ${resp.status} ${text}`);
     }
 
     const data = await resp.json();
+    console.log("✅ [Gemini 回傳成功]", JSON.stringify(data).slice(0, 400));
+    
     const output = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    console.log("✅ [ASK] 輸出長度:", output.length);
 
     if (!output) {
       return {
