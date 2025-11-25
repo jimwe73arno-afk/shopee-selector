@@ -676,9 +676,10 @@
                     }
                     if (btnText) btnText.innerText = '開始深度分析 (PRO)';
                     if (proCard) proCard.classList.add('hidden');
+                    
+                    // ★ 顯示選品策略分析連結（Pro 專屬）
                     if (proLink) {
-                        proLink.classList.remove('hidden');
-                        proLink.classList.add('bg-gradient-to-r', 'from-aiBlue', 'to-blue-600');
+                        proLink.className = 'text-[10px] md:text-xs font-bold text-white px-3 py-1.5 rounded-full flex items-center hover:opacity-80 transition-opacity bg-gradient-to-r from-aiBlue to-blue-600 shadow-lg';
                     }
 
                     updateUsageUI();
@@ -846,9 +847,9 @@
                 }
                 if (btnText) btnText.innerText = '開始深度分析 (PRO)';
                 
+                // ★ 顯示選品策略分析連結（Pro 專屬功能）
                 if (proLink) {
-                    proLink.classList.remove('hidden');
-                    proLink.classList.add('bg-gradient-to-r', 'from-aiBlue', 'to-blue-600');
+                    proLink.className = 'text-[10px] md:text-xs font-bold text-white px-3 py-1.5 rounded-full flex items-center hover:opacity-80 transition-opacity bg-gradient-to-r from-aiBlue to-blue-600 shadow-lg';
                 }
                 
                 // PRO 用戶隱藏 upsell
