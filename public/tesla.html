@@ -185,42 +185,43 @@
 
     <script>
         // Data & State
-        const TESLA_QUESTIONS = [
-            "Q1：你現在考慮的是哪些 Tesla 車款？", 
-            "Q2：你的預算大概在哪個區間？", 
-            "Q3：主要使用場景是什麼？",
-            "Q4：你家裡可以裝家用充電樁嗎？", 
-            "Q5：一年大概會開多少公里？", 
-            "Q6：家裡成員狀況？",
-            "Q7：你目前對電車或 Tesla 最大的擔心？", 
-            "Q8：你現在有開什麼車嗎？", 
-            "Q9：你理想的購車時間？"
-        ];
-        const TESLA_KEYS = ["models", "budget", "use_case", "home_charging", "mileage", "family", "concerns", "current_car", "timeline"];
+        // 15 輪對話制：Turn 1-10 需求盤點、Turn 11 中場總結、Turn 12-14 深度諮詢、Turn 15 最終決策
+        const MAX_TURNS = 15;
         
-        let teslaState = { step: 0, answers: [], messages: [], paid: false, loading: false };
+        let teslaState = { 
+            turn: 0,           // 當前輪數 (1-15)
+            answers: [],       // 用戶回答記錄
+            messages: [],      // 對話歷史
+            paid: false,       // 是否已付費
+            loading: false     // 載入狀態
+        };
 
         // Init on load
         window.onload = initTesla;
 
         function initTesla() {
-            teslaState = { step: 1, answers: [], messages: [], paid: false, loading: false };
+            teslaState = { turn: 0, answers: [], messages: [], paid: false, loading: false };
             document.getElementById('tesla-messages').innerHTML = '';
-            addBotMessage("歡迎來到 BrotherG Tesla 決策顧問！我會透過 9 個問題了解你的需求，然後給你最精準的購車建議。");
-            setTimeout(() => addBotMessage(TESLA_QUESTIONS[0]), 800);
+            
+            // 開場白
+            addBotMessage("歡迎來到 BrotherG Tesla 決策顧問！");
+            setTimeout(() => {
+                addBotMessage("我是你的專屬購車陪伴顧問。接下來我會用大約 15 輪對話，幫你搞清楚「買不買、買哪台、何時買」。準備好了就跟我說說你在考慮什麼車款吧！");
+            }, 800);
             updateUI();
         }
 
         function updateUI() {
-            const pct = Math.min((teslaState.step / 20) * 100, 100);
+            const pct = Math.min((teslaState.turn / MAX_TURNS) * 100, 100);
             document.getElementById('tesla-progress').style.width = pct + '%';
             
-            let statusText = "INTAKE PHASE";
-            if(teslaState.step === 10) statusText = "ADVERTISING";
-            else if(teslaState.step > 10 && teslaState.step < 20) statusText = "FREE CHAT";
-            else if(teslaState.step >= 20) statusText = "DECISION";
+            let statusText = "INTAKE";
+            if(teslaState.turn <= 10) statusText = "需求盤點";
+            else if(teslaState.turn === 11) statusText = "中場總結";
+            else if(teslaState.turn < 15) statusText = "深度諮詢";
+            else statusText = "最終決策";
             
-            document.getElementById('tesla-status').innerText = `${statusText} (${teslaState.step}/20)`;
+            document.getElementById('tesla-status').innerText = `${statusText} (${teslaState.turn}/${MAX_TURNS})`;
         }
 
         function addBotMessage(text, isMarkdown = false) {
@@ -258,7 +259,7 @@
                     body: JSON.stringify({
                         messages: state.messages,
                         intakeAnswers: state.answers,
-                        messageCount: state.step,
+                        messageCount: state.turn,
                         paid: state.paid
                     })
                 });
@@ -266,45 +267,9 @@
                 if (!res.ok) throw new Error("API Fail");
                 return await res.json();
             } catch (e) {
-                console.log("Backend failed, using mock:", e);
-                return await simulateBackend(state);
+                console.log("Backend failed:", e);
+                throw e;
             }
-        }
-
-        // Mock Backend Simulation (Fallback)
-        async function simulateBackend(state) {
-            await new Promise(r => setTimeout(r, 800));
-            const s = state.step;
-            
-            // Steps 1-9: Intake
-            if(s <= 9) return { ok: true, reply: "收到，這點很重要。那下一題..." };
-            
-            // Step 10: Ad Card
-            if(s === 10) return { 
-                ok: true, 
-                reply: `
-### 階段總結
-感謝你的回答！目前看來你的條件很適合 Model Y。
-
-**專屬優惠**
-- 導購連結：[ts.la/arno873937](https://ts.la/arno873937) (使用可獲積分)
-- **BrotherG Travel AI**：未來出國旅遊，可以用我們的 AI 規劃行程。
-
-**下一步**
-我們先不急著下定論。你可以繼續問我任何關於 Tesla 的問題，第 20 輪時我會給你最終決策卡。`
-            };
-
-            // Steps 11-19: Free Chat
-            if(s > 10 && s < 20) return { ok: true, reply: "這是個好問題，關於這點..." };
-
-            // Step 20: Paywall (Decision)
-            if(s === 20 && !state.paid) return { ok: true, reply: "...", needPaywall: true };
-            if(s === 20 && state.paid) return { 
-                ok: true, 
-                reply: `### 最終決策卡\n\n**結論：推薦 Model Y Long Range**\n\n依據：...\n\n下一步：預約試駕。` 
-            };
-            
-            return { ok: true, reply: "..." };
         }
 
         async function sendTeslaMessage() {
@@ -313,21 +278,23 @@
             
             // Block conditions
             if(teslaState.loading) return;
-            if(!text && teslaState.step !== 10 && teslaState.step !== 20) return;
+            if(!text) return;
 
             // Handle User Input
-            if(text) {
-                addUserMessage(text);
-                input.value = '';
-                teslaState.messages.push({role:'user', content:text});
-                
-                // Save Intake Answer
-                if(teslaState.step <= 9) {
-                    teslaState.answers.push({ key: TESLA_KEYS[teslaState.step-1], question: TESLA_QUESTIONS[teslaState.step-1], answer: text });
-                }
-            }
+            addUserMessage(text);
+            input.value = '';
+            teslaState.messages.push({role:'user', content:text});
+            teslaState.turn++;
+            
+            // 記錄用戶回答（用於上下文）
+            teslaState.answers.push({ 
+                turn: teslaState.turn,
+                question: `Turn ${teslaState.turn}`, 
+                answer: text 
+            });
 
             teslaState.loading = true;
+            updateUI();
             
             // Show typing indicator
             const typingDiv = document.createElement('div');
@@ -335,6 +302,7 @@
             typingDiv.id = 'typing-indicator';
             typingDiv.innerHTML = '<span class="animate-typing">思考中...</span>';
             document.getElementById('tesla-messages').append(typingDiv);
+            document.getElementById('tesla-messages').scrollTop = 99999;
             
             try {
                 const data = await callTeslaAPI(teslaState);
@@ -343,36 +311,24 @@
                 document.getElementById('typing-indicator')?.remove();
 
                 if(data.ok) {
+                    // 記錄 AI 回覆
+                    teslaState.messages.push({role:'assistant', content: data.reply});
+                    
+                    // 判斷是否為特殊階段（中場總結 Turn 11、最終決策 Turn 15）
+                    const isSpecialTurn = teslaState.turn === 11 || teslaState.turn >= 15;
+                    addBotMessage(data.reply, isSpecialTurn);
+                    
+                    // 檢查是否需要付費牆
                     if(data.needPaywall) {
-                        document.getElementById('paywall-modal').classList.remove('hidden');
-                    } else {
-                        // Display Reply
-                        const isCard = teslaState.step === 10 || teslaState.step === 20;
-                        addBotMessage(data.reply, isCard); 
-
-                        // Handle Transitions
-                        if(teslaState.step < 20) {
-                            teslaState.step++;
-                            
-                            // Auto-ask next Q (Intake)
-                            if(teslaState.step <= 9) {
-                                setTimeout(() => addBotMessage(TESLA_QUESTIONS[teslaState.step-1]), 600);
-                            }
-                            // Trigger Ad Card (Transition 9 -> 10)
-                            else if (teslaState.step === 10) {
-                                setTimeout(() => sendTeslaMessage(), 800);
-                            }
-                            // Transition Ad -> Free Chat (10 -> 11)
-                            else if (teslaState.step === 11) {
-                                addBotMessage("現在進入自由對話模式。你可以問我任何細節，例如保險、充電或配件。到第 20 輪時我會給你最終建議。");
-                            }
-                        }
+                        setTimeout(() => {
+                            document.getElementById('paywall-modal').classList.remove('hidden');
+                        }, 1500);
                     }
                 }
             } catch(e) { 
                 console.error(e);
                 document.getElementById('typing-indicator')?.remove();
-                addBotMessage("抱歉，發生了一些問題，請稍後再試。");
+                addBotMessage("抱歉，連線出了點問題。請稍後再試，或重新整理頁面。");
             }
             
             // Cleanup
@@ -384,21 +340,45 @@
         function processPayment() {
             const btn = document.querySelector('#paywall-modal button');
             btn.innerHTML = '處理中...';
-            setTimeout(() => {
+            setTimeout(async () => {
                 document.getElementById('paywall-modal').classList.add('hidden');
                 teslaState.paid = true;
-                addBotMessage("付款成功！正在生成你的專屬決策卡...");
                 teslaState.loading = false;
-                sendTeslaMessage();
-            }, 1000);
+                
+                addBotMessage("付款成功！正在生成你的專屬最終決策信...");
+                
+                // 重新呼叫 API 取得 Pro 版決策卡
+                teslaState.loading = true;
+                const typingDiv = document.createElement('div');
+                typingDiv.className = 'chat-msg-bot fade-in';
+                typingDiv.id = 'typing-indicator';
+                typingDiv.innerHTML = '<span class="animate-typing">正在為你撰寫決策信...</span>';
+                document.getElementById('tesla-messages').append(typingDiv);
+                
+                try {
+                    const data = await callTeslaAPI(teslaState);
+                    document.getElementById('typing-indicator')?.remove();
+                    if(data.ok) {
+                        addBotMessage(data.reply, true);
+                    }
+                } catch(e) {
+                    document.getElementById('typing-indicator')?.remove();
+                    addBotMessage("生成決策信時發生錯誤，請稍後重試。");
+                }
+                teslaState.loading = false;
+            }, 1500);
         }
 
         // Debug Tool
-        window.jumpToStep = (n) => { 
-            teslaState.step = n; 
+        window.jumpToTurn = (n) => { 
+            teslaState.turn = n; 
             updateUI(); 
-            console.log(`Jumped to step ${n}`); 
-            if(n===10 || n===20) sendTeslaMessage();
+            console.log(`Jumped to turn ${n}`); 
+        };
+        
+        window.resetChat = () => {
+            initTesla();
+            console.log('Chat reset');
         };
 
     </script>
