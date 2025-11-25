@@ -247,11 +247,38 @@ exports.handler = async (event) => {
       }
 
       const data = await resp.json();
-      const outputText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-      console.log(`📥 [Gemini] 回傳內容長度: ${outputText.length}`);
-      console.log(`📥 [Gemini] 回傳預覽:`, outputText.slice(0, 200));
       
-      return outputText;
+      // ★ 統一把 Gemini 回傳轉成純文字 answer
+      let answerText = "";
+
+      try {
+        // 標準格式：candidates[0].content.parts[0].text
+        if (data.candidates && data.candidates.length > 0) {
+          const parts = data.candidates[0].content?.parts || [];
+          answerText = parts.map(p => p.text || "").join("");
+        } 
+        // 備用格式：output 陣列
+        else if (Array.isArray(data.output) && data.output.length > 0) {
+          answerText = data.output.map(p => p.text || "").join("");
+        } 
+        // 備用格式：直接 text 字串
+        else if (typeof data.text === "string") {
+          answerText = data.text;
+        }
+
+        if (!answerText) {
+          console.warn("[Gemini] Empty answer parsed, raw data:", JSON.stringify(data).slice(0, 600));
+          answerText = ""; // 讓外層處理
+        }
+      } catch (e) {
+        console.error("[Gemini] parse error:", e, JSON.stringify(data).slice(0, 400));
+        answerText = "";
+      }
+
+      console.log(`📥 [Gemini] 回傳內容長度: ${answerText.length}`);
+      console.log(`📥 [Gemini] 回傳預覽:`, answerText.slice(0, 300));
+      
+      return answerText.trim();
     }
 
     let output = '';
@@ -272,17 +299,10 @@ exports.handler = async (event) => {
       }
     }
 
+    // ★ 如果 output 為空，給一個 fallback 訊息（而非直接報錯）
     if (!output) {
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-          success: false,
-          error: 'AI 回覆為空，請稍後再試。',
-          mode,
-          uid,
-        }),
-      };
+      console.warn('⚠️ Gemini 回傳為空，使用 fallback 訊息');
+      output = '目前 AI 沒有給出明確內容，請稍後再試或換個問法。';
     }
 
     // 成功產生分析 → 更新使用次數
