@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Shopee Analyst | BrotherGAi</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="apple-touch-icon" href="/logo.png">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Marked.js -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Rajdhani', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        bgDark: '#020617',
+                        bgCard: '#0F172A',
+                        aiBlue: '#00A0E9',
+                        aiBlueDim: 'rgba(0, 160, 233, 0.1)', 
+                        borderDark: '#1E293B',
+                        textMain: '#F8FAFC',
+                        textSub: '#94A3B8',
+                        gold: '#F59E0B',
+                    },
+                    boxShadow: {
+                        'neon': '0 0 10px rgba(0, 160, 233, 0.4), 0 0 20px rgba(0, 160, 233, 0.2)',
+                        'glow-card': '0 0 15px rgba(0, 0, 0, 0.5)',
+                        'glow-pro': '0 0 30px rgba(0, 160, 233, 0.15)',
+                        'glow-master': '0 0 30px rgba(245, 158, 11, 0.15)',
+                    },
+                    animation: {
+                        'shockwave': 'shockwave 0.6s ease-out',
+                        'breathe': 'breathe 4s ease-in-out infinite',
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        shockwave: {
+                            '0%': { transform: 'translate(-50%, -50%) scale(0)', opacity: '0.5' },
+                            '100%': { transform: 'translate(-50%, -50%) scale(3)', opacity: '0' },
+                        },
+                        breathe: {
+                            '0%, 100%': { boxShadow: '0 0 10px rgba(0, 160, 233, 0.1)', borderColor: '#1E293B' },
+                            '50%': { boxShadow: '0 0 20px rgba(0, 160, 233, 0.3)', borderColor: '#00A0E9' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #020617; color: #F8FAFC; overflow-x: hidden; }
+        
+        /* 手機版隱藏左側邊欄 */
+        @media (max-width: 768px) {
+            #app-sidebar { display: none !important; }
+            body { padding-bottom: 70px; } /* 為底部導航預留空間 */
+        }
+        
+        ::-webkit-scrollbar { width: 6px; background: #020617; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00A0E9; }
+
+        .cosmos-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: 
+                radial-gradient(circle at 15% 50%, rgba(0, 160, 233, 0.05) 0%, transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(0, 160, 233, 0.03) 0%, transparent 25%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .blue-container {
+            background-color: rgba(15, 23, 42, 0.8);
+            border: 1px solid #1E293B;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        .cyber-input {
+            background: #1E293B;
+            border: 1px solid #334155;
+            color: #F8FAFC;
+            font-family: 'Inter', sans-serif;
+            font-weight: 400;
+            transition: all 0.3s;
+        }
+        .cyber-input:focus {
+            background: #0F172A;
+            border-color: #00A0E9;
+            box-shadow: 0 0 15px rgba(0, 160, 233, 0.15);
+            outline: none;
+        }
+        .cyber-input::placeholder { color: #64748B; }
+
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+        }
+
+        .feature-icon { width: 16px; text-align: center; margin-right: 10px; }
+        .feature-check { color: #00A0E9; }
+        .feature-gold { color: #F59E0B; }
+        .feature-dim { color: #475569; }
+
+        .plan-card {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            background: #0F172A;
+            border: 1px solid #334155;
+        }
+
+        .markdown-output h3 { 
+            color: #38BDF8; 
+            font-weight: 700; 
+            font-size: 1.1rem; 
+            margin-top: 1.5rem; 
+            margin-bottom: 0.75rem; 
+            font-family: 'Inter', sans-serif; 
+            border-left: 4px solid #00A0E9;
+            padding-left: 12px;
+            line-height: 1.2;
+        }
+        .markdown-output h3:first-child { margin-top: 0; }
+        .markdown-output p { margin-bottom: 1rem; line-height: 1.7; color: #CBD5E1; font-size: 0.95rem; text-align: justify; }
+        .markdown-output ul { list-style: none; padding-left: 0; margin-bottom: 1rem; }
+        .markdown-output li { margin-bottom: 0.75rem; padding-left: 0; position: relative; color: #CBD5E1; }
+        .markdown-output strong { color: #F8FAFC; font-weight: 700; text-shadow: 0 0 10px rgba(255,255,255,0.1); }
+        
+        .markdown-output li strong:first-child {
+            display: block;
+            color: #38BDF8;
+            margin-bottom: 4px;
+            text-shadow: none;
+        }
+        
+        /* ===== 手機版 RWD 優化 ===== */
+        @media (max-width: 768px) {
+            /* 手機版 Markdown 輸出優化 */
+            .markdown-output h3 { font-size: 1rem; margin-top: 1.2rem; }
+            .markdown-output p { font-size: 0.9rem; line-height: 1.6; }
+            
+            /* 手機版 Modal 優化 */
+            #pricing-modal > div {
+                max-height: 85vh;
+                margin: 10px;
+                padding: 16px !important;
+            }
+            #pricing-modal .grid {
+                gap: 16px !important;
+            }
+            #pricing-modal h2 {
+                font-size: 1.25rem !important;
+            }
+            
+            /* Plan 卡片手機版 */
+            .plan-card {
+                transform: none !important;
+                padding: 16px !important;
+            }
+            #plan-card-pro {
+                transform: none !important;
+                order: -1; /* PRO 卡片移到最上面 */
+            }
+            
+            /* 手機版按鈕更大的點擊區域 */
+            button, .cursor-pointer {
+                min-height: 44px;
+            }
+            
+            /* 手機版輸入框 */
+            .cyber-input {
+                font-size: 16px !important; /* 防止 iOS 自動縮放 */
+            }
+        }
+        
+        /* 手機版底部導航 */
+        .mobile-nav {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 65px;
+            background: rgba(15, 23, 42, 0.98);
+            border-top: 1px solid #1E293B;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        @media (max-width: 768px) {
+            .mobile-nav { display: flex; }
+        }
+        .mobile-nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #64748B;
+            font-size: 10px;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+        .mobile-nav-item.active {
+            color: #00A0E9;
+        }
+        .mobile-nav-item i {
+            font-size: 20px;
+        }
+
+        .tier-badge-basic { background: #334155; color: #94A3B8; border: 1px solid #475569; }
+        .tier-badge-pro { background: rgba(0, 160, 233, 0.2); color: #00A0E9; border: 1px solid #00A0E9; box-shadow: 0 0 10px rgba(0,160,233,0.3); }
+        .tier-badge-master { background: rgba(245, 158, 11, 0.2); color: #F59E0B; border: 1px solid #F59E0B; box-shadow: 0 0 15px rgba(245,158,11,0.3); }
+
+        @media (max-width: 768px) {
+            .mobile-hidden { display: none; }
+            .mobile-stack { flex-direction: column; }
+            .mobile-full { width: 100%; }
+        }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden selection:bg-aiBlue selection:text-white">
+
+    <div class="cosmos-bg"></div>
+
+    <!-- Login Overlay -->
+    <div id="login-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop fade-in">
+        <div class="text-center p-8 max-w-md w-full relative bg-bgCard border border-borderDark rounded-2xl shadow-2xl mx-4">
+            <button onclick="document.getElementById('login-overlay').classList.add('hidden')" class="absolute top-4 right-4 text-textSub hover:text-white transition-colors">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-aiBlue/10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div class="relative z-10">
+                <div class="w-16 h-16 bg-aiBlue rounded-xl flex items-center justify-center text-white text-3xl font-bold font-display shadow-[0_0_30px_rgba(0,160,233,0.4)] mx-auto mb-6 animate-pulse-slow">
+                    G
+                </div>
+                <h1 class="text-3xl font-display font-bold text-white mb-2">身份驗證</h1>
+                <p class="text-textSub mb-8 font-light text-sm">請登入 Google 帳號以啟用深度運算引擎</p>
+                
+                <button onclick="handleGoogleLogin()" class="w-full bg-white text-gray-900 font-bold py-3.5 rounded-lg hover:bg-gray-100 transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-xl hover:scale-105 transform duration-200" id="login-btn">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google">
+                    <span>使用 Google 帳號登入</span>
+                </button>
+                
+                <p class="text-[10px] text-gray-600 mt-6 font-mono">
+                    SECURED BY FIREBASE
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Left Sidebar (App Shell) -->
+    <aside id="app-sidebar" class="w-20 bg-bgDark/95 backdrop-blur border-r border-borderDark flex flex-col items-center py-8 z-30 flex-shrink-0">
+        <!-- Logo（點擊回首頁）-->
+        <div class="mb-10 cursor-pointer relative group" onclick="window.location.href='https://brotherg.ai'" title="返回 BrotherG 首頁">
+            <img src="/logo.png" alt="BrotherG" class="w-14 h-14 rounded-xl shadow-lg shadow-blue-500/30 group-hover:shadow-blue-500/50 group-hover:scale-105 transition-all">
+        </div>
+
+        <!-- Home Button -->
+        <button onclick="window.location.href='https://brotherg.ai'" class="group relative w-12 h-12 flex items-center justify-center transition-all mb-6" title="返回首頁">
+            <i class="fa-solid fa-house text-xl text-slate-500 group-hover:text-aiBlue group-hover:drop-shadow-[0_0_8px_rgba(0,160,233,0.5)] transition-colors"></i>
+        </button>
+
+        <!-- Icons -->
+        <nav class="flex-1 flex flex-col space-y-8 w-full items-center">
+            <div class="w-8 h-px bg-slate-800 mb-2"></div> 
+            <button class="group relative w-12 h-12 flex items-center justify-center transition-all bg-slate-800/50 rounded-lg border border-slate-700/50">
+                <i class="fa-solid fa-bag-shopping text-xl text-aiBlue drop-shadow-[0_0_8px_rgba(0,160,233,0.5)]"></i>
+            </button>
+        </nav>
+
+        <!-- User Profile -->
+        <div class="flex flex-col items-center space-y-4 mb-4">
+            <div id="user-avatar" class="w-8 h-8 rounded-full border border-aiBlue bg-aiBlue/20 flex items-center justify-center text-xs font-bold hidden" title="已登入">C</div>
+            <button id="logout-btn" onclick="handleLogout()" class="text-xs text-textSub hover:text-red-400 transition-colors hidden" title="Logout">
+                <i class="fa-solid fa-power-off"></i>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main View -->
+    <main id="app-main" class="flex-1 relative overflow-hidden flex flex-col bg-bgDark">
+        
+        <!-- Top HUD (Dark) -->
+        <header class="h-14 md:h-16 px-3 md:px-8 flex justify-between items-center z-20 border-b border-borderDark bg-bgDark/80 backdrop-blur-md sticky top-0">
+            <div class="flex items-center space-x-2 md:space-x-4">
+                <!-- 手機版 Logo -->
+                <img src="/logo.png" alt="BrotherG" class="w-8 h-8 md:hidden rounded-lg" onclick="window.location.href='https://brotherg.ai'">
+                <div class="hidden md:block h-2 w-2 bg-aiBlue rotate-45 shadow-[0_0_10px_#00A0E9]"></div>
+                <span class="text-textMain font-display text-base md:text-xl tracking-[0.05em] md:tracking-[0.1em] font-bold truncate">SHOPEE <span class="text-aiBlue">ANALYST</span></span>
+                <!-- Dynamic Tier Badge -->
+                <span id="user-tier-badge" class="text-[9px] md:text-[10px] font-bold px-1.5 md:px-2 py-0.5 rounded tracking-wider tier-badge-basic">BASIC</span>
+            </div>
+            
+            <!-- Right HUD: Usage & Upgrade -->
+            <div class="flex items-center space-x-2 md:space-x-6">
+                <!-- 登入按鈕 -->
+                <button id="login-btn-header" onclick="handleGoogleLogin()" 
+                    class="hidden flex items-center gap-1 md:gap-2 px-2 md:px-4 py-1.5 md:py-2 bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 transition-colors text-xs md:text-sm">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-4 h-4 md:w-5 md:h-5" alt="Google">
+                    <span class="hidden md:inline">登入</span>
+                </button>
+
+                <!-- 用戶資訊（登入後顯示） -->
+                <div id="user-info" class="hidden flex items-center gap-2 md:gap-3">
+                    <div id="user-avatar-header" 
+                        class="w-7 h-7 md:w-8 md:h-8 rounded-full bg-aiBlue text-white flex items-center justify-center font-bold text-xs md:text-sm cursor-pointer">
+                    </div>
+                    <span id="user-name" class="hidden lg:inline text-sm font-medium text-gray-300"></span>
+                    <button id="logout-btn-header" onclick="handleLogout()" 
+                        class="hidden md:block text-xs text-gray-500 hover:text-red-500 transition-colors">
+                        登出
+                    </button>
+                </div>
+
+                <!-- 手機版剩餘次數（精簡版） -->
+                <div class="flex md:hidden items-center px-2 py-1 rounded bg-slate-800/50 border border-slate-700/50" title="今日剩餘次數">
+                    <span id="usage-count-mobile" class="text-aiBlue font-bold font-mono text-xs">5</span>
+                    <span class="text-[10px] font-mono text-textSub">/5</span>
+                </div>
+
+                <div class="hidden md:flex items-center px-3 py-1 rounded bg-slate-800/50 border border-slate-700/50" title="今日剩餘次數">
+                    <span class="text-xs font-mono text-textSub mr-2">TODAY</span>
+                    <span id="usage-count" class="text-aiBlue font-bold font-mono">5</span>
+                    <span class="text-xs font-mono text-textSub ml-1" id="daily-counter">/ 5</span>
+                </div>
+                
+                <!-- 每日計數器顯示 -->
+                <div class="hidden lg:block text-xs text-gray-400 font-mono" id="daily-counter-text">
+                    今天剩餘免費次數：5 / 5
+                </div>
+
+                <!-- 升級按鈕（手機版隱藏，用底部導航） -->
+                <button onclick="openPricingModal()" class="hidden md:flex items-center space-x-2 px-4 py-1.5 bg-gradient-to-r from-aiBlue to-blue-700 text-white rounded text-xs font-bold hover:shadow-[0_0_15px_rgba(0,160,233,0.4)] transition-all">
+                    <i class="fa-solid fa-crown text-yellow-300 drop-shadow-md"></i>
+                    <span>升級進階版</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Viewport -->
+        <div class="flex-1 overflow-y-auto scroll-smooth p-3 md:p-10 flex flex-col">
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-8 h-full max-w-7xl mx-auto w-full">
+                
+                <!-- Left Control (Input) -->
+                <div class="lg:col-span-4 space-y-4 md:space-y-6 flex flex-col h-auto">
+                    <div class="blue-container breathing-glow p-4 md:p-6 rounded-xl flex flex-col shadow-lg relative overflow-hidden flex-1 lg:flex-none lg:h-auto">
+                        <div class="absolute top-0 right-0 w-4 h-4 border-t border-r border-aiBlue/50 hidden md:block"></div>
+                        <div class="absolute bottom-0 left-0 w-4 h-4 border-b border-l border-aiBlue/50 hidden md:block"></div>
+
+                        <label class="text-xs font-bold text-aiBlue mb-2 md:mb-3 block tracking-widest flex items-center">
+                            <i class="fa-solid fa-terminal mr-2"></i> 產品與市場描述
+                        </label>
+                        
+                        <textarea id="shopee-keyword" class="w-full cyber-input p-3 md:p-4 text-base rounded-lg resize-none flex-1 min-h-[150px] md:min-h-[200px] lg:min-h-[300px] mb-3 md:mb-4 focus:ring-0" 
+                            placeholder="請輸入產品描述、規格或目前遇到的銷售瓶頸..."></textarea>
+                        
+                        <!-- Dynamic Action Button -->
+                        <button id="analyze-btn" onclick="runShopeeAnalysis()" class="w-full py-3.5 md:py-4 bg-aiBlue text-white font-display font-bold hover:bg-blue-600 transition-all duration-300 tracking-wider md:tracking-widest uppercase text-base md:text-lg relative overflow-hidden shadow-[0_0_15px_rgba(0,160,233,0.3)] rounded-lg group active:scale-95">
+                            <span class="relative z-10 flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-bolt text-yellow-300 group-hover:animate-pulse"></i> 
+                                <span id="analyze-btn-text">開始深度分析</span>
+                            </span>
+                        </button>
+                        
+                        <!-- ★ 選品策略分析入口（Pro 專屬，放在按鈕下方更明顯）-->
+                        <a href="/strategy.html" target="_blank" id="pro-strategy-btn" 
+                           class="hidden w-full mt-2 md:mt-3 py-2.5 md:py-3 bg-gradient-to-r from-amber-600 to-amber-500 text-white font-bold rounded-lg flex items-center justify-center gap-2 hover:from-amber-500 hover:to-amber-400 transition-all shadow-lg shadow-amber-500/20 text-sm md:text-base">
+                            <i class="fa-solid fa-compass"></i>
+                            <span>選品策略分析（Pro 專屬）</span>
+                        </a>
+                        
+                        <div class="mt-3 md:mt-4 flex justify-center items-center space-x-2 text-[10px] text-aiBlue opacity-50 hidden md:flex">
+                            <i class="fa-solid fa-microchip"></i>
+                            <span class="font-mono">BrotherG Intelligence Node</span>
+                        </div>
+                    </div>
+
+                    <!-- PRO Upsell Banner (所有人可見) -->
+                    <div id="pro-upsell-card" onclick="openPricingModal()" class="p-3 md:p-5 bg-gradient-to-r from-slate-900 to-slate-800 border border-amber-500/40 rounded-xl cursor-pointer group hover:border-amber-500 hover:shadow-[0_0_20px_rgba(245,158,11,0.2)] transition-all relative overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out"></div>
+                        <div class="flex items-center justify-between relative z-10">
+                            <div class="flex items-center gap-2 md:gap-3">
+                                <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-amber-500/10 flex items-center justify-center border border-amber-500/30 group-hover:bg-amber-500 group-hover:text-white transition-colors text-amber-500 flex-shrink-0">
+                                    <i class="fa-solid fa-lock-open text-sm md:text-lg"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-amber-500 font-bold text-xs md:text-base flex items-center gap-2">
+                                        開通 Pro 版選品策略
+                                    </h4>
+                                    <p class="text-gray-400 text-[10px] md:text-xs mt-0.5 hidden md:block">每週更新 • 競品監控 • 獨家爆品庫</p>
+                                </div>
+                            </div>
+                            <div class="text-amber-500 group-hover:translate-x-1 transition-transform">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Data Vis -->
+                <div class="lg:col-span-8 bg-bgCard border border-borderDark p-4 md:p-8 relative rounded-xl shadow-glow-card overflow-y-auto min-h-[300px] md:min-h-[400px] lg:h-auto">
+                    
+                    <!-- Loading -->
+                    <div id="shopee-loading" class="hidden absolute inset-0 bg-bgCard/95 z-20 flex flex-col items-center justify-center rounded-xl backdrop-blur-sm px-4">
+                        <div class="w-16 h-16 md:w-20 md:h-20 border-t-4 border-b-4 border-aiBlue rounded-full animate-spin mb-4 md:mb-6 shadow-[0_0_20px_rgba(0,160,233,0.2)]"></div>
+                        <div class="text-lg md:text-2xl font-bold text-textMain tracking-wider animate-pulse text-center">正在進行深度運算</div>
+                        <div class="text-[10px] md:text-xs font-mono text-aiBlue mt-2 md:mt-3 px-3 md:px-4 py-1 font-bold bg-slate-800 rounded-full border border-slate-700">AI PROCESSING...</div>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="shopee-empty" class="flex-1 h-full flex flex-col items-center justify-center opacity-30 py-8 md:py-20">
+                        <i class="fa-solid fa-chart-radar text-5xl md:text-8xl mb-4 md:mb-6 text-slate-600 animate-pulse-slow"></i>
+                        <p class="font-mono text-xs md:text-sm tracking-[0.1em] md:tracking-[0.2em] text-textSub font-bold text-center px-4">等待輸入以啟動分析<br><span class="text-[10px] opacity-50">Waiting for Input Signal</span></p>
+                    </div>
+
+                    <!-- Results -->
+                    <div id="shopee-results" class="hidden h-full flex flex-col w-full fade-in">
+                        <div class="mb-4 md:mb-6 border-b border-borderDark pb-3 md:pb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 sticky top-0 bg-bgCard z-10 pt-2">
+                            <h3 class="text-sm md:text-lg font-bold text-textMain flex items-center">
+                                <i class="fa-solid fa-file-code text-aiBlue mr-2 md:mr-3"></i> 戰略分析報告
+                            </h3>
+                            <div class="flex items-center gap-2">
+                                <!-- Pro Feature Link (Hidden by default) -->
+                                <a href="/strategy.html" target="_blank" id="pro-strategy-link" class="hidden text-[10px] md:text-xs font-bold text-white px-2 md:px-3 py-1 md:py-1.5 rounded-full flex items-center hover:opacity-80 transition-opacity bg-gradient-to-r from-aiBlue to-blue-600 shadow-lg">
+                                    <i class="fa-solid fa-compass mr-1 md:mr-2"></i> 選品策略
+                                </a>
+                                <span class="text-[9px] md:text-xs font-bold text-green-400 bg-green-900/20 px-2 md:px-3 py-1 rounded-full border border-green-900/50">COMPLETED</span>
+                            </div>
+                        </div>
+                        <div id="shopee-markdown-content" class="markdown-output text-sm text-textMain space-y-3 md:space-y-4 leading-relaxed pb-20 md:pb-10">
+                            <!-- Content injected here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Pricing Modal (Clean Text & Proprietary Branding) -->
+    <div id="pricing-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop fade-in p-4">
+        <div class="bg-bgCard w-full max-w-5xl rounded-2xl shadow-2xl p-6 md:p-8 relative max-h-[90vh] overflow-y-auto border-t-4 border-aiBlue border-b border-b-borderDark border-x border-x-borderDark">
+            <button onclick="closePricingModal()" class="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors p-2">
+                <i class="fa-solid fa-xmark text-2xl"></i>
+            </button>
+
+            <div class="text-center mb-8 mt-2">
+                <h2 class="text-2xl md:text-3xl font-display font-bold text-textMain mb-2">升級您的決策引擎</h2>
+                <p class="text-textSub text-xs md:text-sm font-mono">解鎖高階運算配額與專屬市場情報</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Free -->
+                <div id="plan-card-free" onclick="selectPlan('free')" class="plan-card rounded-xl p-6 flex flex-col relative">
+                    <h4 class="text-sm font-bold text-textSub uppercase tracking-widest mb-2">體驗版 Basic</h4>
+                    <div class="mb-4">
+                        <span class="text-3xl font-display font-bold text-textMain">$0</span>
+                    </div>
+                    <ul class="space-y-4 text-xs mb-8 flex-1 text-textSub">
+                        <li class="flex items-center"><i class="fa-solid fa-bolt feature-icon feature-dim"></i> 每日 5 次 基礎分析</li>
+                        <li class="flex items-center"><i class="fa-solid fa-comment feature-icon feature-dim"></i> 單次對話模式</li>
+                        <li class="flex items-center feature-cross"><i class="fa-solid fa-xmark feature-icon"></i> 無長期記憶庫</li>
+                    </ul>
+                    <button class="w-full py-3 border border-slate-700 text-slate-400 font-bold text-sm rounded pointer-events-none bg-slate-800/50">目前方案</button>
+                </div>
+
+                <!-- PRO 專業版卡片（主力賣點） -->
+                <div id="plan-card-pro"
+                     onclick="selectPlan('pro')"
+                     class="plan-card rounded-xl p-6 flex flex-col relative border-2 border-aiBlue bg-slate-900/80 shadow-[0_0_30px_rgba(0,160,233,0.2)] transform scale-105 z-10">
+                  <div class="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-[10px] font-bold px-4 py-1 rounded-full tracking-widest uppercase shadow-lg animate-pulse">
+                    🔥 店長推薦 (Most Popular)
+                  </div>
+
+                  <div class="mb-4 mt-2">
+                    <h4 class="text-sm font-bold text-aiBlue uppercase tracking-widest mb-2">專業版 Professional</h4>
+                    <div class="flex items-baseline">
+                      <span class="text-5xl font-display font-bold text-white">$688</span>
+                      <span class="text-sm text-slate-400 ml-1">/ 月</span>
+                    </div>
+                    <p class="text-xs text-gray-300 mt-3 leading-relaxed font-medium">
+                      別讓選品憑感覺！解鎖 AI 戰術分析，每天 20 次機會，只要選中一個爆品就回本。
+                    </p>
+                  </div>
+
+                  <div class="w-full h-px bg-slate-700 my-4"></div>
+
+                  <ul class="space-y-4 text-xs mb-8 flex-1 text-white font-medium">
+                    <li class="flex items-start"><i class="fa-solid fa-check w-5 text-aiBlue mt-0.5"></i> <span>每日 <strong>20 次</strong> 深度戰術分析</span></li>
+                    <li class="flex items-start"><i class="fa-solid fa-check w-5 text-aiBlue mt-0.5"></i> <span>解鎖 <strong>C-A-B 完整操盤策略</strong></span></li>
+                    <li class="flex items-start"><i class="fa-solid fa-check w-5 text-aiBlue mt-0.5"></i> <span>生成 <strong>直播爆單口播稿</strong></span></li>
+                    <li class="flex items-start"><i class="fa-solid fa-check w-5 text-aiBlue mt-0.5"></i> <span>優先算力通道（不排隊）</span></li>
+                  </ul>
+
+                  <button onclick="handleUpgradeToPro()"
+                          class="w-full py-4 bg-gradient-to-r from-blue-600 to-aiBlue text-white font-bold text-sm rounded-lg hover:shadow-lg hover:scale-[1.02] transition-all tracking-widest border border-blue-400/30">
+                    立即升級 PRO 賺錢
+                  </button>
+                  
+                  <!-- 開通碼入口 -->
+                  <p class="text-center text-xs text-gray-400 mt-3 cursor-pointer hover:text-gray-300 transition-colors" onclick="showActivationModal()">
+                    已完成付款？點這裡輸入開通碼，由藍教主人工協助開通。
+                  </p>
+                </div>
+
+                <!-- MASTER 大師版：完全鎖死，只做展示 -->
+                <div id="plan-card-master"
+                     class="plan-card rounded-xl p-6 flex flex-col relative border border-slate-800 bg-slate-950/50 opacity-75 grayscale-[0.5] cursor-not-allowed"
+                     style="pointer-events: none;">
+                  <div class="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-slate-700 text-slate-300 text-[10px] font-bold px-4 py-1 rounded-full tracking-widest uppercase border border-slate-600">
+                    🚧 即將開放 Waitlist
+                  </div>
+
+                  <div class="mb-4 mt-2 text-center">
+                    <h4 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-2">大師版 Master</h4>
+                    <div class="flex items-baseline justify-center">
+                      <span class="text-3xl font-display font-bold text-slate-600">$1,688</span>
+                      <span class="text-xs text-slate-600 ml-1">/ 月</span>
+                    </div>
+                  </div>
+
+                  <div class="flex-1 flex flex-col items-center justify-center text-center p-4 space-y-4">
+                    <i class="fa-solid fa-lock text-4xl text-slate-700"></i>
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                      BrotherG 獨家高階操盤系統正在實驗室調校中。<br>
+                      未來會包含：私密選品庫、實戰 SOP、全案教學。
+                    </p>
+                  </div>
+
+                  <button disabled
+                          class="w-full mt-6 py-3 bg-slate-800 text-slate-500 font-bold text-sm rounded border border-slate-700">
+                    暫未開放申請
+                  </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-20 md:bottom-8 right-4 md:right-8 bg-bgCard border border-aiBlue text-white px-4 md:px-6 py-3 rounded-lg shadow-[0_0_15px_rgba(0,160,233,0.3)] transform translate-y-24 opacity-0 transition-all duration-300 z-50 flex items-center gap-3 max-w-[90vw]">
+        <i class="fa-solid fa-info-circle text-aiBlue"></i>
+        <span id="toast-msg" class="font-medium text-sm font-mono">Notification</span>
+    </div>
+    
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-nav">
+        <a href="https://brotherg.ai" class="mobile-nav-item">
+            <i class="fa-solid fa-house"></i>
+            <span>首頁</span>
+        </a>
+        <div class="mobile-nav-item active">
+            <i class="fa-solid fa-bag-shopping"></i>
+            <span>蝦皮分析</span>
+        </div>
+        <a href="/strategy.html" class="mobile-nav-item">
+            <i class="fa-solid fa-compass"></i>
+            <span>選品策略</span>
+        </a>
+        <div class="mobile-nav-item" onclick="openPricingModal()">
+            <i class="fa-solid fa-crown text-yellow-400"></i>
+            <span>升級</span>
+        </div>
+    </nav>
+
+    <!-- Firebase SDK (放在 </body> 之前) -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
+
+    <!-- 全站共用登入模組 -->
+    <script src="/js/auth.js"></script>
+    
+    <!-- Firebase Firestore 用戶資料管理模組 -->
+    <script src="/js/firebase-store.js"></script>
+
+    <script>
+        let remainingUsage = 5;
+        let currentPlan = null;
+
+        // ★ PLAN_CONFIG：與後端同步（guest/free/pro/master）
+        const PLAN_CONFIG = {
+            guest:  { dailyLimit: 1 },
+            free:   { dailyLimit: 5 },
+            pro:    { dailyLimit: 20 },
+            master: { dailyLimit: 50 },
+        };
+
+        function navigateTo(target) {
+            if (target === 'home') {
+                window.location.href = 'https://brotherg.ai';
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('translate-y-24', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-24', 'opacity-0');
+            }, 3000);
+        }
+
+        function openPricingModal() {
+            document.getElementById('pricing-modal').classList.remove('hidden');
+        }
+        function closePricingModal() {
+            document.getElementById('pricing-modal').classList.add('hidden');
+            resetPlans();
+        }
+
+        function resetPlans() {
+            currentPlan = null;
+            ['free', 'pro'].forEach(p => {
+                const card = document.getElementById(`plan-card-${p}`);
+                if (card) {
+                    card.classList.remove('active', 'border-aiBlue', 'shadow-glow-pro');
+                    card.classList.add('border-slate-700'); 
+                }
+            });
+            // Master 卡片永遠不應該被選擇
+            const masterCard = document.getElementById('plan-card-master');
+            if (masterCard) {
+                masterCard.style.pointerEvents = 'none';
+            }
+        }
+        
+        function selectPlan(plan) {
+            // 🔒 Master 完全鎖死，不做任何操作
+            if (plan === 'master') {
+                showToast('🚧 大師版正在調校中，先用 PRO 幫你賺 688 回本。');
+                return;
+            }
+            if (currentPlan === plan) return;
+            resetPlans();
+            currentPlan = plan;
+            
+            const card = document.getElementById(`plan-card-${plan}`);
+            if (!card) return;
+            
+            card.classList.remove('border-slate-700'); 
+            card.classList.add('active'); 
+            
+            if(plan === 'free') {
+                card.classList.add('border-slate-500');
+            } else if(plan === 'pro') {
+                card.classList.add('border-aiBlue', 'shadow-glow-pro');
+                window.userTier = 'pro';
+            }
+        }
+
+        // Payment checkout function
+        function handleCheckout(plan) {
+            const paymentUrls = {
+                'PRO': 'https://p.ecpay.com.tw/E149ADE',
+                'MASTER': 'https://p.ecpay.com.tw/91B478A'
+            };
+            const url = paymentUrls[plan];
+            if (url) {
+                window.open(url, '_blank');
+                closePricingModal();
+                showToast(`已開啟 ${plan} 方案付款頁面，付款完成後請輸入開通碼`);
+            } else {
+                showToast('無效的方案類型');
+            }
+        }
+
+        // 全域狀態
+        window.currentUser = null;
+        window.userTier = 'basic';
+        window.usedToday = 0;
+        window.dailyLimit = 5;
+
+        // ★ 更新用量 UI 顯示（根據 tier 顯示不同格式）
+        function updateUsageUI() {
+            const counter = document.getElementById('usage-count');
+            const dailyCounter = document.getElementById('daily-counter');
+            const dailyCounterText = document.getElementById('daily-counter-text');
+            const remaining = Math.max(0, window.dailyLimit - window.usedToday);
+
+            if (counter) {
+                counter.innerText = remaining;
+            }
+
+            if (dailyCounter) {
+                dailyCounter.innerText = `/ ${window.dailyLimit}`;
+            }
+
+            if (dailyCounterText) {
+                switch (window.userTier) {
+                    case 'guest':
+                        dailyCounterText.innerText = `訪客模式｜登入後每天 5 次免費`;
+                        break;
+                    case 'free':
+                        dailyCounterText.innerText = `方案：Free｜今日 ${remaining}/${window.dailyLimit} 次`;
+                        break;
+                    case 'pro':
+                        dailyCounterText.innerText = `方案：Pro｜今日 ${remaining}/${window.dailyLimit} 次`;
+                        break;
+                    default:
+                        dailyCounterText.innerText = `今日剩餘：${remaining}/${window.dailyLimit} 次`;
+                }
+            }
+        }
+        
+        // ★ 開通碼驗證（呼叫後端 API，真正升級）
+        async function showActivationModal() {
+            const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
+            if (!currentUser || !currentUser.email) {
+                showToast('請先登入以使用開通碼功能');
+                if (typeof showLoginModal === 'function') {
+                    showLoginModal();
+                } else {
+                    document.getElementById('login-overlay').classList.remove('hidden');
+                }
+                return;
+            }
+
+            // 清除 pending 標記
+            localStorage.removeItem('brotherg_pending_payment');
+
+            const code = prompt('請輸入您的開通碼：');
+            if (!code || !code.trim()) {
+                return;
+            }
+
+            showToast('正在驗證開通碼...');
+
+            try {
+                // ★ 呼叫後端 API 驗證開通碼
+                const resp = await fetch('/.netlify/functions/verify-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        code: code.trim(),
+                        userId: currentUser.uid,
+                        email: currentUser.email
+                    })
+                });
+
+                const data = await resp.json();
+
+                if (data.valid && data.plan) {
+                    // ★ 開通成功！
+                    const newTier = data.plan.toLowerCase(); // 'pro' or 'master'
+                    const effectiveTier = (newTier === 'master') ? 'pro' : newTier;
+                    
+                    // 更新 Firestore（前端也寫一次，確保即時）
+                    if (typeof firebase !== 'undefined' && firebase.firestore) {
+                        const db = firebase.firestore();
+                        await db.collection('users').doc(currentUser.uid).set({
+                            tier: newTier,
+                            activatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            activationCode: code.trim(),
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
+                    }
+
+                    // ★ 立即更新本地狀態
+                    window.userTier = effectiveTier;
+                    window.usedToday = 0; // 升級後重置用量
+                    window.dailyLimit = PLAN_CONFIG[effectiveTier]?.dailyLimit || 20;
+
+                    // ★ 立即更新 UI（不等 Firestore）
+                    const badge = document.getElementById('user-tier-badge');
+                    const btnText = document.getElementById('analyze-btn-text');
+                    const proCard = document.getElementById('pro-upsell-card');
+                    const proLink = document.getElementById('pro-strategy-link');
+
+                    if (badge) {
+                        badge.innerText = 'PRO';
+                        badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded tracking-wider hidden md:inline-block tier-badge-pro';
+                    }
+                    if (btnText) btnText.innerText = '開始深度分析 (PRO)';
+                    if (proCard) proCard.classList.add('hidden');
+                    
+                    // ★ 顯示選品策略分析連結（右上角小連結）
+                    if (proLink) {
+                        proLink.className = 'text-[10px] md:text-xs font-bold text-white px-3 py-1.5 rounded-full flex items-center hover:opacity-80 transition-opacity bg-gradient-to-r from-aiBlue to-blue-600 shadow-lg';
+                    }
+                    
+                    // ★ 顯示選品策略分析按鈕（按鈕下方大按鈕）
+                    const proStrategyBtn = document.getElementById('pro-strategy-btn');
+                    if (proStrategyBtn) {
+                        proStrategyBtn.classList.remove('hidden');
+                    }
+
+                    updateUsageUI();
+
+                    showToast(`🎉 恭喜！已成功升級為 PRO 會員！每天 ${window.dailyLimit} 次深度分析`);
+                    
+                    // 關閉 pricing modal（如果開著的話）
+                    closePricingModal();
+
+                } else {
+                    // 開通碼無效
+                    showToast('❌ 開通碼無效，請確認後再試');
+                }
+
+            } catch (error) {
+                console.error('開通碼驗證錯誤:', error);
+                showToast('開通碼驗證失敗，請稍後再試');
+            }
+        }
+
+        // ★ 升級 Pro 按鈕點擊：設置 pending 標記 + 跳轉付款
+        function handleUpgradeToPro() {
+            const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
+            if (!currentUser) {
+                showToast('請先登入 Google 帳號');
+                if (typeof showLoginModal === 'function') {
+                    showLoginModal();
+                } else {
+                    document.getElementById('login-overlay').classList.remove('hidden');
+                }
+                return;
+            }
+
+            // 設置 pending 標記
+            localStorage.setItem('brotherg_pending_payment', '1');
+            
+            // 跳轉付款頁面
+            window.open('https://p.ecpay.com.tw/B9C31CF', '_blank');
+            
+            closePricingModal();
+            showToast('已開啟付款頁面，付款完成後請回來輸入開通碼');
+        }
+
+        // ★ 頁面載入時檢查是否有待處理的付款
+        function checkPendingPayment() {
+            const pending = localStorage.getItem('brotherg_pending_payment');
+            if (pending === '1') {
+                const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
+                if (currentUser) {
+                    // 延遲 1 秒彈出，讓頁面先載入完成
+                    setTimeout(() => {
+                        showToast('偵測到您剛完成付款，請輸入開通碼');
+                        showActivationModal();
+                    }, 1000);
+                }
+            }
+        }
+
+        // --- 初始化 Shopee 頁面 ---
+        async function initShopeePage(user) {
+            window.currentUser = user;
+
+            const badge = document.getElementById('user-tier-badge');
+            const btnText = document.getElementById('analyze-btn-text');
+            const proLink = document.getElementById('pro-strategy-link');
+            const proCard = document.getElementById('pro-upsell-card');
+            const loginBtnHeader = document.getElementById('login-btn-header');
+            const userInfo = document.getElementById('user-info');
+            const dailyCounterText = document.getElementById('daily-counter-text');
+
+            if (!user) {
+                // ★ 未登入狀態：guest，只有 1 次
+                window.userTier = 'guest';
+                window.usedToday = parseInt(localStorage.getItem('brotherg_guest_used') || '0');
+                window.dailyLimit = PLAN_CONFIG.guest.dailyLimit;
+
+                // 檢查是否需要重置 guest 每日用量
+                const todayKey = getTodayKeyLocal();
+                const guestLastDate = localStorage.getItem('brotherg_guest_date');
+                if (guestLastDate !== todayKey) {
+                    window.usedToday = 0;
+                    localStorage.setItem('brotherg_guest_used', '0');
+                    localStorage.setItem('brotherg_guest_date', todayKey);
+                }
+
+                if (badge) {
+                    badge.innerText = 'GUEST';
+                    badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded tracking-wider hidden md:inline-block tier-badge-basic';
+                }
+                if (btnText) btnText.innerText = '開始分析（登入後獲得 5 次）';
+                
+                // 顯示登入按鈕
+                if (loginBtnHeader) loginBtnHeader.classList.remove('hidden');
+                if (userInfo) userInfo.classList.add('hidden');
+                
+                // 更新提示文字
+                if (dailyCounterText) {
+                    dailyCounterText.innerText = '登入 Google 後每天可免費用 5 次';
+                }
+                
+                updateUsageUI();
+                
+                // 顯示 PRO upsell 卡片
+                if (proCard) proCard.classList.remove('hidden');
+                return;
+            }
+
+            // ★ 已登入：隱藏登入按鈕，顯示用戶資訊
+            if (loginBtnHeader) loginBtnHeader.classList.add('hidden');
+            if (userInfo) userInfo.classList.remove('hidden');
+
+            // 確保用戶記錄存在並重置邏輯
+            if (typeof window.ensureUserRecord !== 'function') {
+                console.warn('⚠️ ensureUserRecord 尚未載入');
+                // Fallback：直接用 free
+                window.userTier = 'free';
+                window.usedToday = 0;
+                window.dailyLimit = PLAN_CONFIG.free.dailyLimit;
+                updateUsageUI();
+                return;
+            }
+
+            const record = await window.ensureUserRecord(user);
+            if (!record) {
+                console.error('❌ 無法取得用戶記錄');
+                window.userTier = 'free';
+                window.usedToday = 0;
+                window.dailyLimit = PLAN_CONFIG.free.dailyLimit;
+                updateUsageUI();
+                return;
+            }
+
+            // 從 Firestore 讀取 tier, usedToday, lastUsageDate
+            let tier = (record.tier || record.plan || 'free').toLowerCase();
+            let usedToday = record.usedToday || record.daily_count || 0;
+            const lastUsageDate = record.lastUsageDate || record.last_used_date;
+            const todayKey = getTodayKeyLocal();
+
+            // 檢查是否需要重置每日用量
+            if (lastUsageDate !== todayKey) {
+                usedToday = 0;
+            }
+
+            // ★ master 邏輯當作 pro 處理（限額相同）
+            const effectiveTier = (tier === 'master') ? 'pro' : tier;
+
+            // 設定全域狀態
+            window.userTier = effectiveTier;
+            window.usedToday = usedToday;
+            window.dailyLimit = PLAN_CONFIG[effectiveTier]?.dailyLimit || PLAN_CONFIG.free.dailyLimit;
+
+            // Reset classes
+            if (badge) {
+                badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded tracking-wider hidden md:inline-block';
+            }
+            if (proLink) {
+                proLink.className = 'hidden text-[10px] md:text-xs font-bold text-white px-3 py-1.5 rounded-full flex items-center hover:opacity-80 transition-opacity shadow-lg';
+            }
+
+            if (effectiveTier === 'pro') {
+                // ★ PRO 用戶
+                if (badge) {
+                    badge.innerText = 'PRO';
+                    badge.classList.add('tier-badge-pro');
+                }
+                if (btnText) btnText.innerText = '開始深度分析 (PRO)';
+                
+                // ★ 顯示選品策略分析連結（右上角小連結）
+                if (proLink) {
+                    proLink.className = 'text-[10px] md:text-xs font-bold text-white px-3 py-1.5 rounded-full flex items-center hover:opacity-80 transition-opacity bg-gradient-to-r from-aiBlue to-blue-600 shadow-lg';
+                }
+                
+                // ★ 顯示選品策略分析按鈕（按鈕下方大按鈕）
+                const proStrategyBtn = document.getElementById('pro-strategy-btn');
+                if (proStrategyBtn) {
+                    proStrategyBtn.classList.remove('hidden');
+                }
+                
+                // PRO 用戶隱藏 upsell
+                if (proCard) proCard.classList.add('hidden');
+            } else {
+                // ★ FREE 用戶
+                if (badge) {
+                    badge.innerText = 'FREE';
+                    badge.classList.add('tier-badge-basic');
+                }
+                if (btnText) btnText.innerText = '開始深度分析 (FREE)';
+                
+                // 顯示 PRO upsell 卡片
+                if (proCard) proCard.classList.remove('hidden');
+            }
+
+            updateUsageUI();
+        }
+
+        // 取得本地日期 key（與後端同步）
+        function getTodayKeyLocal() {
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        // --- UI Logic for Tiers（向後兼容）---
+        async function updateTierUI() {
+            const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
+            await initShopeePage(currentUser);
+        }
+
+        // Listen to auth state changes and update UI
+        window.addEventListener('authStateChanged', function(event) {
+            updateTierUI();
+        });
+
+        // Listen to user data updates
+        window.addEventListener('userDataUpdated', function(event) {
+            updateTierUI();
+        });
+
+        // Update UI on page load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', updateTierUI);
+        } else {
+            updateTierUI();
+        }
+
+        // 添加 PRO Upsell 區塊（Basic tier 使用）
+        function appendProUpsellBlock(remaining) {
+            const contentDiv = document.getElementById('shopee-markdown-content');
+            const block = document.createElement('div');
+            block.innerHTML = `
+                <div class="mt-8 border-t-2 border-dashed border-slate-700 pt-6">
+                    <div class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-xl p-5 relative overflow-hidden group cursor-pointer" onclick="openPricingModal()">
+                        <div class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-10 backdrop-blur-[2px] group-hover:backdrop-blur-none transition-all duration-500">
+                            <div class="bg-aiBlue/20 border border-aiBlue/50 text-aiBlue px-4 py-2 rounded-full font-bold text-xs flex items-center gap-2 shadow-[0_0_20px_rgba(0,160,233,0.4)] animate-pulse">
+                                <i class="fa-solid fa-lock"></i> 解鎖 PRO 版完整策略
+                            </div>
+                            <p class="text-gray-400 text-[10px] mt-2">點一下，看看 $688 怎麼幫你把 3 萬分潤做到頂...</p>
+                        </div>
+
+                        <h4 class="text-gray-500 font-bold mb-2">💎 [PRO 專屬] 進階利潤放大術：</h4>
+                        <p class="text-gray-600 text-xs leading-relaxed blur-sm select-none">
+                            這裡會放進階的選品組合、爆品疊加策略與直播腳本，但在 Basic 版中被模糊隱藏。
+                        </p>
+                    </div>
+                    <p class="text-center text-xs text-slate-500 mt-3">
+                        您今日剩餘免費次數：<span class="text-aiBlue font-bold">${remaining}</span> 次
+                    </p>
+                </div>
+            `;
+            contentDiv.appendChild(block);
+        }
+
+        // 強制設定 MODE 常數
+        const MODE = "shopee";
+
+        async function runShopeeAnalysis() {
+            const promptInput = document.getElementById('shopee-keyword');
+            const textPrompt = promptInput.value.trim();
+            
+            if (!textPrompt) {
+                showToast('請輸入產品描述或目前遇到的銷售瓶頸。');
+                return;
+            }
+
+            const reportContainer = document.getElementById('shopee-markdown-content');
+            const emptyBlock = document.getElementById('shopee-empty');
+            const resultBlock = document.getElementById('shopee-results');
+            const loadingBlock = document.getElementById('shopee-loading');
+            const btn = document.getElementById('analyze-btn');
+
+            // 顯示「分析中...」狀態
+            emptyBlock.classList.add('hidden');
+            resultBlock.classList.add('hidden');
+            loadingBlock.classList.remove('hidden');
+            reportContainer.innerHTML = '系統正在分析，請稍候...';
+
+            // 按鈕進入 loading 狀態
+            const oldLabel = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = '分析中…';
+
+            // 1) 先檢查額度，不足就直接 return，不呼叫後端
+            if (window.usedToday >= window.dailyLimit) {
+                loadingBlock.classList.add('hidden');
+                resultBlock.classList.remove('hidden');
+                
+                if (window.userTier === 'guest') {
+                    // ★ Guest 用完 1 次：引導登入
+                    reportContainer.innerHTML = `
+                        <div class="text-center py-8">
+                            <i class="fa-solid fa-user-lock text-4xl text-aiBlue mb-4"></i>
+                            <p class="text-yellow-400 text-sm mb-4">訪客試用次數已用完</p>
+                            <p class="text-gray-400 text-xs mb-6">登入 Google 帳號後，每天可免費使用 5 次深度分析</p>
+                            <button onclick="handleGoogleLogin()" class="px-6 py-3 bg-white text-gray-900 rounded-lg font-bold text-sm hover:bg-gray-100 transition-colors inline-flex items-center gap-2">
+                                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google">
+                                登入 Google 帳號
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    // ★ Free/Pro 用完：引導升級
+                    reportContainer.innerHTML = '<p class="text-red-400 text-sm">今天的分析次數已用完，歡迎升級 PRO 版解鎖更多次數。</p>';
+                    openPricingModal();
+                }
+                
+                btn.disabled = false;
+                btn.innerText = oldLabel;
+                return;
+            }
+
+            try {
+                // 獲取用戶信息
+                const userId = window.currentUser?.uid || 'guest';
+                const userEmail = window.currentUser?.email || '';
+
+                // 調用統一的 ask.js API
+                const resp = await fetch('/.netlify/functions/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        q: textPrompt,  // ask.js 接受 q, query, textPrompt, input
+                        mode: MODE,
+                        uid: userId,    // ask.js 接受 uid 或 userId
+                        userId: userId,
+                        userEmail: userEmail
+                    }),
+                });
+
+                if (!resp.ok) {
+                    const errorData = await resp.json().catch(() => ({ error: 'Unknown error' }));
+                    throw new Error(errorData.message || errorData.error || '分析服務暫時無法使用，請稍後再試');
+                }
+
+                const data = await resp.json();
+                
+                // 處理 ask.js 的回傳格式（可能有 output 或 result）
+                const { success, result, output, error } = data;
+                const finalResult = output || result || error || '';
+                const finalSuccess = success !== false && !!finalResult;
+
+                // 2) 將 AI 回覆顯示到右側報告區
+                if (typeof marked !== 'undefined') {
+                    reportContainer.innerHTML = marked.parse(finalResult || '');
+                } else {
+                    reportContainer.textContent = finalResult || '';
+                }
+
+                // 3) 只有 success === true 時才扣次
+                if (finalSuccess) {
+                    window.usedToday += 1;
+                    
+                    if (window.currentUser && window.currentUser.uid) {
+                        // ★ 已登入用戶：寫回 Firestore
+                        if (typeof window.updateUsageInFirestore === 'function') {
+                            await window.updateUsageInFirestore(window.currentUser.uid, window.usedToday);
+                        }
+                    } else {
+                        // ★ Guest 用戶：寫回 localStorage
+                        localStorage.setItem('brotherg_guest_used', window.usedToday.toString());
+                        localStorage.setItem('brotherg_guest_date', getTodayKeyLocal());
+                    }
+                }
+
+                // 4) 更新畫面上的「今日剩餘次數」顯示
+                updateUsageUI();
+
+                // 5) Basic tier 額外顯示「模糊的 PRO 區塊」作為 Upsell
+                if (finalSuccess && window.userTier === 'basic') {
+                    const remaining = window.dailyLimit - window.usedToday;
+                    appendProUpsellBlock(remaining);
+                }
+
+                // 自動捲到底
+                const panel = reportContainer.parentElement;
+                if (panel) {
+                    panel.scrollTop = panel.scrollHeight;
+                }
+
+                loadingBlock.classList.add('hidden');
+                resultBlock.classList.remove('hidden');
+                
+                if (finalSuccess) {
+                    showToast('分析報告生成完畢');
+                } else {
+                    showToast('分析失敗，請稍後再試');
+                }
+
+            } catch (err) {
+                console.error('runShopeeAnalysis error:', err);
+                loadingBlock.classList.add('hidden');
+                resultBlock.classList.remove('hidden');
+                reportContainer.innerHTML = `<p class="text-red-400 text-sm">⚠️ 系統暫時忙碌，請稍後再試。<br>${err.message}</p>`;
+                showToast('分析時發生錯誤，請稍後再試');
+                // 注意：這裡 **不要** 修改 usedToday，也不要寫 Firestore
+            } finally {
+                btn.disabled = false;
+                btn.innerText = oldLabel;
+            }
+        }
+
+        window.onload = function() { 
+            console.log("Shopee Analyst Module Loaded");
+            updateTierUI();
+            
+            // ★ 檢查是否有待處理的付款
+            setTimeout(checkPendingPayment, 1500);
+        };
+    </script>
+</body>
+</html>
