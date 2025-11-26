@@ -184,7 +184,7 @@
     <header class="fixed top-0 left-0 right-0 z-40 bg-appBg/90 backdrop-blur-md border-b border-white/5 pt-safe-top transition-all duration-300" id="app-header">
         <div class="h-14 flex items-center justify-between px-4">
             <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-bold font-display shadow-lg shadow-primary/30">G</div>
+                <img src="/logo.png" alt="BrotherG" class="w-8 h-8 rounded-lg shadow-lg shadow-primary/30">
                 <span class="text-lg font-bold tracking-wide" id="header-title">BrotherGAi</span>
             </div>
             <div class="flex items-center gap-3">
@@ -208,10 +208,10 @@
         <!-- VIEW: HOME (App Landing) -->
         <div id="view-home" class="h-full flex flex-col px-6 animate-fade-in">
             <div class="flex-1 flex flex-col justify-center items-center text-center space-y-2">
-                <div class="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-transparent border border-primary/30 flex items-center justify-center mb-6 animate-pulse">
-                    <i class="fa-solid fa-robot text-4xl text-primary"></i>
+                <div class="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-transparent border border-primary/30 flex items-center justify-center mb-6 animate-pulse p-3">
+                    <img src="/logo.png" alt="BrotherG" class="w-full h-full object-contain">
                 </div>
-                <h1 class="text-3xl font-display font-bold text-white">Shopee Agent</h1>
+                <h1 class="text-3xl font-display font-bold text-white">BrotherGAi</h1>
                 <p class="text-slate-400 text-sm">全能電商選品助手</p>
                 
                 <!-- User Status -->
@@ -254,7 +254,7 @@
             <div id="chat-history" class="flex flex-col gap-4">
                 <!-- AI Welcome -->
                 <div class="flex items-end gap-2">
-                    <div class="w-8 h-8 rounded-full bg-primary flex-shrink-0 flex items-center justify-center text-white text-xs font-bold">AI</div>
+                    <img src="/logo.png" alt="AI" class="w-8 h-8 rounded-full flex-shrink-0 bg-primary p-1">
                     <div class="chat-bubble ai">
                         嗨！我是你的蝦皮選品軍師。你可以直接輸入商品名稱或品類，我幫你做市場分析與選品建議！
                     </div>
@@ -627,7 +627,7 @@
             const htmlContent = marked.parse(text);
             
             div.innerHTML = `
-                <div class="w-8 h-8 rounded-full bg-primary flex-shrink-0 flex items-center justify-center text-white text-xs font-bold">AI</div>
+                <img src="/logo.png" alt="AI" class="w-8 h-8 rounded-full flex-shrink-0 bg-primary p-1">
                 <div class="chat-bubble ai">${htmlContent}</div>
             `;
             chatHistory.appendChild(div);
@@ -639,7 +639,7 @@
             div.id = 'typing-indicator';
             div.className = 'flex items-end gap-2 animate-fade-in';
             div.innerHTML = `
-                <div class="w-8 h-8 rounded-full bg-primary flex-shrink-0 flex items-center justify-center text-white text-xs font-bold">AI</div>
+                <img src="/logo.png" alt="AI" class="w-8 h-8 rounded-full flex-shrink-0 bg-primary p-1">
                 <div class="chat-bubble ai flex gap-1 py-4">
                     <div class="typing-dot"></div>
                     <div class="typing-dot"></div>
