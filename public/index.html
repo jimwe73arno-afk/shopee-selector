@@ -3,18 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#FFFFFF">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>BrotherGAi | AI 決策引擎</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/logo.png">
     <link rel="apple-touch-icon" href="/logo.png">
     
-    <!-- Fonts & Icons -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     
     <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -27,35 +34,34 @@
                 extend: {
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
-                        display: ['Rajdhani', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
                     },
                     colors: {
-                        appBg: '#020617',
-                        appSurface: '#0F172A',
-                        primary: '#00A0E9',
-                        accent: '#F59E0B',
+                        aiBlue: '#1E88E5',
+                        aiLight: '#E3F2FD',
+                        textMain: '#111827',
+                        textSub: '#64748B',
+                        bgPage: '#FFFFFF',
+                        borderLight: '#E2E8F0',
                     },
-                    spacing: {
-                        'safe-top': 'env(safe-area-inset-top)',
-                        'safe-bottom': 'env(safe-area-inset-bottom)',
+                    boxShadow: {
+                        'card': '0 2px 8px rgba(0, 0, 0, 0.04)',
+                        'card-active': '0 4px 12px rgba(30, 136, 229, 0.15)',
+                        'nav': '0 -1px 10px rgba(0,0,0,0.05)',
                     },
                     animation: {
-                        'fade-in': 'fadeIn 0.3s ease-out',
+                        'shockwave': 'shockwave 0.6s ease-out',
                         'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                        'float': 'float 3s ease-in-out infinite',
                     },
                     keyframes: {
-                        fadeIn: {
-                            '0%': { opacity: '0', transform: 'translateY(10px)' },
-                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        shockwave: {
+                            '0%': { transform: 'translate(-50%, -50%) scale(0)', opacity: '0.5' },
+                            '100%': { transform: 'translate(-50%, -50%) scale(3)', opacity: '0' },
                         },
                         slideUp: {
-                            '0%': { transform: 'translateY(100%)' },
-                            '100%': { transform: 'translateY(0)' },
-                        },
-                        float: {
-                            '0%, 100%': { transform: 'translateY(0px)' },
-                            '50%': { transform: 'translateY(-10px)' },
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
                         }
                     }
                 }
@@ -64,284 +70,410 @@
     </script>
 
     <style>
-        body {
-            background-color: #020617;
-            color: #F8FAFC;
-            overscroll-behavior-y: none;
+        body { 
+            background-color: #FFFFFF; 
+            color: #111827; 
+            overflow: hidden;
             -webkit-tap-highlight-color: transparent;
         }
-        ::-webkit-scrollbar { display: none; }
         
-        .touch-active:active {
-            transform: scale(0.97);
-            opacity: 0.9;
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .bg-pattern {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: radial-gradient(#E5E7EB 1px, transparent 1px);
+            background-size: 24px 24px; opacity: 0.5; z-index: -1; pointer-events: none;
         }
 
-        .card-glow {
-            position: relative;
-            overflow: hidden;
+        /* Core Card Design */
+        .core-card {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 1.5rem;
+            position: relative; overflow: hidden;
+            display: flex; flex-direction: row; align-items: stretch;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
+            touch-action: manipulation;
         }
-        .card-glow::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
-            transition: left 0.5s;
-        }
-        .card-glow:hover::before {
-            left: 100%;
-        }
-
-        .module-card {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .module-card:active {
+        
+        .core-card:active {
             transform: scale(0.98);
+            border-color: #1E88E5;
         }
 
-        /* Toast */
-        .toast {
-            position: fixed;
-            top: calc(4rem + env(safe-area-inset-top));
-            left: 50%;
-            transform: translateX(-50%);
-            background: #1E293B;
-            border: 1px solid #334155;
-            color: #F8FAFC;
-            padding: 12px 20px;
-            border-radius: 12px;
-            font-size: 14px;
-            z-index: 100;
-            opacity: 0;
-            transition: opacity 0.3s;
-            pointer-events: none;
+        @media (hover: hover) {
+            .core-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.05), 0 0 0 1px #1E88E5 inset;
+                border-color: #1E88E5;
+            }
+            .core-card::before {
+                content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%;
+                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+                transform: skewX(-25deg); transition: left 0.7s ease-in-out; pointer-events: none; z-index: 2;
+            }
+            .core-card:hover::before { left: 200%; }
         }
-        .toast.show { opacity: 1; }
+        
+        .core-card .icon-box {
+            width: 5.5rem; flex-shrink: 0; background: #F8FAFC;
+            display: flex; align-items: center; justify-content: center;
+            border-right: 1px solid #E2E8F0; transition: background 0.3s;
+        }
+        .core-card:active .icon-box, .core-card:hover .icon-box { background: #F0F9FF; border-right-color: #1E88E5; }
+        .core-card:active .icon-glow, .core-card:hover .icon-glow { color: #1E88E5; transform: scale(1.1); transition: 0.3s; }
 
-        /* Sheet Overlay */
-        .sheet-overlay {
-            background: rgba(0,0,0,0.6);
+        /* Shockwave */
+        .shockwave-container { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+        .shockwave-effect {
+            position: absolute; top: 50%; left: 50%; width: 150%; padding-top: 150%;
+            background: radial-gradient(circle, rgba(30, 136, 229, 0.3) 0%, transparent 70%);
+            transform: translate(-50%, -50%) scale(0); border-radius: 50%; opacity: 0;
+        }
+        .core-card:active .shockwave-effect { animation: shockwave 0.4s ease-out; }
+
+        /* Charge Bar */
+        .charge-track { position: absolute; bottom: 0; left: 0; width: 100%; height: 3px; background: #F1F5F9; overflow: hidden; z-index: 3; }
+        .charge-bar { width: 0%; height: 100%; background: #1E88E5; position: relative; transition: width 0.4s; }
+        .core-card:active .charge-bar, .core-card:hover .charge-bar { width: 100%; }
+
+        /* Bottom Nav */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; width: 100%; 
+            height: calc(3.5rem + env(safe-area-inset-bottom));
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px);
+            border-top: 1px solid #E2E8F0; z-index: 50;
+            padding-bottom: env(safe-area-inset-bottom);
+            display: flex; justify-content: space-around; align-items: center;
+        }
+        .nav-item {
+            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100%; color: #94A3B8; font-size: 0.7rem; gap: 2px; font-weight: 500;
+            transition: color 0.2s;
+        }
+        .nav-item.active { color: #1E88E5; }
+        .nav-item i { font-size: 1.25rem; margin-bottom: 2px; }
+        
+        .safe-bottom { padding-bottom: calc(4rem + env(safe-area-inset-bottom)); }
+
+        /* Login Modal */
+        .modal-overlay {
+            background: rgba(0,0,0,0.4);
             backdrop-filter: blur(4px);
         }
     </style>
 </head>
-<body class="min-h-[100dvh] w-full flex flex-col">
+<body class="h-screen flex flex-col">
 
-    <!-- Toast -->
-    <div id="toast" class="toast"></div>
+    <div class="bg-pattern"></div>
 
-    <!-- === HEADER === -->
-    <header class="fixed top-0 left-0 right-0 z-40 bg-appBg/90 backdrop-blur-md border-b border-white/5 pt-safe-top">
-        <div class="h-14 flex items-center justify-between px-4 max-w-4xl mx-auto">
-            <div class="flex items-center gap-3">
-                <img src="/logo.png" alt="BrotherG" class="w-9 h-9 rounded-xl shadow-lg shadow-primary/20">
-                <div>
-                    <span class="text-lg font-bold tracking-wide">BrotherGAi</span>
-                    <span class="hidden sm:inline text-xs text-slate-500 ml-2">AI 決策引擎</span>
-                </div>
+    <!-- Desktop Sidebar -->
+    <aside class="w-20 bg-white/90 backdrop-blur-md border-r border-borderLight flex-col items-center py-8 z-30 flex-shrink-0 hidden md:flex">
+        <div class="w-10 h-10 mb-16 cursor-pointer hover:opacity-80">
+            <img src="/logo.png" alt="Logo" class="w-full h-full object-contain rounded-lg">
+        </div>
+        <nav class="flex-1 flex flex-col space-y-6 w-full items-center">
+            <button class="nav-icon-desk w-10 h-10 rounded-xl flex items-center justify-center text-aiBlue bg-blue-50">
+                <i class="fa-solid fa-layer-group text-lg"></i>
+            </button>
+            <button onclick="openPricingModal()" class="nav-icon-desk w-10 h-10 rounded-xl flex items-center justify-center text-textSub hover:text-aiBlue transition-all">
+                <i class="fa-solid fa-crown text-lg"></i>
+            </button>
+        </nav>
+        <!-- User Section -->
+        <div class="flex flex-col items-center space-y-3">
+            <div id="user-avatar-desktop" class="hidden w-9 h-9 rounded-full bg-aiBlue text-white font-bold text-sm flex items-center justify-center cursor-pointer"></div>
+            <button id="logout-btn-desktop" onclick="handleLogout()" class="hidden text-xs text-textSub hover:text-red-500 transition-colors">
+                <i class="fa-solid fa-power-off"></i>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main View -->
+    <main class="flex-1 relative overflow-hidden flex flex-col w-full">
+        
+        <!-- Header -->
+        <header class="h-14 md:h-16 px-4 md:px-8 flex justify-between items-center z-20 border-b border-borderLight bg-white/80 backdrop-blur-md sticky top-0">
+            <div class="flex items-center space-x-3">
+                <img src="/logo.png" alt="Logo" class="h-7 w-auto object-contain md:h-8 rounded-lg">
+                <span class="font-display font-bold text-lg text-textMain tracking-tight">BrotherGAi</span>
             </div>
             <div class="flex items-center gap-3">
+                <!-- Credits Display -->
+                <div id="credits-display" class="hidden flex items-center px-2.5 py-1 rounded-full bg-blue-50 border border-blue-100 text-xs">
+                    <i class="fa-solid fa-bolt text-amber-500 mr-1.5"></i>
+                    <span id="credits-count" class="font-mono font-bold text-aiBlue">5</span>
+                    <span class="text-textSub">/5</span>
+                </div>
                 <!-- Login Button -->
-                <button id="login-btn" onclick="handleGoogleLogin()" class="flex items-center gap-2 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm touch-active">
+                <button id="login-btn" onclick="handleGoogleLogin()" class="flex items-center gap-2 px-3 py-2 bg-gray-100 border border-gray-200 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors">
                     <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-4 h-4" alt="Google">
                     <span class="hidden sm:inline">登入</span>
                 </button>
-                <!-- User Avatar (hidden by default) -->
-                <div id="user-avatar" class="hidden w-9 h-9 rounded-full bg-primary text-white font-bold text-sm flex items-center justify-center cursor-pointer border-2 border-primary/50"></div>
+                <!-- User Avatar -->
+                <div id="user-avatar" class="hidden w-9 h-9 rounded-full bg-aiBlue text-white font-bold text-sm flex items-center justify-center cursor-pointer border-2 border-blue-200"></div>
             </div>
-        </div>
-    </header>
+        </header>
 
-    <!-- === MAIN CONTENT === -->
-    <main class="flex-1 pt-[calc(3.5rem+env(safe-area-inset-top))] pb-safe-bottom">
-        
-        <!-- Hero Section -->
-        <section class="px-4 py-8 sm:py-12 text-center max-w-2xl mx-auto">
-            <div class="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/30 flex items-center justify-center animate-float">
-                <img src="/logo.png" alt="BrotherG" class="w-12 h-12 sm:w-16 sm:h-16">
-            </div>
-            <h1 class="text-2xl sm:text-3xl font-display font-bold text-white mb-2">BrotherGAi</h1>
-            <p class="text-slate-400 text-sm sm:text-base">您的 AI 決策夥伴</p>
-            
-            <!-- User Status -->
-            <div id="user-status" class="mt-4 text-sm">
-                <span id="login-hint" class="text-slate-500">登入解鎖完整功能</span>
-                <div id="user-info-hero" class="hidden flex items-center justify-center gap-2">
-                    <span id="user-tier-badge" class="px-2 py-1 rounded-full text-xs font-bold bg-slate-700 text-slate-300">FREE</span>
-                    <span id="user-credits" class="text-slate-400 text-xs"></span>
-                </div>
-            </div>
-        </section>
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto scroll-smooth safe-bottom p-4 md:p-8 lg:p-12 no-scrollbar">
 
-        <!-- AI Modules Grid -->
-        <section class="px-4 pb-8 max-w-4xl mx-auto">
-            <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 px-1">AI 模組</h2>
-            
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Home View -->
+            <div id="view-home" class="w-full max-w-5xl mx-auto animate-slide-up">
                 
-                <!-- 選品獵人 Module -->
-                <a href="/app" class="module-card card-glow bg-appSurface rounded-2xl p-5 border border-slate-800 hover:border-primary/50 flex gap-4 touch-active">
-                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 flex items-center justify-center flex-shrink-0">
-                        <i class="fa-solid fa-crosshairs text-2xl text-primary"></i>
+                <!-- Hero -->
+                <div class="mt-4 mb-8 md:mb-12 text-center md:text-left">
+                    <h1 class="text-3xl md:text-5xl font-display font-bold text-textMain mb-2 md:mb-3 tracking-tight">
+                        AI <span class="text-aiBlue">決策引擎</span>
+                    </h1>
+                    <p class="text-sm md:text-lg text-textSub">
+                        讓 AI 成為你的商業夥伴
+                    </p>
+                    <!-- User Status -->
+                    <div id="user-status" class="mt-4 flex items-center justify-center md:justify-start gap-2">
+                        <span id="login-hint" class="text-xs text-textSub">登入解鎖完整功能</span>
+                        <span id="user-tier-badge" class="hidden px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-aiBlue border border-blue-100">FREE</span>
                     </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 mb-1">
-                            <h3 class="font-bold text-white">選品獵人</h3>
-                            <span class="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded">HOT</span>
-                        </div>
-                        <p class="text-xs text-slate-400 line-clamp-2">蝦皮選品 AI 分析，找出爆款商品方向</p>
-                        <div class="flex items-center gap-1 mt-2 text-primary text-xs">
-                            <span>開始分析</span>
-                            <i class="fa-solid fa-arrow-right text-[10px]"></i>
-                        </div>
-                    </div>
-                </a>
+                </div>
 
-                <!-- 選品獵人 (Desktop) Module -->
-                <a href="/shopee" class="module-card card-glow bg-appSurface rounded-2xl p-5 border border-slate-800 hover:border-slate-600 flex gap-4 touch-active">
-                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-slate-700/50 to-slate-800/50 border border-slate-700 flex items-center justify-center flex-shrink-0">
-                        <i class="fa-solid fa-desktop text-2xl text-slate-400"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 mb-1">
-                            <h3 class="font-bold text-white">選品獵人</h3>
-                            <span class="text-[10px] bg-slate-700 text-slate-400 px-1.5 py-0.5 rounded">電腦版</span>
+                <!-- Module Cards -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5">
+                    
+                    <!-- 選品獵人 (Mobile) -->
+                    <a href="/app" class="core-card h-32 md:h-36 cursor-pointer group">
+                        <div class="shockwave-container"><div class="shockwave-effect"></div></div>
+                        <div class="icon-box">
+                            <i class="fa-solid fa-crosshairs text-3xl text-gray-400 icon-glow transition-colors"></i>
                         </div>
-                        <p class="text-xs text-slate-400 line-clamp-2">完整分析報告，適合電腦大螢幕使用</p>
-                        <div class="flex items-center gap-1 mt-2 text-slate-400 text-xs">
-                            <span>前往</span>
-                            <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        <div class="flex-1 p-4 md:p-5 flex flex-col justify-between relative z-10">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h2 class="text-base md:text-lg font-display font-bold text-textMain mb-0.5 group-hover:text-aiBlue transition-colors">選品獵人</h2>
+                                    <p class="text-[11px] text-textSub">蝦皮 AI 選品分析</p>
+                                </div>
+                                <span class="font-mono text-[10px] text-white bg-aiBlue px-2 py-0.5 rounded">HOT</span>
+                            </div>
+                            <div class="flex justify-between items-end">
+                                <span class="font-mono text-[10px] text-textSub">行動版</span>
+                                <i class="fa-solid fa-arrow-right text-gray-300 group-hover:text-aiBlue group-hover:translate-x-1 transition-all"></i>
+                            </div>
                         </div>
-                    </div>
-                </a>
+                        <div class="charge-track"><div class="charge-bar"></div></div>
+                    </a>
 
-                <!-- Tesla Module -->
-                <a href="/tesla" class="module-card card-glow bg-appSurface rounded-2xl p-5 border border-slate-800 hover:border-red-500/50 flex gap-4 touch-active">
-                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-red-500/20 to-red-500/5 border border-red-500/30 flex items-center justify-center flex-shrink-0">
-                        <i class="fa-solid fa-car text-2xl text-red-500"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 mb-1">
-                            <h3 class="font-bold text-white">Tesla 決策核心</h3>
+                    <!-- 選品獵人 (Desktop) -->
+                    <a href="/shopee" class="core-card h-32 md:h-36 cursor-pointer group">
+                        <div class="shockwave-container"><div class="shockwave-effect"></div></div>
+                        <div class="icon-box">
+                            <i class="fa-solid fa-desktop text-3xl text-gray-400 icon-glow transition-colors"></i>
                         </div>
-                        <p class="text-xs text-slate-400 line-clamp-2">Tesla 購車顧問，十大面向深度分析</p>
-                        <div class="flex items-center gap-1 mt-2 text-red-400 text-xs">
-                            <span>開始諮詢</span>
-                            <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        <div class="flex-1 p-4 md:p-5 flex flex-col justify-between relative z-10">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h2 class="text-base md:text-lg font-display font-bold text-textMain mb-0.5 group-hover:text-aiBlue transition-colors">選品獵人</h2>
+                                    <p class="text-[11px] text-textSub">完整分析報告</p>
+                                </div>
+                                <span class="font-mono text-[10px] text-textSub bg-gray-100 px-2 py-0.5 rounded border border-gray-200">電腦版</span>
+                            </div>
+                            <div class="flex justify-between items-end">
+                                <span class="font-mono text-[10px] text-textSub">適合大螢幕</span>
+                                <i class="fa-solid fa-arrow-right text-gray-300 group-hover:text-aiBlue group-hover:translate-x-1 transition-all"></i>
+                            </div>
                         </div>
-                    </div>
-                </a>
+                        <div class="charge-track"><div class="charge-bar"></div></div>
+                    </a>
 
-                <!-- 選品策略 Module -->
-                <a href="/strategy.html" class="module-card card-glow bg-appSurface rounded-2xl p-5 border border-slate-800 hover:border-amber-500/50 flex gap-4 touch-active">
-                    <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
-                        <i class="fa-solid fa-compass text-2xl text-amber-500"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 mb-1">
-                            <h3 class="font-bold text-white">選品策略</h3>
-                            <span class="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">PRO</span>
+                    <!-- Tesla 決策核心 -->
+                    <a href="/tesla" class="core-card h-32 md:h-36 cursor-pointer group">
+                        <div class="shockwave-container"><div class="shockwave-effect"></div></div>
+                        <div class="icon-box">
+                            <!-- Tesla Model X SVG -->
+                            <svg class="w-10 h-10 text-gray-400 icon-glow transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 17h16" /><path d="M5 17l1.5-5h11l1.5 5" /><path d="M8 12 L3 5" /><path d="M3 5 L9 6" /><path d="M16 12 L21 5" /><path d="M21 5 L15 6" /><circle cx="7" cy="17" r="2" /><circle cx="17" cy="17" r="2" />
+                            </svg>
                         </div>
-                        <p class="text-xs text-slate-400 line-clamp-2">系統化選品分析，建立爆品矩陣</p>
-                        <div class="flex items-center gap-1 mt-2 text-amber-400 text-xs">
-                            <span>查看策略</span>
-                            <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        <div class="flex-1 p-4 md:p-5 flex flex-col justify-between relative z-10">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h2 class="text-base md:text-lg font-display font-bold text-textMain mb-0.5 group-hover:text-aiBlue transition-colors">Tesla 決策核心</h2>
+                                    <p class="text-[11px] text-textSub">購車十大面向分析</p>
+                                </div>
+                                <span class="font-mono text-[10px] text-red-500 bg-red-50 px-2 py-0.5 rounded border border-red-100">TESLA</span>
+                            </div>
+                            <div class="flex justify-between items-end">
+                                <span class="font-mono text-[10px] text-textSub">STATUS: ACTIVE</span>
+                                <i class="fa-solid fa-arrow-right text-gray-300 group-hover:text-aiBlue group-hover:translate-x-1 transition-all"></i>
+                            </div>
                         </div>
+                        <div class="charge-track"><div class="charge-bar"></div></div>
+                    </a>
+
+                    <!-- 租屋風險評估 (Coming Soon) -->
+                    <div onclick="showToast('即將推出，敬請期待！')" class="core-card h-32 md:h-36 cursor-pointer group opacity-75 border-dashed">
+                        <div class="shockwave-container"><div class="shockwave-effect"></div></div>
+                        <div class="icon-box">
+                            <!-- Skyscraper SVG -->
+                            <svg class="w-10 h-10 text-gray-400 icon-glow transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2v20" /><path d="M12 4l-2 2v16" /><path d="M12 4l2 2v16" /><path d="M12 10l-4 4v8" /><path d="M12 10l4 4v8" /><path d="M8 22h8" />
+                            </svg>
+                        </div>
+                        <div class="flex-1 p-4 md:p-5 flex flex-col justify-between relative z-10">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h2 class="text-base md:text-lg font-display font-bold text-textSub group-hover:text-textMain transition-colors">租屋風險評估</h2>
+                                    <p class="text-[11px] text-textSub">房東/房客信用分析</p>
+                                </div>
+                                <i class="fa-solid fa-lock text-gray-300 text-xs"></i>
+                            </div>
+                            <span class="font-mono text-[10px] text-textSub bg-gray-100 px-2 py-1 rounded self-start">COMING SOON</span>
+                        </div>
+                        <div class="charge-track"><div class="charge-bar" style="background: #94A3B8;"></div></div>
                     </div>
-                </a>
+
+                    <!-- 選品策略 -->
+                    <a href="/strategy.html" class="core-card h-32 md:h-36 cursor-pointer group">
+                        <div class="shockwave-container"><div class="shockwave-effect"></div></div>
+                        <div class="icon-box">
+                            <i class="fa-solid fa-compass text-3xl text-gray-400 icon-glow transition-colors"></i>
+                        </div>
+                        <div class="flex-1 p-4 md:p-5 flex flex-col justify-between relative z-10">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h2 class="text-base md:text-lg font-display font-bold text-textMain mb-0.5 group-hover:text-aiBlue transition-colors">選品策略</h2>
+                                    <p class="text-[11px] text-textSub">系統化爆品矩陣</p>
+                                </div>
+                                <span class="font-mono text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">PRO</span>
+                            </div>
+                            <div class="flex justify-between items-end">
+                                <span class="font-mono text-[10px] text-textSub">Pro 會員專屬</span>
+                                <i class="fa-solid fa-arrow-right text-gray-300 group-hover:text-aiBlue group-hover:translate-x-1 transition-all"></i>
+                            </div>
+                        </div>
+                        <div class="charge-track"><div class="charge-bar" style="background: #F59E0B;"></div></div>
+                    </a>
+
+                    <!-- 旅遊規劃 (Coming Soon) -->
+                    <div onclick="showToast('即將推出，敬請期待！')" class="core-card h-32 md:h-36 cursor-pointer group opacity-75 border-dashed">
+                        <div class="shockwave-container"><div class="shockwave-effect"></div></div>
+                        <div class="icon-box">
+                            <i class="fa-solid fa-plane-departure text-3xl text-gray-400 icon-glow transition-colors"></i>
+                        </div>
+                        <div class="flex-1 p-4 md:p-5 flex flex-col justify-between relative z-10">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h2 class="text-base md:text-lg font-display font-bold text-textSub group-hover:text-textMain transition-colors">旅遊規劃師</h2>
+                                    <p class="text-[11px] text-textSub">AI 行程規劃引擎</p>
+                                </div>
+                                <i class="fa-solid fa-lock text-gray-300 text-xs"></i>
+                            </div>
+                            <span class="font-mono text-[10px] text-textSub bg-gray-100 px-2 py-1 rounded self-start">COMING SOON</span>
+                        </div>
+                        <div class="charge-track"><div class="charge-bar" style="background: #94A3B8;"></div></div>
+                    </div>
+
+                </div>
+
+                <!-- Upgrade Banner -->
+                <div onclick="openPricingModal()" class="mt-6 md:mt-8 bg-gradient-to-r from-blue-50 to-amber-50 rounded-2xl p-5 border border-blue-100 cursor-pointer hover:border-aiBlue transition-colors group">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border border-amber-200 shadow-sm">
+                                <i class="fa-solid fa-crown text-xl text-amber-500"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-textMain text-sm md:text-base">升級 Pro 會員</h3>
+                                <p class="text-[11px] text-textSub">解鎖更多分析次數與進階功能</p>
+                            </div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-gray-400 group-hover:text-aiBlue group-hover:translate-x-1 transition-all"></i>
+                    </div>
+                </div>
+
+                <!-- User Stats (shown when logged in) -->
+                <div id="user-stats" class="hidden mt-6 grid grid-cols-2 gap-4">
+                    <div class="bg-white rounded-xl p-4 border border-borderLight shadow-card">
+                        <div class="text-2xl font-display font-bold text-textMain" id="stat-used">0</div>
+                        <div class="text-[11px] text-textSub">今日已使用</div>
+                    </div>
+                    <div class="bg-white rounded-xl p-4 border border-borderLight shadow-card">
+                        <div class="text-2xl font-display font-bold text-aiBlue" id="stat-remaining">5</div>
+                        <div class="text-[11px] text-textSub">剩餘次數</div>
+                    </div>
+                </div>
 
             </div>
-        </section>
 
-        <!-- Pro Upgrade Banner -->
-        <section class="px-4 pb-8 max-w-4xl mx-auto">
-            <div onclick="openPricingModal()" class="bg-gradient-to-r from-primary/10 to-accent/10 rounded-2xl p-5 border border-primary/20 cursor-pointer touch-active hover:border-primary/40 transition-colors">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center border border-accent/30">
-                            <i class="fa-solid fa-crown text-xl text-accent"></i>
-                        </div>
-                        <div>
-                            <h3 class="font-bold text-white text-sm sm:text-base">升級 Pro 會員</h3>
-                            <p class="text-xs text-slate-400">解鎖更多分析次數與進階功能</p>
-                        </div>
-                    </div>
-                    <i class="fa-solid fa-chevron-right text-slate-500"></i>
-                </div>
-            </div>
-        </section>
-
-        <!-- Quick Stats (for logged in users) -->
-        <section id="user-stats" class="hidden px-4 pb-8 max-w-4xl mx-auto">
-            <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 px-1">今日使用</h2>
-            <div class="grid grid-cols-2 gap-4">
-                <div class="bg-appSurface rounded-xl p-4 border border-slate-800">
-                    <div class="text-2xl font-bold text-white" id="stat-used">0</div>
-                    <div class="text-xs text-slate-400">已使用</div>
-                </div>
-                <div class="bg-appSurface rounded-xl p-4 border border-slate-800">
-                    <div class="text-2xl font-bold text-accent" id="stat-remaining">5</div>
-                    <div class="text-xs text-slate-400">剩餘次數</div>
-                </div>
-            </div>
-        </section>
-
+        </div>
     </main>
 
-    <!-- === PRICING MODAL === -->
+    <!-- Mobile Bottom Nav -->
+    <nav class="bottom-nav md:hidden">
+        <div class="nav-item active">
+            <i class="fa-solid fa-layer-group"></i>
+            <span>首頁</span>
+        </div>
+        <div class="nav-item" onclick="openPricingModal()">
+            <i class="fa-solid fa-crown"></i>
+            <span>升級</span>
+        </div>
+        <div class="nav-item" onclick="showUserMenu()">
+            <i class="fa-solid fa-user"></i>
+            <span>我的</span>
+        </div>
+    </nav>
+
+    <!-- Pricing Modal -->
     <div id="pricing-modal" class="fixed inset-0 z-[60] hidden">
-        <div class="absolute inset-0 sheet-overlay" onclick="closePricingModal()"></div>
-        <div class="absolute bottom-0 left-0 right-0 bg-appSurface rounded-t-3xl p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] max-h-[85vh] overflow-y-auto animate-slide-up" id="pricing-content">
-            <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-6"></div>
+        <div class="absolute inset-0 modal-overlay" onclick="closePricingModal()"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] max-h-[85vh] overflow-y-auto animate-slide-up shadow-2xl">
+            <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
             
             <div class="text-center mb-6">
-                <h2 class="text-xl font-bold text-white mb-1">升級您的決策引擎</h2>
-                <p class="text-slate-400 text-sm">解鎖完整分析功能</p>
+                <h2 class="text-xl font-display font-bold text-textMain mb-1">升級您的決策引擎</h2>
+                <p class="text-textSub text-sm">解鎖完整 AI 分析功能</p>
             </div>
 
-            <!-- Plans -->
             <div class="space-y-4">
-                <!-- Free Plan -->
-                <div class="bg-slate-900 rounded-xl p-4 border border-slate-800">
+                <!-- Free -->
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
                     <div class="flex items-center justify-between mb-3">
                         <div>
-                            <h3 class="font-bold text-white">體驗版</h3>
-                            <p class="text-xs text-slate-400">免費使用</p>
+                            <h3 class="font-bold text-textMain">體驗版</h3>
+                            <p class="text-xs text-textSub">免費使用</p>
                         </div>
-                        <span class="text-xl font-bold text-white">$0</span>
+                        <span class="text-xl font-display font-bold text-textMain">$0</span>
                     </div>
-                    <ul class="space-y-2 text-xs text-slate-400">
-                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-primary"></i> 每日 5 次基礎分析</li>
-                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-primary"></i> 單次對話模式</li>
+                    <ul class="space-y-2 text-xs text-textSub">
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-aiBlue"></i> 每日 5 次基礎分析</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-aiBlue"></i> 單次對話模式</li>
                     </ul>
                 </div>
 
-                <!-- Pro Plan -->
-                <div class="bg-gradient-to-br from-primary/10 to-slate-900 rounded-xl p-4 border-2 border-primary relative">
-                    <div class="absolute -top-3 left-4 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full">推薦</div>
+                <!-- Pro -->
+                <div class="bg-gradient-to-br from-blue-50 to-white rounded-xl p-4 border-2 border-aiBlue relative">
+                    <div class="absolute -top-3 left-4 bg-aiBlue text-white text-[10px] font-bold px-2 py-0.5 rounded-full">推薦</div>
                     <div class="flex items-center justify-between mb-3 mt-1">
                         <div>
-                            <h3 class="font-bold text-white">專業版 Pro</h3>
-                            <p class="text-xs text-primary">最受歡迎</p>
+                            <h3 class="font-bold text-textMain">專業版 Pro</h3>
+                            <p class="text-xs text-aiBlue">最受歡迎</p>
                         </div>
                         <div class="text-right">
-                            <span class="text-xl font-bold text-white">$688</span>
-                            <span class="text-xs text-slate-400">/月</span>
+                            <span class="text-xl font-display font-bold text-textMain">$688</span>
+                            <span class="text-xs text-textSub">/月</span>
                         </div>
                     </div>
-                    <ul class="space-y-2 text-xs text-slate-300 mb-4">
-                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-primary"></i> 每日 20 次深度分析</li>
-                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-primary"></i> 完整選品策略報告</li>
-                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-primary"></i> 直播帶貨腳本生成</li>
-                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-primary"></i> 優先算力通道</li>
+                    <ul class="space-y-2 text-xs text-textMain mb-4">
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-aiBlue"></i> 每日 20 次深度分析</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-aiBlue"></i> 完整選品策略報告</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-aiBlue"></i> 直播帶貨腳本生成</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-aiBlue"></i> 優先算力通道</li>
                     </ul>
-                    <button onclick="handleUpgradeToPro()" class="w-full py-3 bg-primary text-white font-bold rounded-xl touch-active">
+                    <button onclick="handleUpgradeToPro()" class="w-full py-3 bg-aiBlue text-white font-bold rounded-xl active:scale-95 transition-transform">
                         立即升級 Pro
                     </button>
-                    <p class="text-center text-[10px] text-slate-500 mt-2 cursor-pointer" onclick="showActivationModal()">
+                    <p class="text-center text-[10px] text-textSub mt-2 cursor-pointer hover:text-aiBlue" onclick="showActivationModal()">
                         已付款？點此輸入開通碼
                     </p>
                 </div>
@@ -349,40 +481,46 @@
         </div>
     </div>
 
-    <!-- === ACTIVATION CODE MODAL === -->
+    <!-- Activation Modal -->
     <div id="activation-modal" class="fixed inset-0 z-[70] hidden">
-        <div class="absolute inset-0 sheet-overlay" onclick="closeActivationModal()"></div>
-        <div class="absolute bottom-0 left-0 right-0 bg-appSurface rounded-t-3xl p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] animate-slide-up">
-            <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-6"></div>
+        <div class="absolute inset-0 modal-overlay" onclick="closeActivationModal()"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] animate-slide-up shadow-2xl">
+            <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
             <div class="text-center mb-6">
-                <div class="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center mx-auto mb-3 border border-primary/30">
-                    <i class="fa-solid fa-key text-xl text-primary"></i>
+                <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-3 border border-blue-100">
+                    <i class="fa-solid fa-key text-xl text-aiBlue"></i>
                 </div>
-                <h3 class="text-lg font-bold text-white mb-1">輸入開通碼</h3>
-                <p class="text-slate-400 text-xs">付款後取得的專屬開通碼</p>
+                <h3 class="text-lg font-bold text-textMain mb-1">輸入開通碼</h3>
+                <p class="text-textSub text-xs">付款後取得的專屬開通碼</p>
             </div>
-            <input type="text" id="activation-code-input" placeholder="請輸入開通碼" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white text-center text-lg tracking-widest mb-4 focus:border-primary focus:outline-none">
-            <button onclick="activateCode()" class="w-full py-3 bg-primary text-white font-bold rounded-xl touch-active">
+            <input type="text" id="activation-code-input" placeholder="請輸入開通碼" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-textMain text-center text-lg tracking-widest mb-4 focus:border-aiBlue focus:outline-none focus:ring-2 focus:ring-blue-100">
+            <button onclick="activateCode()" class="w-full py-3 bg-textMain text-white font-bold rounded-xl active:scale-95 transition-transform">
                 確認開通
             </button>
         </div>
     </div>
 
-    <!-- === LOGIN MODAL === -->
-    <div id="login-overlay" class="fixed inset-0 z-[60] hidden">
-        <div class="absolute inset-0 sheet-overlay" onclick="closeLoginModal()"></div>
-        <div class="absolute bottom-0 left-0 right-0 bg-appSurface rounded-t-3xl p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] animate-slide-up">
-            <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-6"></div>
+    <!-- Login Modal -->
+    <div id="login-modal" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 modal-overlay" onclick="closeLoginModal()"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] animate-slide-up shadow-2xl">
+            <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
             <div class="text-center mb-6">
                 <img src="/logo.png" alt="BrotherG" class="w-14 h-14 mx-auto mb-4 rounded-xl">
-                <h3 class="text-xl font-bold text-white mb-1">登入 BrotherGAi</h3>
-                <p class="text-slate-400 text-sm">使用 Google 帳號快速登入</p>
+                <h3 class="text-xl font-bold text-textMain mb-1">登入 BrotherGAi</h3>
+                <p class="text-textSub text-sm">使用 Google 帳號快速登入</p>
             </div>
-            <button onclick="handleGoogleLogin()" class="w-full flex items-center justify-center gap-3 bg-white text-slate-800 py-4 rounded-xl font-bold touch-active">
+            <button onclick="handleGoogleLogin()" class="w-full flex items-center justify-center gap-3 bg-white text-textMain py-4 rounded-xl font-bold border border-gray-200 hover:bg-gray-50 active:scale-95 transition-all">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google">
                 使用 Google 登入
             </button>
         </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-textMain text-white px-6 py-3 rounded-full shadow-2xl opacity-0 pointer-events-none transition-opacity duration-300 z-[80] text-sm font-medium flex items-center gap-2 whitespace-nowrap">
+        <i class="fa-solid fa-circle-info text-aiBlue"></i>
+        <span id="toast-msg">Message</span>
     </div>
 
     <!-- Firebase Auth & Store Scripts -->
@@ -391,11 +529,11 @@
 
     <script>
         // === Toast ===
-        function showToast(message) {
+        function showToast(msg) {
             const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 3000);
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('opacity-0');
+            setTimeout(() => toast.classList.add('opacity-0'), 2500);
         }
 
         // === Modals ===
@@ -413,18 +551,28 @@
             document.getElementById('activation-modal').classList.add('hidden');
         }
         function closeLoginModal() {
-            document.getElementById('login-overlay').classList.add('hidden');
+            document.getElementById('login-modal').classList.add('hidden');
+        }
+        function showUserMenu() {
+            const user = window.getCurrentUser?.();
+            if (!user) {
+                document.getElementById('login-modal').classList.remove('hidden');
+            } else {
+                // Show logout option
+                if (confirm('確定要登出嗎？')) {
+                    handleLogout();
+                }
+            }
         }
 
-        // === Upgrade to Pro ===
+        // === Upgrade ===
         function handleUpgradeToPro() {
             const user = window.getCurrentUser?.();
             if (!user) {
                 closePricingModal();
-                document.getElementById('login-overlay').classList.remove('hidden');
+                document.getElementById('login-modal').classList.remove('hidden');
                 return;
             }
-            // Open payment page or contact
             window.open('https://lin.ee/yourlinebot', '_blank');
             showToast('請透過 LINE 完成付款');
         }
@@ -442,7 +590,7 @@
             const user = window.getCurrentUser?.();
             if (!user) {
                 closeActivationModal();
-                document.getElementById('login-overlay').classList.remove('hidden');
+                document.getElementById('login-modal').classList.remove('hidden');
                 return;
             }
             
@@ -465,7 +613,7 @@
                     localStorage.setItem('userPlan', data.plan);
                     setTimeout(() => location.reload(), 1500);
                 } else {
-                    showToast('❌ 開通碼無效，請確認後再試');
+                    showToast('❌ 開通碼無效');
                 }
             } catch (error) {
                 console.error('Activation error:', error);
@@ -473,70 +621,74 @@
             }
         }
 
-        // === Auth UI Update ===
+        // === Auth UI ===
         async function updateAuthUI(user) {
             const loginBtn = document.getElementById('login-btn');
             const userAvatar = document.getElementById('user-avatar');
+            const userAvatarDesktop = document.getElementById('user-avatar-desktop');
+            const logoutBtnDesktop = document.getElementById('logout-btn-desktop');
             const loginHint = document.getElementById('login-hint');
-            const userInfoHero = document.getElementById('user-info-hero');
-            const userStats = document.getElementById('user-stats');
             const tierBadge = document.getElementById('user-tier-badge');
-            const userCredits = document.getElementById('user-credits');
+            const creditsDisplay = document.getElementById('credits-display');
+            const userStats = document.getElementById('user-stats');
 
             if (user) {
-                // Update header
                 loginBtn.classList.add('hidden');
                 userAvatar.classList.remove('hidden');
-                
-                const name = user.displayName || user.email || 'User';
-                if (user.photoURL) {
-                    userAvatar.style.backgroundImage = `url(${user.photoURL})`;
-                    userAvatar.style.backgroundSize = 'cover';
-                    userAvatar.textContent = '';
-                } else {
-                    userAvatar.textContent = name.charAt(0).toUpperCase();
-                    userAvatar.style.backgroundImage = '';
-                }
-                
-                // Update hero
+                userAvatarDesktop?.classList.remove('hidden');
+                logoutBtnDesktop?.classList.remove('hidden');
                 loginHint.classList.add('hidden');
-                userInfoHero.classList.remove('hidden');
+                tierBadge.classList.remove('hidden');
+                creditsDisplay.classList.remove('hidden');
                 userStats.classList.remove('hidden');
                 
-                // Get user credits
+                const name = user.displayName || user.email || 'User';
+                [userAvatar, userAvatarDesktop].forEach(av => {
+                    if (av) {
+                        if (user.photoURL) {
+                            av.style.backgroundImage = `url(${user.photoURL})`;
+                            av.style.backgroundSize = 'cover';
+                            av.textContent = '';
+                        } else {
+                            av.textContent = name.charAt(0).toUpperCase();
+                            av.style.backgroundImage = '';
+                        }
+                    }
+                });
+                
+                // Get credits
                 try {
                     const result = await window.checkQuota(user);
                     const tierNames = { basic: 'FREE', free: 'FREE', pro: 'PRO', master: 'MASTER' };
                     tierBadge.textContent = tierNames[result.tier] || 'FREE';
-                    tierBadge.className = `px-2 py-1 rounded-full text-xs font-bold ${result.tier === 'pro' ? 'bg-primary/20 text-primary' : 'bg-slate-700 text-slate-300'}`;
-                    userCredits.textContent = `今日剩餘 ${result.remaining} 次`;
                     
+                    document.getElementById('credits-count').textContent = result.remaining || 0;
                     document.getElementById('stat-used').textContent = result.usedToday || 0;
                     document.getElementById('stat-remaining').textContent = result.remaining || 0;
                 } catch (e) {
                     console.error('Failed to get quota:', e);
                 }
                 
-                // Close login modal
                 closeLoginModal();
                 
             } else {
                 loginBtn.classList.remove('hidden');
                 userAvatar.classList.add('hidden');
+                userAvatarDesktop?.classList.add('hidden');
+                logoutBtnDesktop?.classList.add('hidden');
                 loginHint.classList.remove('hidden');
-                userInfoHero.classList.add('hidden');
+                tierBadge.classList.add('hidden');
+                creditsDisplay.classList.add('hidden');
                 userStats.classList.add('hidden');
             }
         }
 
         // === Init ===
         document.addEventListener('DOMContentLoaded', () => {
-            // Listen to auth state changes
             window.addEventListener('authStateChanged', (event) => {
                 updateAuthUI(event.detail.user);
             });
             
-            // Check if already logged in
             setTimeout(() => {
                 const user = window.getCurrentUser?.();
                 if (user) {
