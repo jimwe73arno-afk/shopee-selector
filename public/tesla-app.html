@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#FFFFFF">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>Tesla 決策顧問 | BrotherGAi</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="apple-touch-icon" href="/logo.png">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Markdown Parser -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                    },
+                    colors: {
+                        aiBlue: '#1E88E5',
+                        bgPage: '#FFFFFF',
+                        borderLight: '#E2E8F0',
+                        textMain: '#111827',
+                        textSub: '#64748B',
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.3s ease-out',
+                        'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(100%)' },
+                            '100%': { transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { 
+            background-color: #FFFFFF; 
+            color: #111827; 
+            overscroll-behavior-y: none;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            user-select: none;
+        }
+        
+        ::-webkit-scrollbar { display: none; }
+        
+        /* Background Pattern */
+        .bg-pattern {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: radial-gradient(#E5E7EB 1px, transparent 1px);
+            background-size: 24px 24px; opacity: 0.4; z-index: -1; pointer-events: none;
+        }
+
+        /* Chat Bubbles */
+        .chat-bubble {
+            max-width: 85%;
+            padding: 14px 18px;
+            font-size: 15px;
+            line-height: 1.6;
+            position: relative;
+        }
+        .chat-bubble.ai {
+            background-color: #F1F5F9;
+            color: #111827;
+            border-radius: 4px 20px 20px 20px;
+        }
+        .chat-bubble.user {
+            background-color: #1E88E5;
+            color: white;
+            border-radius: 20px 4px 20px 20px;
+            margin-left: auto;
+        }
+
+        /* Markdown in Chat */
+        .chat-bubble.ai h3 {
+            color: #1E88E5;
+            font-weight: 700;
+            font-size: 1rem;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .chat-bubble.ai h3:first-child { margin-top: 0; }
+        .chat-bubble.ai p { margin-bottom: 0.75rem; }
+        .chat-bubble.ai ul { list-style: disc; padding-left: 1.2rem; margin-bottom: 0.75rem; }
+        .chat-bubble.ai li { margin-bottom: 0.4rem; }
+        .chat-bubble.ai strong { color: #111827; font-weight: 600; }
+        .chat-bubble.ai a { color: #1E88E5; text-decoration: underline; }
+
+        /* Typing Animation */
+        .typing-dot {
+            width: 6px; height: 6px;
+            background-color: #94A3B8;
+            border-radius: 50%;
+            display: inline-block;
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        /* Progress Bar */
+        .progress-track {
+            height: 4px;
+            background: #E2E8F0;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #1E88E5, #42A5F5);
+            transition: width 0.5s ease;
+        }
+
+        /* Touch Active */
+        .touch-active:active {
+            transform: scale(0.97);
+            opacity: 0.9;
+        }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: calc(4rem + env(safe-area-inset-top));
+            left: 50%;
+            transform: translateX(-50%);
+            background: #111827;
+            color: #F8FAFC;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 14px;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body class="h-[100dvh] w-full flex flex-col overflow-hidden relative">
+
+    <div class="bg-pattern"></div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <!-- === HEADER === -->
+    <header class="fixed top-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-md border-b border-borderLight" style="padding-top: env(safe-area-inset-top);">
+        <div class="h-14 flex items-center justify-between px-4">
+            <!-- Left: Logo + Title -->
+            <div class="flex items-center gap-3">
+                <a href="/" class="flex items-center gap-3">
+                    <img src="/logo.png" alt="BrotherG" class="w-8 h-8 rounded-lg shadow-md">
+                    <span class="font-display font-bold text-lg text-textMain">Tesla 顧問</span>
+                </a>
+            </div>
+            <!-- Right: Status -->
+            <div class="flex items-center gap-2">
+                <span id="status-badge" class="text-[10px] font-bold text-aiBlue bg-blue-50 px-2 py-1 rounded-full border border-blue-100">
+                    需求盤點
+                </span>
+                <span id="turn-count" class="text-[10px] font-mono text-textSub">0/15</span>
+            </div>
+        </div>
+        <!-- Progress Bar -->
+        <div class="progress-track">
+            <div id="progress-bar" class="progress-bar" style="width: 5%;"></div>
+        </div>
+    </header>
+
+    <!-- === MAIN CHAT AREA === -->
+    <main class="flex-1 overflow-y-auto" style="padding-top: calc(4rem + env(safe-area-inset-top)); padding-bottom: calc(5rem + env(safe-area-inset-bottom));" id="chat-container">
+        
+        <!-- Tesla Icon Header -->
+        <div class="text-center py-6 border-b border-borderLight bg-gradient-to-b from-blue-50/50 to-transparent">
+            <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-white border border-borderLight shadow-sm flex items-center justify-center">
+                <img src="/modelx.png" alt="Tesla Model X" class="w-12 h-12 object-contain">
+            </div>
+            <h1 class="font-display font-bold text-lg text-textMain">Tesla 決策顧問</h1>
+            <p class="text-xs text-textSub mt-1">15 輪對話，幫你搞清楚買不買、買哪台</p>
+        </div>
+
+        <!-- Messages Container -->
+        <div id="chat-history" class="flex flex-col gap-4 px-4 py-4">
+            <!-- Messages will be added here -->
+        </div>
+    </main>
+
+    <!-- === INPUT BAR === -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-borderLight z-30" style="padding-bottom: env(safe-area-inset-bottom);">
+        <div class="p-3 flex items-center gap-3">
+            <div class="flex-1 bg-gray-100 rounded-full h-11 flex items-center px-4 border border-gray-200 focus-within:border-aiBlue transition-colors">
+                <input type="text" id="chat-input" placeholder="輸入你的回答..." 
+                    class="bg-transparent border-none outline-none text-textMain text-sm w-full placeholder-gray-400"
+                    autocomplete="off">
+            </div>
+            <button id="send-btn" onclick="sendMessage()" 
+                class="w-11 h-11 rounded-full bg-aiBlue text-white flex items-center justify-center shadow-lg shadow-blue-200 touch-active disabled:opacity-50">
+                <i class="fa-solid fa-paper-plane text-sm"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- === PAYWALL MODAL === -->
+    <div id="paywall-modal" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 modal-overlay" onclick="closePaywall()"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 animate-slide-up shadow-2xl" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom));">
+            <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-100">
+                    <i class="fa-solid fa-lock text-2xl text-aiBlue"></i>
+                </div>
+                <h3 class="text-xl font-bold text-textMain mb-2">解鎖決策卡</h3>
+                <p class="text-textSub text-sm">獲取你的個人化 Tesla 分析、風險評估，以及最終車型推薦。</p>
+            </div>
+            <button onclick="processPayment()" id="pay-btn" class="w-full py-4 bg-aiBlue text-white font-bold rounded-xl touch-active shadow-lg">
+                支付 NT$ 99
+            </button>
+            <p class="text-center text-xs text-textSub mt-3">一次付費，永久解鎖此次諮詢</p>
+        </div>
+    </div>
+
+    <script>
+        // === State ===
+        const MAX_TURNS = 15;
+        let teslaState = {
+            turn: 0,
+            answers: [],
+            messages: [],
+            paid: false,
+            loading: false
+        };
+
+        // === Toast ===
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        // === Init ===
+        function initTesla() {
+            teslaState = { turn: 0, answers: [], messages: [], paid: false, loading: false };
+            document.getElementById('chat-history').innerHTML = '';
+            
+            // Welcome messages
+            addBotMessage("歡迎來到 BrotherG Tesla 決策顧問！");
+            setTimeout(() => {
+                addBotMessage("我是你的專屬購車陪伴顧問。接下來我會用大約 15 輪對話，幫你搞清楚「買不買、買哪台、何時買」。準備好了就跟我說說你在考慮什麼車款吧！");
+            }, 600);
+            updateUI();
+        }
+
+        // === UI Update ===
+        function updateUI() {
+            const pct = Math.min((teslaState.turn / MAX_TURNS) * 100, 100);
+            document.getElementById('progress-bar').style.width = pct + '%';
+            
+            let statusText = "需求盤點";
+            if (teslaState.turn <= 10) statusText = "需求盤點";
+            else if (teslaState.turn === 11) statusText = "中場總結";
+            else if (teslaState.turn < 15) statusText = "深度諮詢";
+            else statusText = "最終決策";
+            
+            document.getElementById('status-badge').innerText = statusText;
+            document.getElementById('turn-count').innerText = `${teslaState.turn}/${MAX_TURNS}`;
+        }
+
+        // === Chat Messages ===
+        function addBotMessage(text, isMarkdown = false) {
+            const chatHistory = document.getElementById('chat-history');
+            const div = document.createElement('div');
+            div.className = 'flex items-end gap-2 animate-fade-in';
+            
+            const content = (isMarkdown && window.marked) ? marked.parse(text) : escapeHtml(text);
+            
+            div.innerHTML = `
+                <img src="/logo.png" alt="AI" class="w-8 h-8 rounded-full flex-shrink-0 bg-gray-100 p-1 border border-gray-200">
+                <div class="chat-bubble ai">${content}</div>
+            `;
+            chatHistory.appendChild(div);
+            scrollToBottom();
+        }
+
+        function addUserMessage(text) {
+            const chatHistory = document.getElementById('chat-history');
+            const div = document.createElement('div');
+            div.className = 'flex justify-end animate-fade-in';
+            div.innerHTML = `<div class="chat-bubble user">${escapeHtml(text)}</div>`;
+            chatHistory.appendChild(div);
+            scrollToBottom();
+        }
+
+        function showTypingIndicator() {
+            const chatHistory = document.getElementById('chat-history');
+            const div = document.createElement('div');
+            div.id = 'typing-indicator';
+            div.className = 'flex items-end gap-2 animate-fade-in';
+            div.innerHTML = `
+                <img src="/logo.png" alt="AI" class="w-8 h-8 rounded-full flex-shrink-0 bg-gray-100 p-1 border border-gray-200">
+                <div class="chat-bubble ai flex gap-1 py-4">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            `;
+            chatHistory.appendChild(div);
+            scrollToBottom();
+        }
+
+        function removeTypingIndicator() {
+            const el = document.getElementById('typing-indicator');
+            if (el) el.remove();
+        }
+
+        function scrollToBottom() {
+            const container = document.getElementById('chat-container');
+            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // === API Call ===
+        async function callTeslaAPI(state) {
+            const res = await fetch('/.netlify/functions/tesla-chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: state.messages,
+                    intakeAnswers: state.answers,
+                    messageCount: state.turn,
+                    paid: state.paid
+                })
+            });
+            
+            if (!res.ok) throw new Error("API Fail");
+            return await res.json();
+        }
+
+        // === Send Message ===
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            
+            if (teslaState.loading || !text) return;
+
+            // Add user message
+            addUserMessage(text);
+            input.value = '';
+            teslaState.messages.push({ role: 'user', content: text });
+            teslaState.turn++;
+            
+            teslaState.answers.push({
+                turn: teslaState.turn,
+                question: `Turn ${teslaState.turn}`,
+                answer: text
+            });
+
+            teslaState.loading = true;
+            document.getElementById('send-btn').disabled = true;
+            updateUI();
+            
+            // Show typing
+            showTypingIndicator();
+            
+            try {
+                const data = await callTeslaAPI(teslaState);
+                removeTypingIndicator();
+
+                if (data.ok) {
+                    teslaState.messages.push({ role: 'assistant', content: data.reply });
+                    
+                    // Special turns get markdown rendering
+                    const isSpecialTurn = teslaState.turn === 11 || teslaState.turn >= 15;
+                    addBotMessage(data.reply, isSpecialTurn);
+                    
+                    // Check paywall
+                    if (data.needPaywall) {
+                        setTimeout(() => {
+                            document.getElementById('paywall-modal').classList.remove('hidden');
+                        }, 1000);
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+                removeTypingIndicator();
+                addBotMessage("抱歉，連線出了點問題。請稍後再試，或重新整理頁面。");
+            }
+            
+            const isPaywallBlocking = !document.getElementById('paywall-modal').classList.contains('hidden');
+            if (!isPaywallBlocking) {
+                teslaState.loading = false;
+                document.getElementById('send-btn').disabled = false;
+            }
+            updateUI();
+        }
+
+        // === Payment ===
+        function closePaywall() {
+            // Don't allow close without payment
+        }
+
+        function processPayment() {
+            const btn = document.getElementById('pay-btn');
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>處理中...';
+            btn.disabled = true;
+            
+            setTimeout(async () => {
+                document.getElementById('paywall-modal').classList.add('hidden');
+                teslaState.paid = true;
+                teslaState.loading = false;
+                document.getElementById('send-btn').disabled = false;
+                
+                addBotMessage("付款成功！正在生成你的專屬最終決策信...");
+                
+                // Get final decision
+                showTypingIndicator();
+                
+                try {
+                    const data = await callTeslaAPI(teslaState);
+                    removeTypingIndicator();
+                    
+                    if (data.ok) {
+                        teslaState.messages.push({ role: 'assistant', content: data.reply });
+                        addBotMessage(data.reply, true);
+                    }
+                } catch (e) {
+                    removeTypingIndicator();
+                    addBotMessage("生成決策卡時發生錯誤，請重新整理頁面再試。");
+                }
+                
+                btn.innerHTML = '支付 NT$ 99';
+                btn.disabled = false;
+            }, 1500);
+        }
+
+        // === Input Enter Key ===
+        document.getElementById('chat-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // === Init on Load ===
+        window.onload = initTesla;
+    </script>
+
+</body>
+</html>
+
