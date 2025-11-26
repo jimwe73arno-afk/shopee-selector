@@ -30,6 +30,12 @@
   to = "/payment/success.html"
   status = 200
 
+# 行動版 App 頁面
+[[redirects]]
+  from = "/app"
+  to = "/app.html"
+  status = 301
+
 # SPA fallback - 所有其他路徑都重定向到 index.html（必须放在最后）
 # 注意：Netlify 会自动处理 /.netlify/functions/ 路径，不会被这个规则拦截
 [[redirects]]

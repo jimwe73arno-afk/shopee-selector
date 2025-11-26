@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Shopee Agent App</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/logo.png">
+    <link rel="apple-touch-icon" href="/logo.png">
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Marked.js for Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Rajdhani', 'sans-serif'],
+                    },
+                    colors: {
+                        appBg: '#020617',
+                        appSurface: '#0F172A',
+                        primary: '#00A0E9',
+                        accent: '#F59E0B',
+                        chatUser: '#00A0E9',
+                        chatAi: '#1E293B',
+                    },
+                    spacing: {
+                        'safe-top': 'env(safe-area-inset-top)',
+                        'safe-bottom': 'env(safe-area-inset-bottom)',
+                    },
+                    animation: {
+                        'slide-up': 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                        'fade-in': 'fadeIn 0.2s ease-out',
+                        'bounce-slow': 'bounce 2s infinite',
+                    },
+                    keyframes: {
+                        slideUp: {
+                            '0%': { transform: 'translateY(100%)' },
+                            '100%': { transform: 'translateY(0)' },
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* App Reset */
+        body {
+            background-color: #020617;
+            color: #F8FAFC;
+            overscroll-behavior-y: none;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            user-select: none;
+        }
+
+        /* Hide Scrollbar */
+        ::-webkit-scrollbar { display: none; }
+
+        /* Touch Active States */
+        .touch-active:active {
+            transform: scale(0.96);
+            opacity: 0.8;
+            transition: transform 0.1s;
+        }
+
+        /* Chat Bubbles */
+        .chat-bubble {
+            max-width: 85%;
+            padding: 12px 16px;
+            font-size: 15px;
+            line-height: 1.6;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .chat-bubble.ai {
+            background-color: #1E293B;
+            color: #F1F5F9;
+            border-radius: 20px 20px 20px 4px;
+        }
+        .chat-bubble.user {
+            background-color: #00A0E9;
+            color: white;
+            border-radius: 20px 20px 4px 20px;
+            margin-left: auto;
+        }
+
+        /* Markdown in Chat */
+        .chat-bubble.ai h3 {
+            color: #38BDF8;
+            font-weight: 700;
+            font-size: 1rem;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            border-left: 3px solid #00A0E9;
+            padding-left: 8px;
+        }
+        .chat-bubble.ai h3:first-child { margin-top: 0; }
+        .chat-bubble.ai p { margin-bottom: 0.75rem; }
+        .chat-bubble.ai ul { list-style: none; padding-left: 0; margin-bottom: 0.75rem; }
+        .chat-bubble.ai li { margin-bottom: 0.5rem; padding-left: 1rem; position: relative; }
+        .chat-bubble.ai li::before {
+            content: "•";
+            color: #00A0E9;
+            position: absolute;
+            left: 0;
+        }
+        .chat-bubble.ai strong { color: #F8FAFC; }
+
+        /* Typing Animation */
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background-color: #94A3B8;
+            border-radius: 50%;
+            display: inline-block;
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        /* Bottom Sheet Overlay */
+        .sheet-overlay {
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+        }
+
+        /* Product Card */
+        .product-card {
+            transition: transform 0.2s ease-out;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: calc(4rem + env(safe-area-inset-top));
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1E293B;
+            border: 1px solid #334155;
+            color: #F8FAFC;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 14px;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        .toast.show { opacity: 1; }
+    </style>
+</head>
+<body class="h-[100dvh] w-full flex flex-col overflow-hidden relative">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- === 1. TOP BAR (Fixed) === -->
+    <header class="fixed top-0 left-0 right-0 z-40 bg-appBg/90 backdrop-blur-md border-b border-white/5 pt-safe-top transition-all duration-300" id="app-header">
+        <div class="h-14 flex items-center justify-between px-4">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-bold font-display shadow-lg shadow-primary/30">G</div>
+                <span class="text-lg font-bold tracking-wide" id="header-title">BrotherGAi</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <!-- Usage Counter -->
+                <div id="usage-display" class="hidden text-xs text-slate-400 bg-slate-800 px-2 py-1 rounded-full">
+                    <i class="fa-solid fa-bolt text-accent mr-1"></i>
+                    <span id="usage-count">0</span>/<span id="usage-limit">5</span>
+                </div>
+                <!-- User Avatar / Login -->
+                <button id="login-btn" onclick="handleGoogleLogin()" class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 touch-active">
+                    <i class="fa-solid fa-user text-sm"></i>
+                </button>
+                <div id="user-avatar" class="hidden w-8 h-8 rounded-full bg-primary text-white font-bold text-sm flex items-center justify-center cursor-pointer" onclick="switchTab('profile')"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- === 2. MAIN CONTENT (Scrollable) === -->
+    <main class="flex-1 overflow-y-auto pt-[calc(3.5rem+env(safe-area-inset-top))] pb-[calc(5rem+env(safe-area-inset-bottom))]" id="main-container">
+        
+        <!-- VIEW: HOME (App Landing) -->
+        <div id="view-home" class="h-full flex flex-col px-6 animate-fade-in">
+            <div class="flex-1 flex flex-col justify-center items-center text-center space-y-2">
+                <div class="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-transparent border border-primary/30 flex items-center justify-center mb-6 animate-pulse">
+                    <i class="fa-solid fa-robot text-4xl text-primary"></i>
+                </div>
+                <h1 class="text-3xl font-display font-bold text-white">Shopee Agent</h1>
+                <p class="text-slate-400 text-sm">全能電商選品助手</p>
+                
+                <!-- User Status -->
+                <div id="home-user-status" class="mt-4 text-sm">
+                    <span id="home-login-hint" class="text-slate-500">登入後開始使用</span>
+                    <span id="home-user-tier" class="hidden px-2 py-1 rounded-full text-xs font-bold"></span>
+                </div>
+            </div>
+
+            <div class="mb-12 w-full space-y-3">
+                <!-- Action Button 1 -->
+                <button onclick="startChat()" class="w-full h-16 bg-gradient-to-r from-primary to-blue-600 rounded-2xl flex items-center justify-center gap-3 text-white font-bold text-lg shadow-lg shadow-primary/25 touch-active relative overflow-hidden group">
+                    <div class="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    開始為您選品
+                </button>
+                
+                <!-- Quick Actions -->
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="askQuickQuestion('保健食品')" class="h-12 bg-appSurface border border-slate-800 rounded-xl flex items-center justify-center gap-2 text-slate-300 text-sm touch-active">
+                        <i class="fa-solid fa-pills text-primary"></i>
+                        保健食品
+                    </button>
+                    <button onclick="askQuickQuestion('清潔用品')" class="h-12 bg-appSurface border border-slate-800 rounded-xl flex items-center justify-center gap-2 text-slate-300 text-sm touch-active">
+                        <i class="fa-solid fa-spray-can-sparkles text-primary"></i>
+                        清潔用品
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: CHAT (App Chatroom) -->
+        <div id="view-chat" class="hidden flex-col min-h-full px-4 pb-20">
+            <!-- Date Divider -->
+            <div class="text-center py-4">
+                <span class="text-[10px] font-medium text-slate-500 bg-slate-900/50 px-3 py-1 rounded-full" id="chat-date">今日</span>
+            </div>
+
+            <!-- Messages Container -->
+            <div id="chat-history" class="flex flex-col gap-4">
+                <!-- AI Welcome -->
+                <div class="flex items-end gap-2">
+                    <div class="w-8 h-8 rounded-full bg-primary flex-shrink-0 flex items-center justify-center text-white text-xs font-bold">AI</div>
+                    <div class="chat-bubble ai">
+                        嗨！我是你的蝦皮選品軍師。你可以直接輸入商品名稱或品類，我幫你做市場分析與選品建議！
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Fixed Chat Input (Above Tabs) -->
+            <div class="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] left-0 right-0 bg-appBg/95 backdrop-blur border-t border-slate-800 p-3 flex items-center gap-3 z-30">
+                <div class="flex-1 bg-slate-900 rounded-full h-11 flex items-center px-4 border border-slate-700 focus-within:border-primary transition-colors">
+                    <input type="text" id="chat-input" placeholder="輸入商品關鍵字..." class="bg-transparent border-none outline-none text-white text-sm w-full placeholder-slate-500" autocomplete="off">
+                </div>
+                <button id="send-btn" onclick="sendMessage()" class="w-11 h-11 rounded-full bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/30 touch-active disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-paper-plane text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- VIEW: HISTORY -->
+        <div id="view-history" class="hidden px-4 py-4 space-y-4">
+            <h2 class="text-xl font-bold text-white mb-4">查詢歷史</h2>
+            <div id="history-list" class="space-y-3">
+                <div class="text-center text-slate-500 py-8">
+                    <i class="fa-solid fa-clock-rotate-left text-3xl mb-3 opacity-50"></i>
+                    <p class="text-sm">尚無查詢記錄</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: PROFILE -->
+        <div id="view-profile" class="hidden px-4 py-6">
+            <!-- Logged Out State -->
+            <div id="profile-logged-out" class="flex flex-col items-center justify-center py-12">
+                <div class="w-20 h-20 rounded-full bg-slate-800 border-2 border-slate-700 flex items-center justify-center mb-6">
+                    <i class="fa-solid fa-user text-3xl text-slate-600"></i>
+                </div>
+                <h2 class="text-xl font-bold text-white mb-2">尚未登入</h2>
+                <p class="text-slate-400 text-sm mb-6">登入以保存您的查詢記錄</p>
+                <button onclick="handleGoogleLogin()" class="flex items-center gap-3 bg-white text-slate-800 px-6 py-3 rounded-xl font-medium touch-active">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google">
+                    使用 Google 登入
+                </button>
+            </div>
+
+            <!-- Logged In State -->
+            <div id="profile-logged-in" class="hidden">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-16 h-16 rounded-full bg-slate-700 border-2 border-primary p-0.5 overflow-hidden">
+                        <div id="profile-avatar" class="w-full h-full rounded-full bg-slate-800 flex items-center justify-center text-white font-bold text-xl"></div>
+                    </div>
+                    <div>
+                        <h2 id="profile-name" class="text-xl font-bold text-white">用戶</h2>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span id="profile-tier" class="text-xs font-bold bg-primary/20 text-primary px-2 py-0.5 rounded border border-primary/30">FREE</span>
+                            <span id="profile-email" class="text-xs text-slate-500"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <div class="bg-appSurface rounded-xl p-4 border border-slate-800">
+                        <div class="text-2xl font-bold text-white" id="profile-used">0</div>
+                        <div class="text-xs text-slate-400">今日已用</div>
+                    </div>
+                    <div class="bg-appSurface rounded-xl p-4 border border-slate-800">
+                        <div class="text-2xl font-bold text-accent" id="profile-remaining">5</div>
+                        <div class="text-xs text-slate-400">剩餘次數</div>
+                    </div>
+                </div>
+
+                <!-- Menu -->
+                <div class="space-y-1">
+                    <div class="bg-appSurface p-4 rounded-t-2xl border-b border-slate-800 flex justify-between items-center">
+                        <span class="text-sm font-medium">會員方案</span>
+                        <span id="profile-plan-detail" class="text-xs text-slate-400">Basic · 每日 5 次</span>
+                    </div>
+                    <button onclick="handleLogout()" class="w-full bg-appSurface p-4 rounded-b-2xl flex justify-between items-center touch-active">
+                        <span class="text-sm font-medium text-red-400">登出</span>
+                        <i class="fa-solid fa-arrow-right-from-bracket text-red-400 text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- === 3. BOTTOM TAB BAR (Fixed) === -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-appBg/95 backdrop-blur-xl border-t border-slate-800 pb-safe-bottom z-50 h-[calc(3.5rem+env(safe-area-inset-bottom))]">
+        <div class="flex justify-around items-center h-14">
+            <button onclick="switchTab('home')" class="tab-btn flex-1 flex flex-col items-center justify-center gap-1 text-primary" data-target="home">
+                <i class="fa-solid fa-house text-xl mb-0.5"></i>
+                <span class="text-[10px] font-medium">首頁</span>
+            </button>
+            <button onclick="switchTab('chat')" class="tab-btn flex-1 flex flex-col items-center justify-center gap-1 text-slate-500" data-target="chat">
+                <i class="fa-solid fa-comment-dots text-xl mb-0.5"></i>
+                <span class="text-[10px] font-medium">AI 聊天</span>
+            </button>
+            <button onclick="switchTab('history')" class="tab-btn flex-1 flex flex-col items-center justify-center gap-1 text-slate-500" data-target="history">
+                <i class="fa-solid fa-clock-rotate-left text-xl mb-0.5"></i>
+                <span class="text-[10px] font-medium">歷史</span>
+            </button>
+            <button onclick="switchTab('profile')" class="tab-btn flex-1 flex flex-col items-center justify-center gap-1 text-slate-500" data-target="profile">
+                <i class="fa-solid fa-user text-xl mb-0.5"></i>
+                <span class="text-[10px] font-medium">我的</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- === 4. LOGIN MODAL === -->
+    <div id="login-overlay" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 sheet-overlay" onclick="closeLoginModal()"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-appSurface rounded-t-3xl p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] animate-slide-up">
+            <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-6"></div>
+            <div class="text-center mb-6">
+                <div class="w-14 h-14 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-primary border border-primary/30">
+                    <i class="fa-solid fa-user-lock text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-1">登入以繼續</h3>
+                <p class="text-slate-400 text-sm">登入後可使用完整功能</p>
+            </div>
+            <button onclick="handleGoogleLogin()" class="w-full flex items-center justify-center gap-3 bg-white text-slate-800 py-4 rounded-xl font-bold text-lg touch-active">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google">
+                使用 Google 登入
+            </button>
+        </div>
+    </div>
+
+    <!-- === 5. QUOTA EXCEEDED MODAL === -->
+    <div id="quota-sheet" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 sheet-overlay transition-opacity duration-300 opacity-0" id="quota-backdrop" onclick="closeQuotaSheet()"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-appSurface rounded-t-3xl p-6 transform translate-y-full transition-transform duration-300 ease-out pb-[calc(2rem+env(safe-area-inset-bottom))]" id="quota-content">
+            <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-6"></div>
+            <div class="text-center mb-6">
+                <div class="w-14 h-14 bg-accent/20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-accent border border-accent/30">
+                    <i class="fa-solid fa-bolt text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-1">今日額度已用完</h3>
+                <p class="text-slate-400 text-sm">明天會重置配額，敬請期待！</p>
+            </div>
+            <div class="space-y-3 mb-6">
+                <div class="flex items-center gap-3 p-3 bg-slate-900 rounded-xl border border-slate-800">
+                    <i class="fa-solid fa-calendar-check text-primary"></i>
+                    <span class="text-sm text-slate-300">每日自動重置</span>
+                </div>
+                <div class="flex items-center gap-3 p-3 bg-slate-900 rounded-xl border border-slate-800">
+                    <i class="fa-solid fa-star text-accent"></i>
+                    <span class="text-sm text-slate-300">Pro 會員享有更多額度</span>
+                </div>
+            </div>
+            <button onclick="closeQuotaSheet()" class="w-full py-4 bg-slate-700 rounded-xl text-white font-bold text-lg touch-active">
+                知道了
+            </button>
+        </div>
+    </div>
+
+    <!-- Firebase Auth & Store Scripts -->
+    <script src="/js/auth.js"></script>
+    <script src="/js/firebase-store.js"></script>
+
+    <script>
+        // === State Management ===
+        const MODE = "shopee";
+        let userCredits = { tier: 'basic', remaining: 5, usedToday: 0, quota: 5 };
+        let isProcessing = false;
+        let chatMessages = []; // Local chat history for context
+
+        // === Toast Notification ===
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // === Navigation Logic ===
+        function switchTab(tabId) {
+            // Update Views
+            document.querySelectorAll('[id^="view-"]').forEach(el => el.classList.add('hidden'));
+            const targetView = document.getElementById(`view-${tabId}`);
+            if (targetView) {
+                targetView.classList.remove('hidden');
+                targetView.classList.add('flex');
+            }
+            
+            // Update Tab Bar
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                if (btn.dataset.target === tabId) {
+                    btn.classList.remove('text-slate-500');
+                    btn.classList.add('text-primary');
+                } else {
+                    btn.classList.add('text-slate-500');
+                    btn.classList.remove('text-primary');
+                }
+            });
+
+            // Update Header Title
+            const titles = {
+                'home': 'BrotherGAi',
+                'chat': 'AI 選品軍師',
+                'history': '查詢歷史',
+                'profile': '會員中心'
+            };
+            document.getElementById('header-title').innerText = titles[tabId] || 'BrotherGAi';
+
+            // Special handling for chat tab
+            if (tabId === 'chat') {
+                setTimeout(() => {
+                    document.getElementById('chat-input').focus();
+                }, 100);
+            }
+        }
+
+        // === Start Chat from Home ===
+        function startChat() {
+            const user = window.getCurrentUser?.();
+            if (!user) {
+                showLoginModal();
+                return;
+            }
+            switchTab('chat');
+        }
+
+        // === Quick Question ===
+        function askQuickQuestion(keyword) {
+            const user = window.getCurrentUser?.();
+            if (!user) {
+                showLoginModal();
+                return;
+            }
+            switchTab('chat');
+            setTimeout(() => {
+                document.getElementById('chat-input').value = keyword;
+                sendMessage();
+            }, 300);
+        }
+
+        // === Chat Logic ===
+        async function sendMessage() {
+            if (isProcessing) return;
+
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const user = window.getCurrentUser?.();
+            if (!user) {
+                showLoginModal();
+                return;
+            }
+
+            // Check quota
+            if (userCredits.remaining <= 0) {
+                openQuotaSheet();
+                return;
+            }
+
+            isProcessing = true;
+            const sendBtn = document.getElementById('send-btn');
+            sendBtn.disabled = true;
+
+            // 1. Add User Message
+            addUserMessage(text);
+            input.value = '';
+            scrollToBottom();
+
+            // 2. Show Thinking
+            showTypingIndicator();
+
+            try {
+                // 3. Call API
+                const response = await callAskAPI(text, user);
+                
+                removeTypingIndicator();
+
+                if (response.output) {
+                    addAiMessage(response.output);
+                    
+                    // Update local chat history for context
+                    chatMessages.push({ role: 'user', content: text });
+                    chatMessages.push({ role: 'assistant', content: response.output });
+                    if (chatMessages.length > 10) {
+                        chatMessages = chatMessages.slice(-10);
+                    }
+                    
+                    // Save to history
+                    saveToHistory(text, response.output);
+                } else {
+                    addAiMessage('抱歉，我暫時無法處理您的請求，請稍後再試。');
+                }
+
+                // Update credits display
+                await refreshCredits(user);
+
+            } catch (error) {
+                removeTypingIndicator();
+                console.error('API Error:', error);
+                
+                if (error.message?.includes('額度') || error.message?.includes('limit')) {
+                    openQuotaSheet();
+                    addAiMessage('今日查詢額度已用完，明天再來吧！');
+                } else {
+                    addAiMessage(`發生錯誤：${error.message || '請稍後再試'}`);
+                }
+            } finally {
+                isProcessing = false;
+                sendBtn.disabled = false;
+                scrollToBottom();
+            }
+        }
+
+        // === API Call ===
+        async function callAskAPI(question, user) {
+            const userId = user?.uid || "guest";
+            const userEmail = user?.email || "";
+            const userTier = userCredits.tier || 'basic';
+            
+            // Get context for Pro users
+            const contextMessages = userTier === 'pro' || userTier === 'master' 
+                ? chatMessages.slice(-5) 
+                : [];
+
+            const res = await fetch("/.netlify/functions/ask", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    question,
+                    q: question,
+                    mode: MODE,
+                    uid: userId,
+                    userId,
+                    userEmail,
+                    tier: userTier,
+                    context: contextMessages
+                })
+            });
+
+            let data = {};
+            try {
+                data = await res.json();
+            } catch (err) {
+                console.error("JSON parse error:", err);
+            }
+
+            if (!res.ok) {
+                throw new Error(data?.message || data?.error || "AI 服務暫時無法使用");
+            }
+
+            if (data?.success === false) {
+                throw new Error(data?.error || data?.output || "請稍後再試");
+            }
+
+            return data;
+        }
+
+        // === Chat UI Helpers ===
+        function addUserMessage(text) {
+            const chatHistory = document.getElementById('chat-history');
+            const div = document.createElement('div');
+            div.className = 'flex justify-end animate-fade-in';
+            div.innerHTML = `<div class="chat-bubble user">${escapeHtml(text)}</div>`;
+            chatHistory.appendChild(div);
+        }
+
+        function addAiMessage(text) {
+            const chatHistory = document.getElementById('chat-history');
+            const div = document.createElement('div');
+            div.className = 'flex items-end gap-2 animate-fade-in';
+            
+            // Parse markdown
+            const htmlContent = marked.parse(text);
+            
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-primary flex-shrink-0 flex items-center justify-center text-white text-xs font-bold">AI</div>
+                <div class="chat-bubble ai">${htmlContent}</div>
+            `;
+            chatHistory.appendChild(div);
+        }
+
+        function showTypingIndicator() {
+            const chatHistory = document.getElementById('chat-history');
+            const div = document.createElement('div');
+            div.id = 'typing-indicator';
+            div.className = 'flex items-end gap-2 animate-fade-in';
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-primary flex-shrink-0 flex items-center justify-center text-white text-xs font-bold">AI</div>
+                <div class="chat-bubble ai flex gap-1 py-4">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            `;
+            chatHistory.appendChild(div);
+            scrollToBottom();
+        }
+
+        function removeTypingIndicator() {
+            const el = document.getElementById('typing-indicator');
+            if (el) el.remove();
+        }
+
+        function scrollToBottom() {
+            const container = document.getElementById('main-container');
+            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // === History Management ===
+        function saveToHistory(question, answer) {
+            const user = window.getCurrentUser?.();
+            if (!user) return;
+            
+            const key = `history_${user.uid}`;
+            let history = JSON.parse(localStorage.getItem(key) || '[]');
+            
+            history.unshift({
+                question,
+                answer: answer.substring(0, 100) + '...',
+                timestamp: Date.now()
+            });
+            
+            // Keep only last 20
+            history = history.slice(0, 20);
+            localStorage.setItem(key, JSON.stringify(history));
+            
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const user = window.getCurrentUser?.();
+            const container = document.getElementById('history-list');
+            
+            if (!user) {
+                container.innerHTML = `
+                    <div class="text-center text-slate-500 py-8">
+                        <i class="fa-solid fa-clock-rotate-left text-3xl mb-3 opacity-50"></i>
+                        <p class="text-sm">登入後查看歷史記錄</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const key = `history_${user.uid}`;
+            const history = JSON.parse(localStorage.getItem(key) || '[]');
+            
+            if (history.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-slate-500 py-8">
+                        <i class="fa-solid fa-clock-rotate-left text-3xl mb-3 opacity-50"></i>
+                        <p class="text-sm">尚無查詢記錄</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = history.map((item, index) => `
+                <div class="bg-appSurface rounded-xl p-4 border border-slate-800 touch-active" onclick="loadFromHistory(${index})">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex-1 min-w-0">
+                            <div class="text-sm font-medium text-white truncate">${escapeHtml(item.question)}</div>
+                            <div class="text-xs text-slate-500 mt-1">${formatTime(item.timestamp)}</div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-slate-600 text-xs mt-1"></i>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function loadFromHistory(index) {
+            const user = window.getCurrentUser?.();
+            if (!user) return;
+            
+            const key = `history_${user.uid}`;
+            const history = JSON.parse(localStorage.getItem(key) || '[]');
+            
+            if (history[index]) {
+                switchTab('chat');
+                setTimeout(() => {
+                    document.getElementById('chat-input').value = history[index].question;
+                }, 100);
+            }
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const isToday = date.toDateString() === now.toDateString();
+            
+            if (isToday) {
+                return `今天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+            }
+            return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        }
+
+        // === Credits & Quota ===
+        async function refreshCredits(user) {
+            if (!user) {
+                userCredits = { tier: 'basic', remaining: 0, usedToday: 0, quota: 5 };
+                updateCreditsUI();
+                return;
+            }
+            
+            try {
+                const result = await window.checkQuota(user);
+                userCredits = {
+                    tier: result.tier || 'basic',
+                    remaining: result.remaining || 0,
+                    usedToday: result.usedToday || 0,
+                    quota: result.quota || 5
+                };
+                updateCreditsUI();
+            } catch (error) {
+                console.error('Failed to refresh credits:', error);
+            }
+        }
+
+        function updateCreditsUI() {
+            const usageDisplay = document.getElementById('usage-display');
+            const usageCount = document.getElementById('usage-count');
+            const usageLimit = document.getElementById('usage-limit');
+            
+            if (window.getCurrentUser?.()) {
+                usageDisplay.classList.remove('hidden');
+                usageCount.textContent = userCredits.remaining;
+                usageLimit.textContent = userCredits.quota;
+            } else {
+                usageDisplay.classList.add('hidden');
+            }
+            
+            // Update profile stats
+            document.getElementById('profile-used').textContent = userCredits.usedToday;
+            document.getElementById('profile-remaining').textContent = userCredits.remaining;
+            
+            // Update tier badge
+            const tierBadge = document.getElementById('profile-tier');
+            const tierNames = { basic: 'FREE', free: 'FREE', pro: 'PRO', master: 'MASTER' };
+            tierBadge.textContent = tierNames[userCredits.tier] || 'FREE';
+            
+            const planDetail = document.getElementById('profile-plan-detail');
+            planDetail.textContent = `${tierNames[userCredits.tier] || 'Basic'} · 每日 ${userCredits.quota} 次`;
+            
+            // Home tier badge
+            const homeTier = document.getElementById('home-user-tier');
+            if (window.getCurrentUser?.()) {
+                homeTier.classList.remove('hidden');
+                homeTier.textContent = tierNames[userCredits.tier] || 'FREE';
+                homeTier.className = `px-2 py-1 rounded-full text-xs font-bold ${userCredits.tier === 'pro' ? 'bg-primary/20 text-primary' : 'bg-slate-700 text-slate-300'}`;
+            }
+        }
+
+        // === Modals ===
+        function showLoginModal() {
+            document.getElementById('login-overlay').classList.remove('hidden');
+        }
+
+        function closeLoginModal() {
+            document.getElementById('login-overlay').classList.add('hidden');
+        }
+
+        function openQuotaSheet() {
+            const sheet = document.getElementById('quota-sheet');
+            const backdrop = document.getElementById('quota-backdrop');
+            const content = document.getElementById('quota-content');
+            
+            sheet.classList.remove('hidden');
+            setTimeout(() => {
+                backdrop.classList.remove('opacity-0');
+                content.classList.remove('translate-y-full');
+            }, 10);
+        }
+
+        function closeQuotaSheet() {
+            const sheet = document.getElementById('quota-sheet');
+            const backdrop = document.getElementById('quota-backdrop');
+            const content = document.getElementById('quota-content');
+            
+            backdrop.classList.add('opacity-0');
+            content.classList.add('translate-y-full');
+            
+            setTimeout(() => {
+                sheet.classList.add('hidden');
+            }, 300);
+        }
+
+        // === Auth UI Updates ===
+        function updateAppAuthUI(user) {
+            const loginBtn = document.getElementById('login-btn');
+            const userAvatar = document.getElementById('user-avatar');
+            const homeLoginHint = document.getElementById('home-login-hint');
+            const homeTier = document.getElementById('home-user-tier');
+            const profileLoggedOut = document.getElementById('profile-logged-out');
+            const profileLoggedIn = document.getElementById('profile-logged-in');
+            
+            if (user) {
+                // Update header
+                loginBtn.classList.add('hidden');
+                userAvatar.classList.remove('hidden');
+                
+                const name = user.displayName || user.email || 'User';
+                if (user.photoURL) {
+                    userAvatar.style.backgroundImage = `url(${user.photoURL})`;
+                    userAvatar.style.backgroundSize = 'cover';
+                    userAvatar.textContent = '';
+                } else {
+                    userAvatar.textContent = name.charAt(0).toUpperCase();
+                    userAvatar.style.backgroundImage = '';
+                }
+                
+                // Update home
+                homeLoginHint.classList.add('hidden');
+                homeTier.classList.remove('hidden');
+                
+                // Update profile
+                profileLoggedOut.classList.add('hidden');
+                profileLoggedIn.classList.remove('hidden');
+                
+                document.getElementById('profile-name').textContent = name;
+                document.getElementById('profile-email').textContent = user.email || '';
+                
+                const profileAvatar = document.getElementById('profile-avatar');
+                if (user.photoURL) {
+                    profileAvatar.style.backgroundImage = `url(${user.photoURL})`;
+                    profileAvatar.style.backgroundSize = 'cover';
+                    profileAvatar.textContent = '';
+                } else {
+                    profileAvatar.textContent = name.charAt(0).toUpperCase();
+                    profileAvatar.style.backgroundImage = '';
+                }
+                
+                // Refresh credits
+                refreshCredits(user);
+                
+                // Close login modal
+                closeLoginModal();
+                
+            } else {
+                // Update header
+                loginBtn.classList.remove('hidden');
+                userAvatar.classList.add('hidden');
+                
+                // Update home
+                homeLoginHint.classList.remove('hidden');
+                homeTier.classList.add('hidden');
+                
+                // Update profile
+                profileLoggedOut.classList.remove('hidden');
+                profileLoggedIn.classList.add('hidden');
+                
+                // Reset credits
+                userCredits = { tier: 'basic', remaining: 0, usedToday: 0, quota: 5 };
+                updateCreditsUI();
+            }
+            
+            // Render history
+            renderHistory();
+        }
+
+        // === Initialization ===
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set today's date
+            const today = new Date();
+            const dateStr = `${today.getMonth() + 1}月${today.getDate()}日`;
+            document.getElementById('chat-date').textContent = `今日 ${dateStr}`;
+            
+            // Input Enter Key Listener
+            document.getElementById('chat-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            // Listen to auth state changes
+            window.addEventListener('authStateChanged', (event) => {
+                updateAppAuthUI(event.detail.user);
+            });
+            
+            // Check if already logged in
+            setTimeout(() => {
+                const user = window.getCurrentUser?.();
+                if (user) {
+                    updateAppAuthUI(user);
+                }
+            }, 500);
+        });
+    </script>
+
+</body>
+</html>
+
