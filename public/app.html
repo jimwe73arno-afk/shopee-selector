@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Shopee Agent App</title>
+    <title>選品獵人 | BrotherGAi</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/logo.png">
@@ -212,7 +212,7 @@
                     <img src="/logo.png" alt="BrotherG" class="w-full h-full object-contain">
                 </div>
                 <h1 class="text-3xl font-display font-bold text-white">BrotherGAi</h1>
-                <p class="text-slate-400 text-sm">全能電商選品助手</p>
+                <p class="text-slate-400 text-sm">AI 選品獵人</p>
                 
                 <!-- User Status -->
                 <div id="home-user-status" class="mt-4 text-sm">
@@ -254,9 +254,9 @@
             <div id="chat-history" class="flex flex-col gap-4">
                 <!-- AI Welcome -->
                 <div class="flex items-end gap-2">
-                    <img src="/logo.png" alt="AI" class="w-8 h-8 rounded-full flex-shrink-0 bg-primary p-1">
+                    <img src="/logo.png" alt="AI" class="w-8 h-8 rounded-full flex-shrink-0 bg-slate-800 p-1 border border-slate-700">
                     <div class="chat-bubble ai">
-                        嗨！我是你的蝦皮選品軍師。你可以直接輸入商品名稱或品類，我幫你做市場分析與選品建議！
+                        嗨！我是你的選品獵人。直接輸入商品名稱或品類，我幫你做市場分析與選品建議！
                     </div>
                 </div>
             </div>
@@ -453,7 +453,7 @@
             // Update Header Title
             const titles = {
                 'home': 'BrotherGAi',
-                'chat': 'AI 選品軍師',
+                'chat': '選品獵人',
                 'history': '查詢歷史',
                 'profile': '會員中心'
             };
@@ -627,7 +627,7 @@
             const htmlContent = marked.parse(text);
             
             div.innerHTML = `
-                <img src="/logo.png" alt="AI" class="w-8 h-8 rounded-full flex-shrink-0 bg-primary p-1">
+                <img src="/logo.png" alt="AI" class="w-8 h-8 rounded-full flex-shrink-0 bg-slate-800 p-1 border border-slate-700">
                 <div class="chat-bubble ai">${htmlContent}</div>
             `;
             chatHistory.appendChild(div);
@@ -639,7 +639,7 @@
             div.id = 'typing-indicator';
             div.className = 'flex items-end gap-2 animate-fade-in';
             div.innerHTML = `
-                <img src="/logo.png" alt="AI" class="w-8 h-8 rounded-full flex-shrink-0 bg-primary p-1">
+                <img src="/logo.png" alt="AI" class="w-8 h-8 rounded-full flex-shrink-0 bg-slate-800 p-1 border border-slate-700">
                 <div class="chat-bubble ai flex gap-1 py-4">
                     <div class="typing-dot"></div>
                     <div class="typing-dot"></div>
