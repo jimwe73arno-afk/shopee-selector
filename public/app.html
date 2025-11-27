@@ -363,6 +363,12 @@
                     </div>
                 </div>
 
+                <!-- Upgrade Button -->
+                <button onclick="showPaypalModal()" class="w-full bg-gradient-to-r from-primary to-blue-600 p-4 rounded-2xl flex items-center justify-center gap-3 touch-active mb-4 shadow-lg shadow-primary/20">
+                    <i class="fa-brands fa-paypal text-xl text-white"></i>
+                    <span class="text-sm font-bold text-white">升級 Pro 會員 - NT$688/月</span>
+                </button>
+
                 <!-- Menu -->
                 <div class="space-y-1">
                     <div class="bg-appSurface p-4 rounded-t-2xl border-b border-slate-800 flex justify-between items-center">
@@ -430,19 +436,50 @@
                     <i class="fa-solid fa-bolt text-2xl"></i>
                 </div>
                 <h3 class="text-xl font-bold text-white mb-1">今日額度已用完</h3>
-                <p class="text-slate-400 text-sm">明天會重置配額，敬請期待！</p>
+                <p class="text-slate-400 text-sm">升級 Pro 解鎖更多次數！</p>
             </div>
             <div class="space-y-3 mb-6">
                 <div class="flex items-center gap-3 p-3 bg-slate-900 rounded-xl border border-slate-800">
-                    <i class="fa-solid fa-calendar-check text-primary"></i>
-                    <span class="text-sm text-slate-300">每日自動重置</span>
+                    <i class="fa-solid fa-check text-primary"></i>
+                    <span class="text-sm text-slate-300">Pro 每日 20 次深度分析</span>
                 </div>
                 <div class="flex items-center gap-3 p-3 bg-slate-900 rounded-xl border border-slate-800">
-                    <i class="fa-solid fa-star text-accent"></i>
-                    <span class="text-sm text-slate-300">Pro 會員享有更多額度</span>
+                    <i class="fa-solid fa-check text-primary"></i>
+                    <span class="text-sm text-slate-300">完整選品策略報告</span>
                 </div>
             </div>
-            <button onclick="closeQuotaSheet()" class="w-full py-4 bg-slate-700 rounded-xl text-white font-bold text-lg touch-active">
+            <button onclick="showPaypalModal()" class="w-full py-4 bg-primary rounded-xl text-white font-bold text-lg touch-active mb-3">
+                <i class="fa-brands fa-paypal mr-2"></i>升級 Pro - NT$688/月
+            </button>
+            <button onclick="closeQuotaSheet()" class="w-full py-3 bg-slate-800 rounded-xl text-slate-400 font-medium touch-active">
+                明天再來
+            </button>
+        </div>
+    </div>
+
+    <!-- === PAYPAL PAYMENT MODAL === -->
+    <div id="paypal-modal" class="fixed inset-0 z-[70] hidden">
+        <div class="absolute inset-0 sheet-overlay" onclick="closePaypalModal()"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-appSurface rounded-t-3xl p-6 animate-slide-up pb-[calc(2rem+env(safe-area-inset-bottom))]">
+            <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-6"></div>
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-blue-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-500/30">
+                    <i class="fa-brands fa-paypal text-3xl text-blue-400"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2">PayPal 付款即將開通</h3>
+                <p class="text-slate-400 text-sm leading-relaxed">
+                    目前先開放免費體驗，<br>
+                    之後將提供 PayPal 付款開通 Pro 版本。
+                </p>
+            </div>
+            <div class="bg-slate-900 rounded-xl p-4 mb-6 border border-slate-800">
+                <div class="text-center">
+                    <span class="text-2xl font-bold text-white">NT$ 688</span>
+                    <span class="text-slate-400 text-sm"> /月</span>
+                </div>
+                <div class="text-xs text-slate-500 text-center mt-1">Pro 會員專屬價</div>
+            </div>
+            <button onclick="closePaypalModal()" class="w-full py-4 bg-primary rounded-xl text-white font-bold text-lg touch-active">
                 知道了
             </button>
         </div>
@@ -879,6 +916,18 @@
             setTimeout(() => {
                 sheet.classList.add('hidden');
             }, 300);
+        }
+
+        // === PayPal Modal ===
+        function showPaypalModal() {
+            closeQuotaSheet();
+            setTimeout(() => {
+                document.getElementById('paypal-modal').classList.remove('hidden');
+            }, 300);
+        }
+
+        function closePaypalModal() {
+            document.getElementById('paypal-modal').classList.add('hidden');
         }
 
         // === Auth UI Updates ===
