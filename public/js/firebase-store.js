@@ -11,7 +11,7 @@
   // Firebase 配置（與 auth.js 共用）
   const firebaseConfig = {
     apiKey: "AIzaSyCbxeHkWKphUTUw4iQXuLvYgRsmjQOQYeg",
-    authDomain: "brotherg.ai",
+    authDomain: "brothergai-699d2.firebaseapp.com",
     projectId: "brothergai-699d2",
     storageBucket: "brothergai-699d2.firebasestorage.app",
     messagingSenderId: "688590180498",

@@ -2,9 +2,10 @@
 // BrotherG AI - 全站共用 Firebase 登入模組
 
 // Firebase 配置
+// 注意：authDomain 使用 Firebase 預設值，避免登入後跳轉問題
 const firebaseConfig = {
   apiKey: "AIzaSyCbxeHkWKphUTUw4iQXuLvYgRsmjQOQYeg",
-  authDomain: "brotherg.ai",
+  authDomain: "brothergai-699d2.firebaseapp.com",
   projectId: "brothergai-699d2",
   storageBucket: "brothergai-699d2.firebasestorage.app",
   messagingSenderId: "688590180498",
