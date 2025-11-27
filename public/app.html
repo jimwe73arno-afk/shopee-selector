@@ -366,7 +366,7 @@
                 <!-- Upgrade Button -->
                 <button onclick="showPaypalModal()" class="w-full bg-gradient-to-r from-primary to-blue-600 p-4 rounded-2xl flex items-center justify-center gap-3 touch-active mb-4 shadow-lg shadow-primary/20">
                     <i class="fa-brands fa-paypal text-xl text-white"></i>
-                    <span class="text-sm font-bold text-white">升級 Pro 會員 - NT$688/月</span>
+                    <span class="text-sm font-bold text-white">升級 Pro 會員 - US$19.99/月</span>
                 </button>
 
                 <!-- Menu -->
@@ -466,21 +466,24 @@
                 <div class="w-16 h-16 bg-blue-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-500/30">
                     <i class="fa-brands fa-paypal text-3xl text-blue-400"></i>
                 </div>
-                <h3 class="text-xl font-bold text-white mb-2">PayPal 付款即將開通</h3>
+                <h3 class="text-xl font-bold text-white mb-2">升級 Pro 會員</h3>
                 <p class="text-slate-400 text-sm leading-relaxed">
-                    目前先開放免費體驗，<br>
-                    之後將提供 PayPal 付款開通 Pro 版本。
+                    每日 20 次深度選品分析<br>
+                    完整策略報告 + 優先支援
                 </p>
             </div>
             <div class="bg-slate-900 rounded-xl p-4 mb-6 border border-slate-800">
                 <div class="text-center">
-                    <span class="text-2xl font-bold text-white">NT$ 688</span>
+                    <span class="text-2xl font-bold text-white">US$ 19.99</span>
                     <span class="text-slate-400 text-sm"> /月</span>
                 </div>
-                <div class="text-xs text-slate-500 text-center mt-1">Pro 會員專屬價</div>
+                <div class="text-xs text-slate-500 text-center mt-1">透過 PayPal 安全付款</div>
             </div>
-            <button onclick="closePaypalModal()" class="w-full py-4 bg-primary rounded-xl text-white font-bold text-lg touch-active">
-                知道了
+            <button onclick="redirectToPaypal()" id="shopee-paypal-btn" class="w-full py-4 bg-primary rounded-xl text-white font-bold text-lg touch-active mb-3">
+                <i class="fa-brands fa-paypal mr-2"></i>立即升級 Pro
+            </button>
+            <button onclick="closePaypalModal()" class="w-full py-3 bg-slate-800 rounded-xl text-slate-400 font-medium touch-active">
+                之後再說
             </button>
         </div>
     </div>
@@ -918,7 +921,7 @@
             }, 300);
         }
 
-        // === PayPal Modal ===
+        // === PayPal Checkout ===
         function showPaypalModal() {
             closeQuotaSheet();
             setTimeout(() => {
@@ -926,8 +929,54 @@
             }, 300);
         }
 
+        async function redirectToPaypal() {
+            const btn = document.getElementById('shopee-paypal-btn');
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>正在跳轉 PayPal...';
+            btn.disabled = true;
+            
+            try {
+                const res = await fetch('/.netlify/functions/paypal-checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        product: 'SHOPEE_PRO',
+                        returnUrl: window.location.origin + '/payment/success?product=SHOPEE_PRO',
+                        cancelUrl: window.location.origin + '/payment/cancel?product=SHOPEE_PRO'
+                    })
+                });
+
+                const data = await res.json();
+                console.log('PayPal response:', data);
+
+                if (data.ok && data.checkoutUrl) {
+                    // 儲存當前狀態
+                    localStorage.setItem('shopee_session', JSON.stringify({ chatMessages }));
+                    // 跳轉到 PayPal
+                    window.location.href = data.checkoutUrl;
+                } else {
+                    throw new Error(data.error || 'PayPal 訂單創建失敗');
+                }
+            } catch (e) {
+                console.error('PayPal error:', e);
+                btn.innerHTML = '<i class="fa-brands fa-paypal mr-2"></i>立即升級 Pro';
+                btn.disabled = false;
+                showToast('PayPal 連線失敗：' + e.message);
+            }
+        }
+
         function closePaypalModal() {
             document.getElementById('paypal-modal').classList.add('hidden');
+        }
+        
+        // 檢查付款狀態
+        function checkShopeePaymentStatus() {
+            const paid = localStorage.getItem('SHOPEE_PRO_paid');
+            if (paid === 'true') {
+                userCredits.tier = 'pro';
+                userCredits.quota = 20;
+                userCredits.remaining = 20;
+                showToast('🎉 歡迎回來！Pro 會員已解鎖');
+            }
         }
 
         // === Auth UI Updates ===

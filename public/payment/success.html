@@ -3,132 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>付款成功 | BrotherG AI</title>
+    <title>付款成功 | BrotherGAi</title>
+    <link rel="icon" type="image/png" href="/logo.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        body { font-family: 'Inter', sans-serif; }
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: #f0f;
+            animation: confetti-fall 3s ease-out forwards;
         }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .success-container {
-            background: white;
-            border-radius: 20px;
-            padding: 60px 40px;
-            text-align: center;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 500px;
-            width: 100%;
-        }
-        .success-icon {
-            width: 100px;
-            height: 100px;
-            background: #10b981;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 30px;
-            animation: scaleIn 0.5s ease-out;
-        }
-        .success-icon::after {
-            content: '✓';
-            color: white;
-            font-size: 60px;
-            font-weight: bold;
-        }
-        @keyframes scaleIn {
-            from {
-                transform: scale(0);
-                opacity: 0;
-            }
-            to {
-                transform: scale(1);
-                opacity: 1;
-            }
-        }
-        h1 {
-            color: #1f2937;
-            font-size: 32px;
-            margin-bottom: 15px;
-        }
-        p {
-            color: #6b7280;
-            font-size: 18px;
-            line-height: 1.6;
-            margin-bottom: 30px;
-        }
-        .button {
-            display: inline-block;
-            padding: 15px 40px;
-            background: #00A0E9;
-            color: white;
-            text-decoration: none;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 16px;
-            transition: all 0.3s;
-            margin-top: 20px;
-        }
-        .button:hover {
-            background: #0090d9;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0, 160, 233, 0.3);
-        }
-        .info-box {
-            background: #f3f4f6;
-            border-radius: 10px;
-            padding: 20px;
-            margin: 30px 0;
-            text-align: left;
-        }
-        .info-box p {
-            margin: 5px 0;
-            font-size: 14px;
-            color: #4b5563;
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
         }
     </style>
 </head>
-<body>
-    <div class="success-container">
-        <div class="success-icon"></div>
-        <h1>付款成功！</h1>
-        <p>感謝您的支持！您的訂閱已經啟用。</p>
-        
-        <div class="info-box">
-            <p><strong>✓</strong> 訂單已確認</p>
-            <p><strong>✓</strong> 訂閱方案已啟用</p>
-            <p><strong>✓</strong> 您現在可以享受完整功能</p>
+<body class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-6">
+    
+    <div class="max-w-md w-full text-center">
+        <!-- Success Icon -->
+        <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-green-100 border-4 border-green-500 flex items-center justify-center animate-bounce">
+            <i class="fa-solid fa-check text-4xl text-green-500"></i>
         </div>
-
-        <p style="font-size: 14px; color: #9ca3af;">
-            我們已發送確認郵件到您的註冊信箱，請查收。
+        
+        <!-- Title -->
+        <h1 class="text-3xl font-bold text-gray-900 mb-3">
+            🎉 付款成功！
+        </h1>
+        
+        <!-- Message -->
+        <p class="text-gray-600 mb-6" id="success-message">
+            感謝你的支持！你的 Pro 會員已經啟用。
         </p>
-
-        <a href="https://monumental-taiyaki-e878bd.netlify.app" class="button">
-            返回 Shopee Analyst
+        
+        <!-- Order Info -->
+        <div class="bg-white rounded-xl p-4 mb-6 border border-gray-200 shadow-sm">
+            <div class="text-sm text-gray-500 mb-1">訂單編號</div>
+            <div class="font-mono text-lg text-gray-900" id="order-id">-</div>
+        </div>
+        
+        <!-- CTA -->
+        <a id="return-btn" href="/" class="block w-full py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg">
+            <i class="fa-solid fa-arrow-left mr-2"></i>返回繼續使用
         </a>
+        
+        <p class="text-xs text-gray-400 mt-4">
+            如有任何問題，請聯繫客服
+        </p>
     </div>
 
     <script>
-        // 檢查 URL 參數是否有訂單資訊
-        const urlParams = new URLSearchParams(window.location.search);
-        const orderId = urlParams.get('MerchantTradeNo');
-        
-        if (orderId) {
-            console.log('訂單編號:', orderId);
-            // 可以在這裡發送分析事件或更新 UI
+        // 獲取 URL 參數
+        const params = new URLSearchParams(window.location.search);
+        const product = params.get('product');
+        const token = params.get('token');
+        const payerId = params.get('PayerID');
+
+        // 設定訂單編號
+        if (token) {
+            document.getElementById('order-id').textContent = token;
         }
+
+        // 根據產品類型設定訊息和返回連結
+        const productConfig = {
+            'TESLA_PRO': {
+                message: '感謝你的支持！你的 Tesla Pro 檔案已永久解鎖。',
+                returnUrl: '/tesla-app',
+                returnText: '返回 Tesla 顧問'
+            },
+            'SHOPEE_PRO': {
+                message: '感謝你的支持！你的選品獵人 Pro 會員已啟用。',
+                returnUrl: '/app',
+                returnText: '返回選品獵人'
+            },
+            'PRO': {
+                message: '感謝你的支持！你的 BrotherGAi Pro 會員已啟用。',
+                returnUrl: '/',
+                returnText: '返回首頁'
+            }
+        };
+
+        const config = productConfig[product] || productConfig['PRO'];
+        document.getElementById('success-message').textContent = config.message;
+        document.getElementById('return-btn').href = config.returnUrl;
+        document.getElementById('return-btn').innerHTML = `<i class="fa-solid fa-arrow-left mr-2"></i>${config.returnText}`;
+
+        // 儲存付款狀態到 localStorage
+        if (product) {
+            localStorage.setItem(`${product}_paid`, 'true');
+            localStorage.setItem(`${product}_paymentDate`, new Date().toISOString());
+        }
+
+        // 創建彩帶效果
+        function createConfetti() {
+            const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD'];
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDelay = Math.random() * 2 + 's';
+                confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                document.body.appendChild(confetti);
+                
+                setTimeout(() => confetti.remove(), 5000);
+            }
+        }
+        createConfetti();
     </script>
 </body>
 </html>
-
-
