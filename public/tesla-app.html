@@ -176,10 +176,8 @@
     </div>
 
     <!-- === TAB: CHAT === -->
-    <div id="tab-chat" class="hidden flex-1 flex flex-col pt-[calc(4rem+env(safe-area-inset-top))] pb-[calc(8rem+env(safe-area-inset-bottom))]">
-        <div id="chat-container" class="flex-1 overflow-y-auto">
-            <div id="chat-history" class="flex flex-col gap-4 px-4 py-4"></div>
-        </div>
+    <div id="tab-chat" class="hidden flex-1 overflow-y-auto pt-[calc(4rem+env(safe-area-inset-top))] pb-[calc(8rem+env(safe-area-inset-bottom))]" id="chat-container">
+        <div id="chat-history" class="flex flex-col gap-4 px-4 py-4"></div>
     </div>
 
     <!-- === TAB: HISTORY === -->
@@ -431,7 +429,7 @@
         }
 
         function scrollToBottom() {
-            const container = document.getElementById('chat-container');
+            const container = document.getElementById('tab-chat');
             setTimeout(() => container?.scrollTo({ top: container.scrollHeight, behavior: 'smooth' }), 100);
         }
 
