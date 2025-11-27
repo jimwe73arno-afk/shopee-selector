@@ -4,7 +4,7 @@
 // Firebase 配置
 const firebaseConfig = {
   apiKey: "AIzaSyCbxeHkWKphUTUw4iQXuLvYgRsmjQOQYeg",
-  authDomain: "brotherg.ai",  // 使用自訂網域
+  authDomain: "brothergai-699d2.firebaseapp.com",  // 先用 Firebase 預設，等 DNS 設定好再改
   projectId: "brothergai-699d2",
   storageBucket: "brothergai-699d2.firebasestorage.app",
   messagingSenderId: "688590180498",
