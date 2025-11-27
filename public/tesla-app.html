@@ -71,6 +71,42 @@
         }
         
         ::-webkit-scrollbar { display: none; }
+
+        /* === Desktop Phone Frame === */
+        .app-shell {
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #050816;
+        }
+
+        .app-phone-frame {
+            width: 100%;
+            max-width: 430px;
+            height: 100vh;
+            height: 100dvh;
+            max-height: 932px;
+            border-radius: 40px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1);
+            position: relative;
+            background: #FFFFFF;
+        }
+
+        /* Mobile: Full screen, no frame */
+        @media (max-width: 768px) {
+            .app-shell {
+                background: #FFFFFF;
+            }
+            .app-phone-frame {
+                max-width: 100%;
+                max-height: 100%;
+                border-radius: 0;
+                box-shadow: none;
+            }
+        }
         
         /* Background Pattern */
         .bg-pattern {
@@ -173,7 +209,10 @@
         .toast.show { opacity: 1; }
     </style>
 </head>
-<body class="h-[100dvh] w-full flex flex-col overflow-hidden relative">
+<body>
+<div class="app-shell">
+<div class="app-phone-frame">
+<div class="h-[100dvh] w-full flex flex-col overflow-hidden relative">
 
     <div class="bg-pattern"></div>
 
@@ -249,10 +288,10 @@
                 <h3 class="text-xl font-bold text-textMain mb-2">解鎖決策卡</h3>
                 <p class="text-textSub text-sm">獲取你的個人化 Tesla 分析、風險評估，以及最終車型推薦。</p>
             </div>
-            <button onclick="processPayment()" id="pay-btn" class="w-full py-4 bg-aiBlue text-white font-bold rounded-xl touch-active shadow-lg">
-                支付 NT$ 99
+            <button onclick="showPaypalComingSoon()" id="pay-btn" class="w-full py-4 bg-aiBlue text-white font-bold rounded-xl touch-active shadow-lg">
+                <i class="fa-brands fa-paypal mr-2"></i>支付 NT$99（PayPal 即將開通）
             </button>
-            <p class="text-center text-xs text-textSub mt-3">一次付費，永久解鎖此次諮詢</p>
+            <p class="text-center text-xs text-textSub mt-3">目前開放免費體驗</p>
         </div>
     </div>
 
@@ -436,9 +475,44 @@
             updateUI();
         }
 
-        // === Payment ===
+        // === PayPal Coming Soon ===
+        function showPaypalComingSoon() {
+            document.getElementById('paywall-modal').classList.add('hidden');
+            document.getElementById('paypal-modal').classList.remove('hidden');
+        }
+
+        function closePaypalModal() {
+            document.getElementById('paypal-modal').classList.add('hidden');
+        }
+
+        function closePaypalModalAndContinue() {
+            document.getElementById('paypal-modal').classList.add('hidden');
+            // 免費體驗模式：直接解鎖
+            teslaState.paid = true;
+            teslaState.loading = false;
+            document.getElementById('send-btn').disabled = false;
+            
+            addBotMessage("目前為免費體驗模式！正在生成你的專屬分析...");
+            
+            // Get final decision
+            showTypingIndicator();
+            
+            callTeslaAPI(teslaState).then(data => {
+                removeTypingIndicator();
+                if (data.ok) {
+                    teslaState.messages.push({ role: 'assistant', content: data.reply });
+                    addBotMessage(data.reply, true);
+                }
+            }).catch(e => {
+                removeTypingIndicator();
+                addBotMessage("生成分析時發生錯誤，請重新整理頁面再試。");
+            });
+        }
+
+        // === Payment (Legacy - now redirects to PayPal modal) ===
         function closePaywall() {
-            // Don't allow close without payment
+            // Show PayPal coming soon instead
+            showPaypalComingSoon();
         }
 
         function processPayment() {
@@ -486,6 +560,30 @@
         window.onload = initTesla;
     </script>
 
+<!-- === PAYPAL COMING SOON MODAL === -->
+    <div id="paypal-modal" class="fixed inset-0 z-[70] hidden">
+        <div class="absolute inset-0 modal-overlay" onclick="closePaypalModal()"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 animate-slide-up shadow-2xl" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom));">
+            <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-100">
+                    <i class="fa-brands fa-paypal text-3xl text-blue-600"></i>
+                </div>
+                <h3 class="text-xl font-bold text-textMain mb-2">PayPal 付款即將開通</h3>
+                <p class="text-textSub text-sm leading-relaxed">
+                    目前先開放免費體驗，<br>
+                    之後將提供 PayPal 付款開通 Pro 版本。
+                </p>
+            </div>
+            <button onclick="closePaypalModalAndContinue()" class="w-full py-4 bg-aiBlue text-white font-bold rounded-xl touch-active shadow-lg">
+                知道了，繼續免費體驗
+            </button>
+        </div>
+    </div>
+
+</div><!-- end app content -->
+</div><!-- end app-phone-frame -->
+</div><!-- end app-shell -->
 </body>
 </html>
 

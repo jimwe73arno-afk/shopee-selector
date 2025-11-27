@@ -42,6 +42,17 @@
   to = "/tesla-app.html"
   status = 301
 
+# Desktop 版 placeholder 頁面
+[[redirects]]
+  from = "/shopee-desktop"
+  to = "/shopee-desktop.html"
+  status = 301
+
+[[redirects]]
+  from = "/tesla-desktop"
+  to = "/tesla-desktop.html"
+  status = 301
+
 # SPA fallback - 所有其他路徑都重定向到 index.html（必须放在最后）
 # 注意：Netlify 会自动处理 /.netlify/functions/ 路径，不会被这个规则拦截
 [[redirects]]

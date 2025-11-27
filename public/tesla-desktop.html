@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tesla Desktop 版開發中 | BrotherGAi</title>
+    <link rel="icon" type="image/png" href="/logo.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+    <div class="max-w-md w-full text-center">
+        <!-- Logo -->
+        <div class="mb-8">
+            <img src="/logo.png" alt="BrotherGAi" class="w-16 h-16 mx-auto rounded-2xl shadow-lg mb-4">
+        </div>
+        
+        <!-- Icon -->
+        <div class="w-20 h-20 mx-auto mb-6 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center">
+            <img src="/modelx.png" alt="Tesla" class="w-14 h-14 object-contain">
+        </div>
+        
+        <!-- Title -->
+        <h1 class="text-2xl font-bold text-gray-900 mb-3" style="font-family: 'Space Grotesk', sans-serif;">
+            Tesla Desktop 版開發中
+        </h1>
+        
+        <!-- Description -->
+        <p class="text-gray-500 mb-8">
+            目前優先完成行動版體驗，桌機版即將上線。<br>
+            敬請期待！
+        </p>
+        
+        <!-- Progress -->
+        <div class="mb-8">
+            <div class="flex items-center justify-center gap-2 text-sm text-gray-400 mb-2">
+                <i class="fa-solid fa-hammer"></i>
+                <span>開發進度</span>
+            </div>
+            <div class="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div class="h-full bg-blue-500 rounded-full" style="width: 25%;"></div>
+            </div>
+        </div>
+        
+        <!-- CTA Buttons -->
+        <div class="space-y-3">
+            <a href="/tesla-app" class="block w-full py-3 px-6 bg-blue-500 text-white font-semibold rounded-xl hover:bg-blue-600 transition-colors shadow-lg shadow-blue-200">
+                <i class="fa-solid fa-mobile-screen mr-2"></i>
+                先使用行動版
+            </a>
+            <a href="/" class="block w-full py-3 px-6 bg-white text-gray-700 font-semibold rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors">
+                <i class="fa-solid fa-home mr-2"></i>
+                回到 BrotherGAi 首頁
+            </a>
+        </div>
+    </div>
+</body>
+</html>
+

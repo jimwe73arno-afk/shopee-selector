@@ -48,3 +48,4 @@ const firebaseConfig = {
 
 如果需要保護 API Key，可以將配置放在 Netlify 環境變數中，並透過後端函數提供。
 
+

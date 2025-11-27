@@ -22,7 +22,7 @@
     
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
+    
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -173,11 +173,11 @@
     <aside class="w-20 bg-white/90 backdrop-blur-md border-r border-borderLight flex-col items-center py-8 z-30 flex-shrink-0 hidden md:flex">
         <div class="w-10 h-10 mb-16 cursor-pointer hover:opacity-80">
             <img src="/logo.png" alt="Logo" class="w-full h-full object-contain rounded-lg">
-        </div>
+                </div>
         <nav class="flex-1 flex flex-col space-y-6 w-full items-center">
             <button class="nav-icon-desk w-10 h-10 rounded-xl flex items-center justify-center text-aiBlue bg-blue-50">
                 <i class="fa-solid fa-layer-group text-lg"></i>
-            </button>
+                </button>
             <button onclick="openPricingModal()" class="nav-icon-desk w-10 h-10 rounded-xl flex items-center justify-center text-textSub hover:text-aiBlue transition-all">
                 <i class="fa-solid fa-crown text-lg"></i>
             </button>
@@ -206,15 +206,15 @@
                     <i class="fa-solid fa-bolt text-amber-500 mr-1.5"></i>
                     <span id="credits-count" class="font-mono font-bold text-aiBlue">5</span>
                     <span class="text-textSub">/5</span>
-                </div>
+                    </div>
                 <!-- Login Button -->
                 <button id="login-btn" onclick="handleGoogleLogin()" class="flex items-center gap-2 px-3 py-2 bg-gray-100 border border-gray-200 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors">
                     <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-4 h-4" alt="Google">
                     <span class="hidden sm:inline">登入</span>
-                </button>
+                    </button>
                 <!-- User Avatar -->
                 <div id="user-avatar" class="hidden w-9 h-9 rounded-full bg-aiBlue text-white font-bold text-sm flex items-center justify-center cursor-pointer border-2 border-blue-200"></div>
-            </div>
+                </div>
         </header>
 
         <!-- Content -->
@@ -235,8 +235,8 @@
                     <div id="user-status" class="mt-4 flex items-center justify-center md:justify-start gap-2">
                         <span id="login-hint" class="text-xs text-textSub">登入解鎖完整功能</span>
                         <span id="user-tier-badge" class="hidden px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-aiBlue border border-blue-100">FREE</span>
-                    </div>
                 </div>
+            </div>
 
                 <!-- Module Cards -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5">
@@ -264,7 +264,7 @@
                     </a>
 
                     <!-- 選品獵人 (Desktop) -->
-                    <a href="/shopee" class="core-card h-32 md:h-36 cursor-pointer group">
+                    <a href="/shopee-desktop" class="core-card h-32 md:h-36 cursor-pointer group">
                         <div class="shockwave-container"><div class="shockwave-effect"></div></div>
                         <div class="icon-box">
                             <i class="fa-solid fa-bag-shopping text-3xl text-aiBlue icon-glow transition-colors"></i>
@@ -309,7 +309,7 @@
                     </a>
 
                     <!-- Tesla 決策核心 (電腦版) -->
-                    <a href="/tesla" class="core-card h-32 md:h-36 cursor-pointer group">
+                    <a href="/tesla-desktop" class="core-card h-32 md:h-36 cursor-pointer group">
                         <div class="shockwave-container"><div class="shockwave-effect"></div></div>
                         <div class="icon-box">
                             <img src="/modelx.png" alt="Tesla Model X" class="w-12 h-12 object-contain icon-glow transition-transform group-hover:scale-110">
@@ -319,7 +319,7 @@
                                 <div>
                                     <h2 class="text-base md:text-lg font-display font-bold text-textMain mb-0.5 group-hover:text-aiBlue transition-colors">Tesla 決策顧問</h2>
                                     <p class="text-[11px] text-textSub">完整版 (適合電腦)</p>
-                                </div>
+                    </div>
                                 <span class="font-mono text-[10px] text-textSub bg-gray-100 px-2 py-0.5 rounded border border-gray-200">電腦版</span>
                             </div>
                             <div class="flex justify-between items-end">
@@ -338,7 +338,7 @@
                             <svg class="w-10 h-10 text-aiBlue icon-glow transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M12 2v20" /><path d="M12 4l-2 2v16" /><path d="M12 4l2 2v16" /><path d="M12 10l-4 4v8" /><path d="M12 10l4 4v8" /><path d="M8 22h8" />
                             </svg>
-                        </div>
+                                </div>
                         <div class="flex-1 p-4 md:p-5 flex flex-col justify-between relative z-10">
                             <div class="flex justify-between items-start">
                                 <div>
@@ -348,22 +348,22 @@
                                 <i class="fa-solid fa-lock text-gray-300 text-xs"></i>
                             </div>
                             <span class="font-mono text-[10px] text-textSub bg-gray-100 px-2 py-1 rounded self-start">COMING SOON</span>
-                        </div>
+                            </div>
                         <div class="charge-track"><div class="charge-bar" style="background: #94A3B8;"></div></div>
-                    </div>
+                        </div>
 
                     <!-- 選品策略 -->
                     <a href="/strategy.html" class="core-card h-32 md:h-36 cursor-pointer group">
                         <div class="shockwave-container"><div class="shockwave-effect"></div></div>
                         <div class="icon-box">
                             <i class="fa-solid fa-compass text-3xl text-aiBlue icon-glow transition-colors"></i>
-                        </div>
+                    </div>
                         <div class="flex-1 p-4 md:p-5 flex flex-col justify-between relative z-10">
                             <div class="flex justify-between items-start">
                                 <div>
                                     <h2 class="text-base md:text-lg font-display font-bold text-textMain mb-0.5 group-hover:text-aiBlue transition-colors">選品策略</h2>
                                     <p class="text-[11px] text-textSub">系統化爆品矩陣</p>
-                                </div>
+                </div>
                                 <span class="font-mono text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">PRO</span>
                             </div>
                             <div class="flex justify-between items-end">
@@ -393,7 +393,7 @@
                         <div class="charge-track"><div class="charge-bar" style="background: #94A3B8;"></div></div>
                     </div>
 
-                </div>
+                    </div>
 
                 <!-- Upgrade Banner -->
                 <div onclick="openPricingModal()" class="mt-6 md:mt-8 bg-gradient-to-r from-blue-50 to-amber-50 rounded-2xl p-5 border border-blue-100 cursor-pointer hover:border-aiBlue transition-colors group">
@@ -405,7 +405,7 @@
                             <div>
                                 <h3 class="font-bold text-textMain text-sm md:text-base">升級 Pro 會員</h3>
                                 <p class="text-[11px] text-textSub">解鎖更多分析次數與進階功能</p>
-                            </div>
+                        </div>
                         </div>
                         <i class="fa-solid fa-chevron-right text-gray-400 group-hover:text-aiBlue group-hover:translate-x-1 transition-all"></i>
                     </div>
@@ -416,7 +416,7 @@
                     <div class="bg-white rounded-xl p-4 border border-borderLight shadow-card">
                         <div class="text-2xl font-display font-bold text-textMain" id="stat-used">0</div>
                         <div class="text-[11px] text-textSub">今日已使用</div>
-                    </div>
+            </div>
                     <div class="bg-white rounded-xl p-4 border border-borderLight shadow-card">
                         <div class="text-2xl font-display font-bold text-aiBlue" id="stat-remaining">5</div>
                         <div class="text-[11px] text-textSub">剩餘次數</div>
@@ -462,7 +462,7 @@
                         <div>
                             <h3 class="font-bold text-textMain">體驗版</h3>
                             <p class="text-xs text-textSub">免費使用</p>
-                        </div>
+                    </div>
                         <span class="text-xl font-display font-bold text-textMain">$0</span>
                     </div>
                     <ul class="space-y-2 text-xs text-textSub">
@@ -478,28 +478,28 @@
                         <div>
                             <h3 class="font-bold text-textMain">專業版 Pro</h3>
                             <p class="text-xs text-aiBlue">最受歡迎</p>
-                        </div>
+                  </div>
                         <div class="text-right">
                             <span class="text-xl font-display font-bold text-textMain">$688</span>
                             <span class="text-xs text-textSub">/月</span>
-                        </div>
                     </div>
+                  </div>
                     <ul class="space-y-2 text-xs text-textMain mb-4">
                         <li class="flex items-center gap-2"><i class="fa-solid fa-check text-aiBlue"></i> 每日 20 次深度分析</li>
                         <li class="flex items-center gap-2"><i class="fa-solid fa-check text-aiBlue"></i> 完整選品策略報告</li>
                         <li class="flex items-center gap-2"><i class="fa-solid fa-check text-aiBlue"></i> 直播帶貨腳本生成</li>
                         <li class="flex items-center gap-2"><i class="fa-solid fa-check text-aiBlue"></i> 優先算力通道</li>
-                    </ul>
+                  </ul>
                     <button onclick="handleUpgradeToPro()" class="w-full py-3 bg-aiBlue text-white font-bold rounded-xl active:scale-95 transition-transform">
                         立即升級 Pro
-                    </button>
+                  </button>
                     <p class="text-center text-[10px] text-textSub mt-2 cursor-pointer hover:text-aiBlue" onclick="showActivationModal()">
                         已付款？點此輸入開通碼
-                    </p>
+                  </p>
                 </div>
-            </div>
-        </div>
-    </div>
+                  </div>
+                    </div>
+                  </div>
 
     <!-- Activation Modal -->
     <div id="activation-modal" class="fixed inset-0 z-[70] hidden">
@@ -509,16 +509,16 @@
             <div class="text-center mb-6">
                 <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mx-auto mb-3 border border-blue-100">
                     <i class="fa-solid fa-key text-xl text-aiBlue"></i>
-                </div>
+                  </div>
                 <h3 class="text-lg font-bold text-textMain mb-1">輸入開通碼</h3>
                 <p class="text-textSub text-xs">付款後取得的專屬開通碼</p>
             </div>
             <input type="text" id="activation-code-input" placeholder="請輸入開通碼" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-textMain text-center text-lg tracking-widest mb-4 focus:border-aiBlue focus:outline-none focus:ring-2 focus:ring-blue-100">
             <button onclick="activateCode()" class="w-full py-3 bg-textMain text-white font-bold rounded-xl active:scale-95 transition-transform">
                 確認開通
-            </button>
-        </div>
-    </div>
+                  </button>
+                </div>
+            </div>
 
     <!-- Login Modal -->
     <div id="login-modal" class="fixed inset-0 z-[60] hidden">
@@ -529,19 +529,19 @@
                 <img src="/logo.png" alt="BrotherG" class="w-14 h-14 mx-auto mb-4 rounded-xl">
                 <h3 class="text-xl font-bold text-textMain mb-1">登入 BrotherGAi</h3>
                 <p class="text-textSub text-sm">使用 Google 帳號快速登入</p>
-            </div>
+        </div>
             <button onclick="handleGoogleLogin()" class="w-full flex items-center justify-center gap-3 bg-white text-textMain py-4 rounded-xl font-bold border border-gray-200 hover:bg-gray-50 active:scale-95 transition-all">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google">
                 使用 Google 登入
             </button>
-        </div>
     </div>
-
+    </div>
+    
     <!-- Toast -->
     <div id="toast" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-textMain text-white px-6 py-3 rounded-full shadow-2xl opacity-0 pointer-events-none transition-opacity duration-300 z-[80] text-sm font-medium flex items-center gap-2 whitespace-nowrap">
         <i class="fa-solid fa-circle-info text-aiBlue"></i>
         <span id="toast-msg">Message</span>
-    </div>
+        </div>
 
     <!-- Firebase Auth & Store Scripts -->
     <script src="/js/auth.js"></script>
@@ -606,14 +606,14 @@
                 showToast('請輸入開通碼');
                 return;
             }
-            
+
             const user = window.getCurrentUser?.();
             if (!user) {
                 closeActivationModal();
                 document.getElementById('login-modal').classList.remove('hidden');
                 return;
             }
-            
+
             try {
                 const response = await fetch('/.netlify/functions/verify-code', {
                     method: 'POST',
@@ -623,9 +623,9 @@
                         userId: user.uid || user.email
                     })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.valid && data.plan) {
                     showToast(`✅ 開通成功！已升級為 ${data.plan}`);
                     input.value = '';
@@ -669,7 +669,7 @@
                             av.style.backgroundImage = `url(${user.photoURL})`;
                             av.style.backgroundSize = 'cover';
                             av.textContent = '';
-                        } else {
+            } else {
                             av.textContent = name.charAt(0).toUpperCase();
                             av.style.backgroundImage = '';
                         }
@@ -691,7 +691,7 @@
                 
                 closeLoginModal();
                 
-            } else {
+                } else {
                 loginBtn.classList.remove('hidden');
                 userAvatar.classList.add('hidden');
                 userAvatarDesktop?.classList.add('hidden');

@@ -217,3 +217,4 @@ FIREBASE_SERVICE_ACCOUNT={"type":"service_account","project_id":"brothergai-699d
 2. 浏览器 Console 日志
 3. Firebase Console → Firestore → 数据是否正常创建
 
+
