@@ -657,24 +657,59 @@
         }
 
         // === Auth ===
-        window.addEventListener('authStateChanged', (e) => {
-            currentUser = e.detail.user;
-            if (currentUser) {
+        function updateProfileUI(user) {
+            if (user) {
                 document.getElementById('login-overlay').classList.add('hidden');
-                document.getElementById('profile-name').textContent = currentUser.displayName || '用戶';
-                document.getElementById('profile-email').textContent = currentUser.email || '';
+                document.getElementById('profile-name').textContent = user.displayName || '用戶';
+                document.getElementById('profile-email').textContent = user.email || '';
                 const avatar = document.getElementById('profile-avatar');
-                if (currentUser.photoURL) {
-                    avatar.style.backgroundImage = `url(${currentUser.photoURL})`;
+                if (user.photoURL) {
+                    avatar.style.backgroundImage = `url(${user.photoURL})`;
                     avatar.style.backgroundSize = 'cover';
                     avatar.textContent = '';
                 } else {
-                    avatar.textContent = (currentUser.displayName || 'U').charAt(0).toUpperCase();
+                    avatar.textContent = (user.displayName || 'U').charAt(0).toUpperCase();
                 }
             } else {
                 document.getElementById('login-overlay').classList.remove('hidden');
             }
+        }
+
+        window.addEventListener('authStateChanged', (e) => {
+            currentUser = e.detail.user;
+            updateProfileUI(currentUser);
         });
+
+        // 覆寫 Google 登入，登入後不要跳轉
+        window.handleGoogleLogin = async function() {
+            const btn = document.getElementById('login-btn');
+            try {
+                if (btn) {
+                    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i>驗證中...';
+                    btn.disabled = true;
+                }
+                
+                const result = await firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider());
+                const user = result.user;
+                
+                currentUser = user;
+                updateProfileUI(user);
+                showToast(`${user.displayName || '用戶'} 登入成功！`);
+                
+                return user;
+            } catch (err) {
+                console.error('Google 登入失敗', err);
+                let errorMsg = '登入失敗';
+                if (err.code === 'auth/popup-closed-by-user') errorMsg = '登入已取消';
+                else if (err.code === 'auth/popup-blocked') errorMsg = '請允許彈出視窗';
+                showToast(errorMsg);
+            } finally {
+                if (btn) {
+                    btn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google"><span>使用 Google 帳號登入</span>';
+                    btn.disabled = false;
+                }
+            }
+        };
 
         // === Input Enter Key ===
         document.getElementById('chat-input').addEventListener('keypress', function(e) { if (e.key === 'Enter') sendMessage(); });
@@ -682,6 +717,11 @@
         // === Init ===
         window.onload = function() {
             checkPaymentStatus();
+            // 檢查是否已登入
+            firebase.auth().onAuthStateChanged((user) => {
+                currentUser = user;
+                updateProfileUI(user);
+            });
         };
     </script>
 
