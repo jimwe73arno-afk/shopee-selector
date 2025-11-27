@@ -11,24 +11,30 @@ const PAYPAL_BASE_URL = process.env.PAYPAL_MODE === 'live'
   ? 'https://api-m.paypal.com' 
   : 'https://api-m.sandbox.paypal.com';
 
-// 產品定價表
+// 產品定價表（統一 US$1.99 升級 Pro）
 const PRODUCTS = {
+  'BROTHERG_PRO': {
+    name: 'BrotherG Pro 會員',
+    description: '每天 30 題 AI 諮詢（Tesla + 蝦皮共用）',
+    price: '1.99',
+    currency: 'USD'
+  },
   'TESLA_PRO': {
-    name: 'Tesla Pro 決策檔案',
-    description: '永久保存你的 Tesla 購車決策紀錄',
+    name: 'BrotherG Pro 會員',
+    description: '每天 30 題 AI 諮詢',
     price: '1.99',
     currency: 'USD'
   },
   'SHOPEE_PRO': {
-    name: 'Shopee Pro 選品會員',
-    description: '每日 20 次深度選品分析',
-    price: '19.99',
+    name: 'BrotherG Pro 會員',
+    description: '每天 30 題 AI 諮詢',
+    price: '1.99',
     currency: 'USD'
   },
   'PRO': {
-    name: 'BrotherGAi Pro 會員',
-    description: '解鎖全部 Pro 功能',
-    price: '19.99',
+    name: 'BrotherG Pro 會員',
+    description: '每天 30 題 AI 諮詢',
+    price: '1.99',
     currency: 'USD'
   }
 };

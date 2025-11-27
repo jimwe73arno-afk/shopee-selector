@@ -35,13 +35,13 @@
     return `${yyyy}-${mm}-${dd}`;
   };
 
-  // ★ 取得每日配額上限（依 tier，與 PLAN_CONFIG 同步）
+  // ★ 統一每日配額上限（Free 10 / Pro 30，所有 APP 共用）
   const PLAN_CONFIG = {
-    guest:  { dailyLimit: 1 },
-    free:   { dailyLimit: 5 },
-    basic:  { dailyLimit: 5 },  // 向後兼容
-    pro:    { dailyLimit: 20 },
-    master: { dailyLimit: 50 },
+    guest:  { dailyLimit: 3 },
+    free:   { dailyLimit: 10 },   // 免費版：每天 10 題
+    basic:  { dailyLimit: 10 },   // 向後兼容，等於 free
+    pro:    { dailyLimit: 30 },   // Pro 版：每天 30 題 (US$1.99)
+    master: { dailyLimit: 30 },   // 等於 pro
   };
 
   window.getDailyLimitForTier = function(tier) {
@@ -61,11 +61,11 @@
       const todayKey = window.getTodayKey();
 
       if (!userDoc.exists) {
-        // 新用戶 → 建立為 basic
+        // 新用戶 → 建立為 free (每天 10 題)
         const data = {
           email: user.email || "",
           displayName: user.displayName || "",
-          tier: "basic",          // 新用戶預設 basic（小寫）
+          tier: "free",           // 新用戶預設 free（每天 10 題）
           usedToday: 0,
           lastUsageDate: todayKey,
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -182,7 +182,7 @@
 
   window.checkQuota = async function(user) {
     if (!user || !user.uid) {
-      return { canUse: false, remaining: 0, tier: 'basic' };
+      return { canUse: false, remaining: 0, tier: 'free', usedToday: 0, quota: 10 };
     }
     const result = await window.getUserTierAndCredits(user);
     return {
@@ -194,5 +194,74 @@
     };
   };
 
-  console.log('📦 Firebase Store 模組已載入（使用 uid 作為 docId，tier 為小寫）');
+  // 🧩 升級用戶到 Pro（付款成功後呼叫）
+  window.upgradeUserToPro = async function(user) {
+    if (!user || !user.uid) {
+      console.warn('⚠️ upgradeUserToPro: 無用戶 uid');
+      return false;
+    }
+
+    try {
+      const userRef = db.collection('users').doc(user.uid);
+      await userRef.update({
+        tier: 'pro',
+        upgradedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+      console.log('✅ 用戶已升級為 Pro:', user.uid);
+      
+      // 同時更新 localStorage
+      localStorage.setItem('userTier', 'pro');
+      localStorage.setItem('BROTHERG_PRO_paid', 'true');
+      
+      return true;
+    } catch (error) {
+      console.error('❌ upgradeUserToPro 錯誤:', error);
+      return false;
+    }
+  };
+
+  // 🧩 檢查用戶是否為 Pro
+  window.isUserPro = async function(user) {
+    if (!user || !user.uid) return false;
+    const result = await window.getUserTierAndCredits(user);
+    return result.tier === 'pro';
+  };
+
+  // 🧩 消耗一次配額（統一入口）
+  window.consumeQuota = async function(user, delta = 1) {
+    if (!user || !user.uid) {
+      return { ok: false, errorCode: 'NO_USER', quota: null };
+    }
+
+    try {
+      const quota = await window.checkQuota(user);
+      
+      if (quota.remaining < delta) {
+        return { 
+          ok: false, 
+          errorCode: 'OVER_DAILY_LIMIT', 
+          quota: quota 
+        };
+      }
+
+      // 更新用量
+      const newUsed = quota.usedToday + delta;
+      await window.updateUsageInFirestore(user.uid, newUsed);
+
+      return { 
+        ok: true, 
+        quota: {
+          ...quota,
+          usedToday: newUsed,
+          remaining: quota.quota - newUsed
+        }
+      };
+    } catch (error) {
+      console.error('❌ consumeQuota 錯誤:', error);
+      return { ok: false, errorCode: 'ERROR', quota: null };
+    }
+  };
+
+  console.log('📦 Firebase Store 模組已載入（統一額度：Free 10 / Pro 30）');
 })();

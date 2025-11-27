@@ -220,8 +220,7 @@
                 </a>
             </div>
             <div class="flex items-center gap-2">
-                <span id="status-badge" class="text-[10px] font-bold text-primary bg-primary/20 px-2 py-1 rounded-full border border-primary/30">需求盤點</span>
-                <span id="turn-count" class="text-[10px] font-mono text-textSub">0/15</span>
+                <span id="quota-badge" class="text-[10px] font-bold text-primary bg-primary/20 px-2 py-1 rounded-full border border-primary/30">0/10</span>
             </div>
         </div>
         <div class="progress-track">
@@ -274,9 +273,9 @@
             </div>
 
             <!-- Upgrade Button -->
-            <button onclick="openPaywallModal()" class="w-full bg-gradient-to-r from-primary to-blue-600 p-4 rounded-2xl flex items-center justify-center gap-3 touch-active mb-4 shadow-lg shadow-primary/20">
-                <i class="fa-brands fa-paypal text-xl text-white"></i>
-                <span class="text-sm font-bold text-white">升級 Tesla Pro - US$1.99</span>
+            <button id="profile-upgrade-btn" onclick="openPaywallModal()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 p-4 rounded-2xl flex items-center justify-center gap-3 touch-active mb-4 shadow-lg shadow-amber-500/20">
+                <i class="fa-solid fa-crown text-xl text-white"></i>
+                <span class="text-sm font-bold text-white">升級 Pro - US$1.99 (每天 30 題)</span>
             </button>
 
             <!-- Menu -->
@@ -353,26 +352,26 @@
             <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-6"></div>
             <div class="text-center mb-4">
                 <div class="w-16 h-16 bg-amber-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-500/30">
-                    <i class="fa-solid fa-crown text-2xl text-amber-400"></i>
+                    <i class="fa-solid fa-bolt text-2xl text-amber-400"></i>
                 </div>
-                <h3 class="text-xl font-bold text-white mb-2">解鎖 Tesla Pro</h3>
-                <p class="text-textSub text-sm">一次性付費，永久保存你的購車決策</p>
+                <h3 class="text-xl font-bold text-white mb-2">今日免費 10 題已用完</h3>
+                <p class="text-textSub text-sm">如果你覺得 BrotherG.ai 對你有幫助</p>
             </div>
             <div class="bg-slate-900 rounded-xl p-4 mb-4 border border-slate-800">
                 <div class="text-center mb-3">
                     <span class="text-3xl font-bold text-white">US$ 1.99</span>
-                    <span class="text-textSub text-sm ml-1">一次性</span>
+                    <span class="text-textSub text-sm ml-1">升級 Pro</span>
                 </div>
                 <ul class="text-sm text-textSub space-y-2">
-                    <li class="flex items-start gap-2"><i class="fa-solid fa-check text-green-400 mt-0.5"></i><span>保存全部對話紀錄</span></li>
-                    <li class="flex items-start gap-2"><i class="fa-solid fa-check text-green-400 mt-0.5"></i><span>下次可直接接續</span></li>
-                    <li class="flex items-start gap-2"><i class="fa-solid fa-check text-green-400 mt-0.5"></i><span>解鎖車主模式</span></li>
+                    <li class="flex items-start gap-2"><i class="fa-solid fa-check text-green-400 mt-0.5"></i><span>每天可問 <strong class="text-white">30 題</strong>（Tesla + 蝦皮共用）</span></li>
+                    <li class="flex items-start gap-2"><i class="fa-solid fa-check text-green-400 mt-0.5"></i><span>一次付費，永久升級</span></li>
+                    <li class="flex items-start gap-2"><i class="fa-solid fa-check text-green-400 mt-0.5"></i><span>支持 BrotherG 繼續開發</span></li>
                 </ul>
             </div>
-            <button onclick="handleTeslaProCheckout()" id="pro-pay-btn" class="w-full py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold rounded-xl touch-active shadow-lg mb-3">
-                <i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 解鎖
+            <button onclick="handleUpgradeToPro()" id="pro-pay-btn" class="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold rounded-xl touch-active shadow-lg mb-3">
+                <i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 升級 Pro
             </button>
-            <button onclick="closePaywallModal()" class="w-full py-3 bg-slate-800 text-textSub font-medium rounded-xl touch-active">之後再說</button>
+            <button onclick="closePaywallModal()" class="w-full py-3 bg-slate-800 text-textSub font-medium rounded-xl touch-active">知道了，明天再來</button>
         </div>
     </div>
 
@@ -382,13 +381,13 @@
 
     <script>
         // === Config ===
-        const MAX_TURNS = 15;
         const TESLA_REFERRAL_URL = 'https://ts.la/arno873937';
         const TRAVEL_AI_URL = 'https://brotherg.ai/travel';
 
         // === State ===
         let currentUser = null;
-        let teslaState = { turn: 0, answers: [], messages: [], paid: false, loading: false, sessionEnded: false };
+        let userQuota = { tier: 'free', usedToday: 0, quota: 10, remaining: 10 };
+        let teslaState = { turn: 0, answers: [], messages: [], loading: false, sessionEnded: false };
 
         // === Toast ===
         function showToast(msg) {
@@ -444,17 +443,38 @@
 
         // === UI Update ===
         function updateUI() {
-            const pct = Math.min((teslaState.turn / MAX_TURNS) * 100, 100);
+            // 更新進度條
+            const pct = Math.min((userQuota.usedToday / userQuota.quota) * 100, 100);
             document.getElementById('progress-bar').style.width = pct + '%';
             
-            let statusText = "需求盤點";
-            if (teslaState.turn < 10) statusText = "需求盤點";
-            else if (teslaState.turn === 10) statusText = "中場總結";
-            else if (teslaState.turn < 15) statusText = "深度諮詢";
-            else statusText = "最終決策";
+            // 更新額度顯示
+            const quotaBadge = document.getElementById('quota-badge');
+            const tierText = userQuota.tier === 'pro' ? 'Pro' : '免費';
+            quotaBadge.innerText = `${tierText} ${userQuota.usedToday}/${userQuota.quota}`;
             
-            document.getElementById('status-badge').innerText = statusText;
-            document.getElementById('turn-count').innerText = `${teslaState.turn}/${MAX_TURNS}`;
+            // Pro 用戶顯示不同顏色
+            if (userQuota.tier === 'pro') {
+                quotaBadge.classList.remove('text-primary', 'bg-primary/20', 'border-primary/30');
+                quotaBadge.classList.add('text-amber-400', 'bg-amber-500/20', 'border-amber-500/30');
+            }
+            
+            // 更新 Profile 頁面的方案顯示
+            const profilePlan = document.getElementById('profile-plan');
+            if (profilePlan) {
+                profilePlan.textContent = userQuota.tier === 'pro' ? 'Pro (30題/天)' : '免費版 (10題/天)';
+            }
+        }
+        
+        // === 刷新用戶額度 ===
+        async function refreshUserQuota() {
+            if (!currentUser) return;
+            try {
+                const quota = await window.checkQuota(currentUser);
+                userQuota = quota;
+                updateUI();
+            } catch (e) {
+                console.error('刷新額度失敗:', e);
+            }
         }
 
         // === Chat Messages ===
@@ -583,6 +603,25 @@
             const input = document.getElementById('chat-input');
             const text = input.value.trim();
             if (teslaState.loading || !text || teslaState.sessionEnded) return;
+            if (!currentUser) {
+                document.getElementById('login-overlay').classList.remove('hidden');
+                return;
+            }
+
+            // 檢查並消耗額度
+            const quotaResult = await window.consumeQuota(currentUser, 1);
+            if (!quotaResult.ok) {
+                if (quotaResult.errorCode === 'OVER_DAILY_LIMIT') {
+                    // 額度用完，顯示 Paywall
+                    showQuotaExhaustedPaywall();
+                    return;
+                }
+            }
+            
+            // 更新本地額度狀態
+            if (quotaResult.quota) {
+                userQuota = quotaResult.quota;
+            }
 
             addUserMessage(text);
             input.value = '';
@@ -595,18 +634,12 @@
             showTypingIndicator();
             
             try {
-                let specialMode = null;
-                if (teslaState.turn === 10) specialMode = 'mid';
-                else if (teslaState.turn === 15) specialMode = 'final';
-
-                const data = await callTeslaAPI(teslaState, specialMode);
+                const data = await callTeslaAPI(teslaState, null);
                 removeTypingIndicator();
 
                 if (data.ok && data.reply && data.reply.trim() !== '') {
                     teslaState.messages.push({ role: 'assistant', content: data.reply });
-                    if (teslaState.turn === 10) addMidSummaryWithAd(data.reply);
-                    else if (teslaState.turn >= 15) addFinalDecisionWithPaywall(data.reply);
-                    else addBotMessage(data.reply, teslaState.turn === 11);
+                    addBotMessage(data.reply, true);
                 } else if (!data.ok) {
                     addBotMessage("抱歉，請再說一次你的想法？");
                 }
@@ -620,39 +653,68 @@
             if (!teslaState.sessionEnded) document.getElementById('send-btn').disabled = false;
             updateUI();
         }
+        
+        // === 額度用完 Paywall ===
+        function showQuotaExhaustedPaywall() {
+            if (userQuota.tier === 'pro') {
+                // Pro 用戶額度用完
+                showToast('今天 Pro 額度 30 題已用完，請明天再來');
+                disableInput();
+            } else {
+                // Free 用戶額度用完，顯示升級 Paywall
+                openPaywallModal();
+            }
+        }
 
         // === Paywall ===
         function openPaywallModal() { document.getElementById('paywall-modal').classList.remove('hidden'); }
         function closePaywallModal() { document.getElementById('paywall-modal').classList.add('hidden'); }
 
-        async function handleTeslaProCheckout() {
+        // === 升級到 Pro ===
+        async function handleUpgradeToPro() {
             const btn = document.getElementById('pro-pay-btn');
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>跳轉中...';
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>跳轉 PayPal...';
             btn.disabled = true;
+            
             try {
-                localStorage.setItem('tesla_session', JSON.stringify(teslaState));
+                // 儲存當前狀態
+                localStorage.setItem('pending_upgrade_session', JSON.stringify(teslaState));
+                
+                // 呼叫 PayPal API
                 const res = await fetch('/.netlify/functions/paypal-checkout', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ product: 'TESLA_PRO', returnUrl: window.location.origin + '/payment/success?product=TESLA_PRO', cancelUrl: window.location.origin + '/payment/cancel?product=TESLA_PRO' })
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        product: 'BROTHERG_PRO',  // 統一產品名稱
+                        returnUrl: window.location.origin + '/payment/success?product=BROTHERG_PRO',
+                        cancelUrl: window.location.origin + '/payment/cancel?product=BROTHERG_PRO'
+                    })
                 });
+                
                 const data = await res.json();
-                if (data.ok && data.checkoutUrl) window.location.href = data.checkoutUrl;
-                else throw new Error(data.error || 'PayPal 訂單創建失敗');
+                if (data.ok && data.checkoutUrl) {
+                    window.location.href = data.checkoutUrl;
+                } else {
+                    throw new Error(data.error || 'PayPal 訂單創建失敗');
+                }
             } catch (e) {
                 console.error('Payment error:', e);
-                btn.innerHTML = '<i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 解鎖';
+                btn.innerHTML = '<i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 升級 Pro';
                 btn.disabled = false;
-                showToast('PayPal 連線失敗');
+                showToast('PayPal 連線失敗：' + e.message);
             }
         }
 
-        function checkPaymentStatus() {
-            const paid = localStorage.getItem('TESLA_PRO_paid');
-            if (paid === 'true') {
-                teslaState.paid = true;
-                document.getElementById('profile-plan').textContent = 'Tesla Pro';
-                enableInput();
-                showToast('🎉 Tesla Pro 已解鎖');
+        // === 檢查付款狀態 ===
+        async function checkPaymentStatus() {
+            const paid = localStorage.getItem('BROTHERG_PRO_paid');
+            if (paid === 'true' && currentUser) {
+                // 確保 Firestore 也更新了
+                await window.upgradeUserToPro(currentUser);
+                userQuota.tier = 'pro';
+                userQuota.quota = 30;
+                updateUI();
+                showToast('🎉 Pro 會員已啟用！');
             }
         }
 
@@ -716,11 +778,17 @@
 
         // === Init ===
         window.onload = function() {
-            checkPaymentStatus();
             // 檢查是否已登入
-            firebase.auth().onAuthStateChanged((user) => {
+            firebase.auth().onAuthStateChanged(async (user) => {
                 currentUser = user;
                 updateProfileUI(user);
+                
+                if (user) {
+                    // 刷新用戶額度
+                    await refreshUserQuota();
+                    // 檢查付款狀態
+                    await checkPaymentStatus();
+                }
             });
         };
     </script>

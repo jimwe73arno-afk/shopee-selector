@@ -30,7 +30,7 @@
         <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-green-100 border-4 border-green-500 flex items-center justify-center animate-bounce">
             <i class="fa-solid fa-check text-4xl text-green-500"></i>
         </div>
-        
+
         <!-- Title -->
         <h1 class="text-3xl font-bold text-gray-900 mb-3">
             🎉 付款成功！
@@ -71,32 +71,41 @@
 
         // 根據產品類型設定訊息和返回連結
         const productConfig = {
+            'BROTHERG_PRO': {
+                message: '🎉 恭喜成為 Pro 會員！每天可問 30 題（Tesla + 蝦皮共用）',
+                returnUrl: '/tesla-app',
+                returnText: '開始使用 Pro'
+            },
             'TESLA_PRO': {
-                message: '感謝你的支持！你的 Tesla Pro 檔案已永久解鎖。',
+                message: '🎉 恭喜成為 Pro 會員！每天可問 30 題',
                 returnUrl: '/tesla-app',
                 returnText: '返回 Tesla 顧問'
             },
             'SHOPEE_PRO': {
-                message: '感謝你的支持！你的選品獵人 Pro 會員已啟用。',
+                message: '🎉 恭喜成為 Pro 會員！每天可問 30 題',
                 returnUrl: '/app',
                 returnText: '返回選品獵人'
             },
             'PRO': {
-                message: '感謝你的支持！你的 BrotherGAi Pro 會員已啟用。',
+                message: '🎉 恭喜成為 Pro 會員！每天可問 30 題',
                 returnUrl: '/',
-                returnText: '返回首頁'
+                returnText: '開始使用'
             }
         };
 
-        const config = productConfig[product] || productConfig['PRO'];
+        const config = productConfig[product] || productConfig['BROTHERG_PRO'];
         document.getElementById('success-message').textContent = config.message;
         document.getElementById('return-btn').href = config.returnUrl;
         document.getElementById('return-btn').innerHTML = `<i class="fa-solid fa-arrow-left mr-2"></i>${config.returnText}`;
 
-        // 儲存付款狀態到 localStorage
-        if (product) {
+        // 儲存付款狀態到 localStorage（統一使用 BROTHERG_PRO_paid）
+        localStorage.setItem('BROTHERG_PRO_paid', 'true');
+        localStorage.setItem('userTier', 'pro');
+        localStorage.setItem('paymentDate', new Date().toISOString());
+        
+        // 如果有特定產品也存一份
+        if (product && product !== 'BROTHERG_PRO') {
             localStorage.setItem(`${product}_paid`, 'true');
-            localStorage.setItem(`${product}_paymentDate`, new Date().toISOString());
         }
 
         // 創建彩帶效果

@@ -12,46 +12,55 @@
   node_bundler = "esbuild"
   included_files = ["netlify/functions/**", "lib/**", "prompts/**"]
 
-# 將 /shopee 重定向到深色版 (shopee.html)
+# ===== APP 版頁面 (主要入口) =====
+# Shopee 行動版
+[[redirects]]
+  from = "/app"
+  to = "/app.html"
+  status = 200
+
+[[redirects]]
+  from = "/shopee-app"
+  to = "/app.html"
+  status = 301
+
+# Tesla 行動版
+[[redirects]]
+  from = "/tesla-app"
+  to = "/tesla-app.html"
+  status = 200
+
+# ===== 桌機版導向 APP 版 =====
 [[redirects]]
   from = "/shopee"
-  to = "/shopee.html"
-  status = 301
+  to = "/app"
+  status = 302
 
-# 將 /tesla 重定向到 Tesla Decision Core
+[[redirects]]
+  from = "/shopee-desktop"
+  to = "/app"
+  status = 302
+
 [[redirects]]
   from = "/tesla"
-  to = "/tesla.html"
-  status = 301
+  to = "/tesla-app"
+  status = 302
 
-# 付款成功頁面
+[[redirects]]
+  from = "/tesla-desktop"
+  to = "/tesla-app"
+  status = 302
+
+# ===== 付款頁面 =====
 [[redirects]]
   from = "/payment/success"
   to = "/payment/success.html"
   status = 200
 
-# 行動版 App 頁面
 [[redirects]]
-  from = "/app"
-  to = "/app.html"
-  status = 301
-
-# Tesla 行動版頁面
-[[redirects]]
-  from = "/tesla-app"
-  to = "/tesla-app.html"
-  status = 301
-
-# Desktop 版 placeholder 頁面
-[[redirects]]
-  from = "/shopee-desktop"
-  to = "/shopee-desktop.html"
-  status = 301
-
-[[redirects]]
-  from = "/tesla-desktop"
-  to = "/tesla-desktop.html"
-  status = 301
+  from = "/payment/cancel"
+  to = "/payment/cancel.html"
+  status = 200
 
 # SPA fallback - 所有其他路徑都重定向到 index.html（必须放在最后）
 # 注意：Netlify 会自动处理 /.netlify/functions/ 路径，不会被这个规则拦截

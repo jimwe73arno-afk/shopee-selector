@@ -364,9 +364,9 @@
                 </div>
 
                 <!-- Upgrade Button -->
-                <button onclick="showPaypalModal()" class="w-full bg-gradient-to-r from-primary to-blue-600 p-4 rounded-2xl flex items-center justify-center gap-3 touch-active mb-4 shadow-lg shadow-primary/20">
-                    <i class="fa-brands fa-paypal text-xl text-white"></i>
-                    <span class="text-sm font-bold text-white">升級 Pro 會員 - US$19.99/月</span>
+                <button onclick="showPaypalModal()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 p-4 rounded-2xl flex items-center justify-center gap-3 touch-active mb-4 shadow-lg shadow-amber-500/20">
+                    <i class="fa-solid fa-crown text-xl text-white"></i>
+                    <span class="text-sm font-bold text-white">升級 Pro - US$1.99 (每天 30 題)</span>
                 </button>
 
                 <!-- Menu -->
@@ -432,27 +432,27 @@
         <div class="absolute bottom-0 left-0 right-0 bg-appSurface rounded-t-3xl p-6 transform translate-y-full transition-transform duration-300 ease-out pb-[calc(2rem+env(safe-area-inset-bottom))]" id="quota-content">
             <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-6"></div>
             <div class="text-center mb-6">
-                <div class="w-14 h-14 bg-accent/20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-accent border border-accent/30">
+                <div class="w-14 h-14 bg-amber-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-amber-400 border border-amber-500/30">
                     <i class="fa-solid fa-bolt text-2xl"></i>
                 </div>
-                <h3 class="text-xl font-bold text-white mb-1">今日額度已用完</h3>
-                <p class="text-slate-400 text-sm">升級 Pro 解鎖更多次數！</p>
+                <h3 class="text-xl font-bold text-white mb-1">今日免費 10 題已用完</h3>
+                <p class="text-slate-400 text-sm">如果你覺得 BrotherG.ai 對你有幫助</p>
             </div>
             <div class="space-y-3 mb-6">
                 <div class="flex items-center gap-3 p-3 bg-slate-900 rounded-xl border border-slate-800">
-                    <i class="fa-solid fa-check text-primary"></i>
-                    <span class="text-sm text-slate-300">Pro 每日 20 次深度分析</span>
+                    <i class="fa-solid fa-check text-green-400"></i>
+                    <span class="text-sm text-slate-300">Pro 每天可問 <strong class="text-white">30 題</strong>（Tesla + 蝦皮共用）</span>
                 </div>
                 <div class="flex items-center gap-3 p-3 bg-slate-900 rounded-xl border border-slate-800">
-                    <i class="fa-solid fa-check text-primary"></i>
-                    <span class="text-sm text-slate-300">完整選品策略報告</span>
+                    <i class="fa-solid fa-check text-green-400"></i>
+                    <span class="text-sm text-slate-300">一次付費，永久升級</span>
                 </div>
             </div>
-            <button onclick="showPaypalModal()" class="w-full py-4 bg-primary rounded-xl text-white font-bold text-lg touch-active mb-3">
-                <i class="fa-brands fa-paypal mr-2"></i>升級 Pro - NT$688/月
+            <button onclick="handleUpgradeToPro()" id="quota-upgrade-btn" class="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl text-white font-bold text-lg touch-active mb-3">
+                <i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 升級 Pro
             </button>
             <button onclick="closeQuotaSheet()" class="w-full py-3 bg-slate-800 rounded-xl text-slate-400 font-medium touch-active">
-                明天再來
+                知道了，明天再來
             </button>
         </div>
     </div>
@@ -463,24 +463,24 @@
         <div class="absolute bottom-0 left-0 right-0 bg-appSurface rounded-t-3xl p-6 animate-slide-up pb-[calc(2rem+env(safe-area-inset-bottom))]">
             <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-6"></div>
             <div class="text-center mb-6">
-                <div class="w-16 h-16 bg-blue-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-500/30">
-                    <i class="fa-brands fa-paypal text-3xl text-blue-400"></i>
+                <div class="w-16 h-16 bg-amber-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-500/30">
+                    <i class="fa-solid fa-crown text-3xl text-amber-400"></i>
                 </div>
                 <h3 class="text-xl font-bold text-white mb-2">升級 Pro 會員</h3>
                 <p class="text-slate-400 text-sm leading-relaxed">
-                    每日 20 次深度選品分析<br>
-                    完整策略報告 + 優先支援
+                    每天 30 題 AI 諮詢<br>
+                    （Tesla + 蝦皮共用）
                 </p>
             </div>
             <div class="bg-slate-900 rounded-xl p-4 mb-6 border border-slate-800">
                 <div class="text-center">
-                    <span class="text-2xl font-bold text-white">US$ 19.99</span>
-                    <span class="text-slate-400 text-sm"> /月</span>
+                    <span class="text-2xl font-bold text-white">US$ 1.99</span>
+                    <span class="text-slate-400 text-sm"> 一次性</span>
                 </div>
                 <div class="text-xs text-slate-500 text-center mt-1">透過 PayPal 安全付款</div>
             </div>
-            <button onclick="redirectToPaypal()" id="shopee-paypal-btn" class="w-full py-4 bg-primary rounded-xl text-white font-bold text-lg touch-active mb-3">
-                <i class="fa-brands fa-paypal mr-2"></i>立即升級 Pro
+            <button onclick="handleUpgradeToPro()" id="shopee-paypal-btn" class="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl text-white font-bold text-lg touch-active mb-3">
+                <i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 升級 Pro
             </button>
             <button onclick="closePaypalModal()" class="w-full py-3 bg-slate-800 rounded-xl text-slate-400 font-medium touch-active">
                 之後再說
@@ -495,7 +495,7 @@
     <script>
         // === State Management ===
         const MODE = "shopee";
-        let userCredits = { tier: 'basic', remaining: 5, usedToday: 0, quota: 5 };
+        let userCredits = { tier: 'free', remaining: 10, usedToday: 0, quota: 10 };
         let isProcessing = false;
         let chatMessages = []; // Local chat history for context
 
@@ -834,7 +834,7 @@
         // === Credits & Quota ===
         async function refreshCredits(user) {
             if (!user) {
-                userCredits = { tier: 'basic', remaining: 0, usedToday: 0, quota: 5 };
+                userCredits = { tier: 'free', remaining: 0, usedToday: 0, quota: 10 };
                 updateCreditsUI();
                 return;
             }
@@ -930,18 +930,25 @@
         }
 
         async function redirectToPaypal() {
-            const btn = document.getElementById('shopee-paypal-btn');
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>正在跳轉 PayPal...';
-            btn.disabled = true;
+            handleUpgradeToPro();
+        }
+        
+        // === 統一升級到 Pro ===
+        async function handleUpgradeToPro() {
+            const btn = document.getElementById('shopee-paypal-btn') || document.getElementById('quota-upgrade-btn');
+            if (btn) {
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>跳轉 PayPal...';
+                btn.disabled = true;
+            }
             
             try {
                 const res = await fetch('/.netlify/functions/paypal-checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        product: 'SHOPEE_PRO',
-                        returnUrl: window.location.origin + '/payment/success?product=SHOPEE_PRO',
-                        cancelUrl: window.location.origin + '/payment/cancel?product=SHOPEE_PRO'
+                        product: 'BROTHERG_PRO',
+                        returnUrl: window.location.origin + '/payment/success?product=BROTHERG_PRO',
+                        cancelUrl: window.location.origin + '/payment/cancel?product=BROTHERG_PRO'
                     })
                 });
 
@@ -949,17 +956,17 @@
                 console.log('PayPal response:', data);
 
                 if (data.ok && data.checkoutUrl) {
-                    // 儲存當前狀態
                     localStorage.setItem('shopee_session', JSON.stringify({ chatMessages }));
-                    // 跳轉到 PayPal
                     window.location.href = data.checkoutUrl;
                 } else {
                     throw new Error(data.error || 'PayPal 訂單創建失敗');
                 }
             } catch (e) {
                 console.error('PayPal error:', e);
-                btn.innerHTML = '<i class="fa-brands fa-paypal mr-2"></i>立即升級 Pro';
-                btn.disabled = false;
+                if (btn) {
+                    btn.innerHTML = '<i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 升級 Pro';
+                    btn.disabled = false;
+                }
                 showToast('PayPal 連線失敗：' + e.message);
             }
         }
@@ -973,8 +980,8 @@
             const paid = localStorage.getItem('SHOPEE_PRO_paid');
             if (paid === 'true') {
                 userCredits.tier = 'pro';
-                userCredits.quota = 20;
-                userCredits.remaining = 20;
+                userCredits.quota = 30;
+                userCredits.remaining = 30;
                 showToast('🎉 歡迎回來！Pro 會員已解鎖');
             }
         }
@@ -1044,7 +1051,7 @@
                 profileLoggedIn.classList.add('hidden');
                 
                 // Reset credits
-                userCredits = { tier: 'basic', remaining: 0, usedToday: 0, quota: 5 };
+                userCredits = { tier: 'free', remaining: 0, usedToday: 0, quota: 10 };
                 updateCreditsUI();
             }
             
