@@ -359,10 +359,13 @@
 
         // === Start Chat ===
         function startChat() {
-            if (!currentUser) {
+            // 檢查是否已登入（優先使用 Firebase auth 狀態）
+            const user = currentUser || firebase.auth().currentUser;
+            if (!user) {
                 document.getElementById('login-overlay').classList.remove('hidden');
                 return;
             }
+            currentUser = user; // 確保更新
             switchTab('chat');
             if (chatMessages.length === 0) {
                 addBotMessage("歡迎來到 Tesla 決策顧問！");
@@ -445,10 +448,13 @@
             const text = input.value.trim();
             
             if (isProcessing || !text) return;
-            if (!currentUser) {
+            
+            const user = currentUser || firebase.auth().currentUser;
+            if (!user) {
                 document.getElementById('login-overlay').classList.remove('hidden');
                 return;
             }
+            currentUser = user;
 
             // 檢查額度
             if (userCredits.remaining <= 0) {
@@ -609,6 +615,22 @@
             } finally {
                 btn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google"><span>使用 Google 帳號登入</span>';
                 btn.disabled = false;
+            }
+        };
+
+        // === Logout ===
+        window.handleLogout = async function() {
+            try {
+                await firebase.auth().signOut();
+                currentUser = null;
+                chatMessages = [];
+                document.getElementById('chat-history').innerHTML = '';
+                switchTab('home');
+                document.getElementById('login-overlay').classList.remove('hidden');
+                showToast('已安全登出');
+            } catch (e) {
+                console.error('Logout error:', e);
+                showToast('登出失敗');
             }
         };
 
