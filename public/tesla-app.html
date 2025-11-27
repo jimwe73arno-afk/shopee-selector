@@ -373,7 +373,7 @@
             
             <div class="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200">
                 <div class="text-center mb-3">
-                    <span class="text-3xl font-bold text-textMain">US$ 1.99</span>
+                    <span class="text-3xl font-bold text-textMain">NT$ 688</span>
                     <span class="text-textSub text-sm ml-1">一次性</span>
                 </div>
                 <ul class="text-sm text-textSub space-y-2">
@@ -393,7 +393,7 @@
             </div>
 
             <button onclick="handleTeslaProCheckout()" id="pro-pay-btn" class="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold rounded-xl touch-active shadow-lg mb-3">
-                <i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 解鎖 Tesla Pro
+                <i class="fa-solid fa-credit-card mr-2"></i>以 NT$688 解鎖 Tesla Pro
             </button>
             <button onclick="skipPaywall()" class="w-full py-3 bg-gray-100 text-textSub font-medium rounded-xl touch-active">
                 先免費體驗，之後再說
@@ -531,14 +531,14 @@
                         <h4><i class="fa-solid fa-circle-info mr-2"></i>目前為免費體驗模式</h4>
                         <p>今天的 15 輪對話已經使用完畢。下次再來時，系統會從頭開始，無法完整延續你的準車主檔案。</p>
                         <div class="divider" style="background:#FCD34D;height:1px;margin:12px 0;"></div>
-                        <h4><i class="fa-solid fa-crown mr-2"></i>解鎖 Tesla Pro 檔案（US$1.99）</h4>
+                        <h4><i class="fa-solid fa-crown mr-2"></i>解鎖 Tesla Pro 檔案（NT$688）</h4>
                         <ul>
                             <li>✓ 為你保存今天的全部需求與對話紀錄</li>
                             <li>✓ 下次回來可直接接續，不用重講</li>
                             <li>✓ 之後加入更多專屬建議與車主模式</li>
                         </ul>
                         <button onclick="openPaywallModal()">
-                            <i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 解鎖 Tesla Pro
+                            <i class="fa-solid fa-credit-card mr-2"></i>以 NT$688 解鎖 Tesla Pro
                         </button>
                     </div>
                 </div>
@@ -710,58 +710,99 @@
             showToast('歡迎明天再來繼續！');
         }
 
-        // === Task 3: Pro Checkout (US$1.99 via PayPal) ===
+        // === Task 3: Pro Checkout (NT$65 via ECPay) ===
+        // US$1.99 ≈ NT$65
         async function handleTeslaProCheckout() {
             const btn = document.getElementById('pro-pay-btn');
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>處理中...';
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>正在跳轉付款頁面...';
             btn.disabled = true;
 
             try {
-                // Call existing payment API
+                // 儲存當前對話狀態到 localStorage（付款成功後恢復）
+                localStorage.setItem('tesla_session', JSON.stringify(teslaState));
+                
+                // 使用現有的 ECPay 付款 API
+                // 創建一個隱藏的 form 來提交付款請求
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/.netlify/functions/payment-checkout';
+                form.style.display = 'none';
+                
+                // 添加必要的參數
+                const params = {
+                    plan: 'TESLA_PRO',  // 新的 Tesla Pro 方案
+                    userId: 'tesla_user_' + Date.now(),
+                    returnUrl: window.location.href,
+                    amount: 65  // NT$65 ≈ US$1.99
+                };
+                
+                for (const key in params) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = params[key];
+                    form.appendChild(input);
+                }
+                
+                document.body.appendChild(form);
+                
+                // 直接用 fetch 獲取 ECPay 表單 HTML，然後寫入新頁面
                 const res = await fetch('/.netlify/functions/payment-checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        product: 'tesla_pro',
-                        price: 1.99,
-                        currency: 'USD',
-                        source: 'tesla_app',
-                        returnUrl: window.location.href
+                        plan: 'PRO',  // 先用現有的 PRO 方案測試
+                        userId: 'tesla_' + Date.now()
                     })
                 });
 
-                const data = await res.json();
-
-                if (data.checkoutUrl) {
-                    // Redirect to PayPal checkout
-                    window.location.href = data.checkoutUrl;
-                } else if (data.url) {
-                    window.location.href = data.url;
+                // API 回傳的是 HTML，直接開新視窗顯示
+                const html = await res.text();
+                
+                // 在新視窗中打開付款頁面
+                const paymentWindow = window.open('', '_blank');
+                if (paymentWindow) {
+                    paymentWindow.document.write(html);
+                    paymentWindow.document.close();
+                    
+                    showToast('已開啟付款頁面，請在新視窗完成付款');
+                    
+                    // 重置按鈕
+                    btn.innerHTML = '<i class="fa-solid fa-credit-card mr-2"></i>以 NT$688 解鎖 Tesla Pro';
+                    btn.disabled = false;
+                    
+                    // 顯示付款完成確認
+                    setTimeout(() => {
+                        showPaymentConfirmModal();
+                    }, 2000);
                 } else {
-                    // Fallback: simulate success for demo
-                    simulatePaymentSuccess();
+                    // 彈出視窗被擋，改用當前頁面
+                    document.open();
+                    document.write(html);
+                    document.close();
                 }
+
             } catch (e) {
                 console.error('Payment error:', e);
-                // Fallback: simulate success for demo
-                simulatePaymentSuccess();
+                btn.innerHTML = '<i class="fa-solid fa-credit-card mr-2"></i>以 NT$688 解鎖 Tesla Pro';
+                btn.disabled = false;
+                showToast('付款頁面開啟失敗，請稍後再試');
             }
         }
 
-        function simulatePaymentSuccess() {
-            const btn = document.getElementById('pro-pay-btn');
+        // 付款確認彈窗
+        function showPaymentConfirmModal() {
+            const confirmed = confirm('付款完成了嗎？\n\n如果已完成付款，點擊「確定」解鎖 Tesla Pro。\n如果還沒付款，點擊「取消」繼續。');
             
-            setTimeout(() => {
+            if (confirmed) {
+                // 用戶確認已付款
                 closePaywallModal();
                 teslaState.paid = true;
                 enableInput();
                 
                 showToast('🎉 Tesla Pro 已解鎖！');
-                addBotMessage("恭喜你成為 Tesla Pro 會員！你的購車決策檔案已永久保存。有任何問題隨時回來，我都會記得你的需求！");
-                
-                btn.innerHTML = '<i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 解鎖 Tesla Pro';
-                btn.disabled = false;
-            }, 1500);
+                addBotMessage("感謝你的支持！你的購車決策檔案已永久保存。有任何問題隨時回來，我都會記得你的需求！\n\n現在你可以繼續問我任何關於 Tesla 的問題了。");
+            }
         }
 
         // === Input Enter Key ===
