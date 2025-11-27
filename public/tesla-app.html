@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#FFFFFF">
+    <meta name="theme-color" content="#020617">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Tesla 決策顧問 | BrotherGAi</title>
     
     <!-- Favicon -->
@@ -26,6 +26,11 @@
     <!-- Markdown Parser -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
     <script>
         tailwind.config = {
             theme: {
@@ -35,11 +40,12 @@
                         display: ['Space Grotesk', 'sans-serif'],
                     },
                     colors: {
-                        aiBlue: '#1E88E5',
-                        bgPage: '#FFFFFF',
-                        borderLight: '#E2E8F0',
-                        textMain: '#111827',
-                        textSub: '#64748B',
+                        appBg: '#020617',
+                        appSurface: '#0F172A',
+                        primary: '#1E88E5',
+                        accent: '#F59E0B',
+                        textMain: '#F8FAFC',
+                        textSub: '#94A3B8',
                     },
                     animation: {
                         'fade-in': 'fadeIn 0.3s ease-out',
@@ -62,8 +68,8 @@
 
     <style>
         body { 
-            background-color: #FFFFFF; 
-            color: #111827; 
+            background-color: #020617; 
+            color: #F8FAFC; 
             overscroll-behavior-y: none;
             -webkit-tap-highlight-color: transparent;
             -webkit-touch-callout: none;
@@ -92,24 +98,17 @@
             overflow: hidden;
             box-shadow: 0 25px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1);
             position: relative;
-            background: #FFFFFF;
+            background: #020617;
         }
 
         @media (max-width: 768px) {
-            .app-shell { background: #FFFFFF; }
+            .app-shell { background: #020617; }
             .app-phone-frame {
                 max-width: 100%;
                 max-height: 100%;
                 border-radius: 0;
                 box-shadow: none;
             }
-        }
-        
-        /* Background Pattern */
-        .bg-pattern {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-image: radial-gradient(#E5E7EB 1px, transparent 1px);
-            background-size: 24px 24px; opacity: 0.4; z-index: -1; pointer-events: none;
         }
 
         /* Chat Bubbles */
@@ -118,11 +117,10 @@
             padding: 14px 18px;
             font-size: 15px;
             line-height: 1.6;
-            position: relative;
         }
         .chat-bubble.ai {
-            background-color: #F1F5F9;
-            color: #111827;
+            background-color: #1E293B;
+            color: #F8FAFC;
             border-radius: 4px 20px 20px 20px;
         }
         .chat-bubble.user {
@@ -133,24 +131,18 @@
         }
 
         /* Markdown in Chat */
-        .chat-bubble.ai h3 {
-            color: #1E88E5;
-            font-weight: 700;
-            font-size: 1rem;
-            margin-top: 1rem;
-            margin-bottom: 0.5rem;
-        }
+        .chat-bubble.ai h3 { color: #1E88E5; font-weight: 700; font-size: 1rem; margin-top: 1rem; margin-bottom: 0.5rem; }
         .chat-bubble.ai h3:first-child { margin-top: 0; }
         .chat-bubble.ai p { margin-bottom: 0.75rem; }
         .chat-bubble.ai ul { list-style: disc; padding-left: 1.2rem; margin-bottom: 0.75rem; }
         .chat-bubble.ai li { margin-bottom: 0.4rem; }
-        .chat-bubble.ai strong { color: #111827; font-weight: 600; }
+        .chat-bubble.ai strong { color: #F8FAFC; font-weight: 600; }
         .chat-bubble.ai a { color: #1E88E5; text-decoration: underline; }
 
         /* Typing Animation */
         .typing-dot {
             width: 6px; height: 6px;
-            background-color: #94A3B8;
+            background-color: #64748B;
             border-radius: 50%;
             display: inline-block;
             animation: typing 1.4s infinite ease-in-out both;
@@ -163,156 +155,72 @@
         }
 
         /* Progress Bar */
-        .progress-track {
-            height: 4px;
-            background: #E2E8F0;
-            border-radius: 2px;
-            overflow: hidden;
-        }
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #1E88E5, #42A5F5);
-            transition: width 0.5s ease;
-        }
+        .progress-track { height: 4px; background: #1E293B; border-radius: 2px; overflow: hidden; }
+        .progress-bar { height: 100%; background: linear-gradient(90deg, #1E88E5, #42A5F5); transition: width 0.5s ease; }
 
         /* Touch Active */
-        .touch-active:active {
-            transform: scale(0.97);
-            opacity: 0.9;
-        }
+        .touch-active:active { transform: scale(0.97); opacity: 0.9; }
 
         /* Modal Overlay */
-        .modal-overlay {
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(4px);
-        }
+        .modal-overlay { background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
+        .sheet-overlay { background: rgba(0,0,0,0.5); }
 
         /* Toast */
         .toast {
-            position: fixed;
-            top: calc(4rem + env(safe-area-inset-top));
-            left: 50%;
-            transform: translateX(-50%);
-            background: #111827;
-            color: #F8FAFC;
-            padding: 12px 20px;
-            border-radius: 12px;
-            font-size: 14px;
-            z-index: 100;
-            opacity: 0;
-            transition: opacity 0.3s;
-            pointer-events: none;
+            position: fixed; top: calc(4rem + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+            background: #1E293B; color: #F8FAFC; padding: 12px 20px; border-radius: 12px; font-size: 14px;
+            z-index: 100; opacity: 0; transition: opacity 0.3s; pointer-events: none;
         }
         .toast.show { opacity: 1; }
 
+        /* Blue filter for Model X */
+        .blue-filter { filter: brightness(0) saturate(100%) invert(42%) sepia(93%) saturate(1352%) hue-rotate(196deg) brightness(97%) contrast(87%); }
+
         /* Ad Card */
         .ad-card {
-            background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
-            border: 1px solid #BFDBFE;
-            border-radius: 16px;
-            padding: 16px;
-            margin-top: 12px;
+            background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+            border: 1px solid #334155;
+            border-radius: 16px; padding: 16px; margin-top: 12px;
         }
-        .ad-card h4 {
-            font-weight: 700;
-            color: #1E40AF;
-            font-size: 14px;
-            margin-bottom: 8px;
-        }
-        .ad-card p {
-            font-size: 13px;
-            color: #3B82F6;
-            margin-bottom: 12px;
-        }
-        .ad-card a {
-            display: block;
-            text-align: center;
-            background: #1E88E5;
-            color: white;
-            padding: 10px 16px;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 14px;
-            text-decoration: none;
-            margin-bottom: 8px;
-        }
+        .ad-card h4 { font-weight: 700; color: #1E88E5; font-size: 14px; margin-bottom: 8px; }
+        .ad-card p { font-size: 13px; color: #94A3B8; margin-bottom: 12px; }
+        .ad-card a { display: block; text-align: center; background: #1E88E5; color: white; padding: 10px 16px; border-radius: 10px; font-weight: 600; font-size: 14px; text-decoration: none; margin-bottom: 8px; }
         .ad-card a:last-child { margin-bottom: 0; }
-        .ad-card .divider {
-            height: 1px;
-            background: #BFDBFE;
-            margin: 12px 0;
-        }
+        .ad-card .divider { height: 1px; background: #334155; margin: 12px 0; }
 
         /* Paywall Card */
         .paywall-card {
-            background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
-            border: 1px solid #FCD34D;
-            border-radius: 16px;
-            padding: 16px;
-            margin-top: 12px;
+            background: linear-gradient(135deg, #422006 0%, #78350F 100%);
+            border: 1px solid #92400E; border-radius: 16px; padding: 16px; margin-top: 12px;
         }
-        .paywall-card h4 {
-            font-weight: 700;
-            color: #92400E;
-            font-size: 14px;
-            margin-bottom: 8px;
-        }
-        .paywall-card p {
-            font-size: 13px;
-            color: #B45309;
-            margin-bottom: 8px;
-        }
-        .paywall-card ul {
-            font-size: 13px;
-            color: #92400E;
-            margin-bottom: 12px;
-            padding-left: 16px;
-        }
-        .paywall-card li {
-            margin-bottom: 4px;
-        }
-        .paywall-card button {
-            width: 100%;
-            background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
-            color: white;
-            padding: 12px 16px;
-            border-radius: 10px;
-            font-weight: 700;
-            font-size: 15px;
-            border: none;
-            cursor: pointer;
-        }
+        .paywall-card h4 { font-weight: 700; color: #FCD34D; font-size: 14px; margin-bottom: 8px; }
+        .paywall-card p { font-size: 13px; color: #FDE68A; margin-bottom: 8px; }
+        .paywall-card ul { font-size: 13px; color: #FDE68A; margin-bottom: 12px; padding-left: 16px; }
+        .paywall-card li { margin-bottom: 4px; }
+        .paywall-card button { width: 100%; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color: white; padding: 12px 16px; border-radius: 10px; font-weight: 700; font-size: 15px; border: none; cursor: pointer; }
 
-        /* Disabled Input State */
-        .input-disabled {
-            opacity: 0.5;
-            pointer-events: none;
-        }
+        .input-disabled { opacity: 0.5; pointer-events: none; }
     </style>
 </head>
 <body>
 <div class="app-shell">
 <div class="app-phone-frame">
-<div class="h-[100dvh] w-full flex flex-col overflow-hidden relative">
-
-    <div class="bg-pattern"></div>
+<div class="h-[100dvh] w-full flex flex-col overflow-hidden relative bg-appBg">
 
     <!-- Toast -->
     <div id="toast" class="toast"></div>
 
     <!-- === HEADER === -->
-    <header class="fixed top-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-md border-b border-borderLight" style="padding-top: env(safe-area-inset-top);">
+    <header class="fixed top-0 left-0 right-0 z-40 bg-appBg/95 backdrop-blur-md border-b border-slate-800" style="padding-top: env(safe-area-inset-top);">
         <div class="h-14 flex items-center justify-between px-4">
             <div class="flex items-center gap-3">
                 <a href="/" class="flex items-center gap-3">
                     <img src="/logo.png" alt="BrotherG" class="w-8 h-8 rounded-lg shadow-md">
-                    <span class="font-display font-bold text-lg text-textMain">Tesla 顧問</span>
+                    <span class="font-display font-bold text-lg text-white">Tesla 顧問</span>
                 </a>
             </div>
             <div class="flex items-center gap-2">
-                <span id="status-badge" class="text-[10px] font-bold text-aiBlue bg-blue-50 px-2 py-1 rounded-full border border-blue-100">
-                    需求盤點
-                </span>
+                <span id="status-badge" class="text-[10px] font-bold text-primary bg-primary/20 px-2 py-1 rounded-full border border-primary/30">需求盤點</span>
                 <span id="turn-count" class="text-[10px] font-mono text-textSub">0/15</span>
             </div>
         </div>
@@ -321,85 +229,156 @@
         </div>
     </header>
 
-    <!-- === MAIN CHAT AREA === -->
-    <main class="flex-1 overflow-y-auto" style="padding-top: calc(4rem + env(safe-area-inset-top)); padding-bottom: calc(5rem + env(safe-area-inset-bottom));" id="chat-container">
-        
-        <!-- Tesla Icon Header -->
-        <div class="text-center py-6 border-b border-borderLight bg-gradient-to-b from-blue-50/50 to-transparent">
-            <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-white border border-borderLight shadow-sm flex items-center justify-center">
-                <img src="/modelx.png" alt="Tesla Model X" class="w-12 h-12 object-contain">
+    <!-- === TAB: HOME (Tesla Welcome) === -->
+    <div id="tab-home" class="flex-1 overflow-y-auto pt-[calc(4.5rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom))]">
+        <div class="text-center py-8 px-6">
+            <!-- Blue Model X Icon -->
+            <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center">
+                <img src="/modelx.png" alt="Tesla Model X" class="w-14 h-14 object-contain blue-filter">
             </div>
-            <h1 class="font-display font-bold text-lg text-textMain">Tesla 決策顧問</h1>
-            <p class="text-xs text-textSub mt-1">15 輪對話，幫你搞清楚買不買、買哪台</p>
+            <h1 class="font-display font-bold text-xl text-white mb-2">Tesla 決策顧問</h1>
+            <p class="text-sm text-textSub mb-6">15 輪對話，幫你搞清楚<br>買不買、買哪台、何時買</p>
+            
+            <button onclick="startChat()" id="start-btn" class="w-full max-w-xs mx-auto py-4 bg-primary text-white font-bold rounded-xl touch-active shadow-lg shadow-primary/30">
+                <i class="fa-solid fa-comments mr-2"></i>開始諮詢
+            </button>
         </div>
+    </div>
 
-        <!-- Messages Container -->
-        <div id="chat-history" class="flex flex-col gap-4 px-4 py-4">
-            <!-- Messages will be added here -->
-        </div>
-    </main>
+    <!-- === TAB: CHAT === -->
+    <div id="tab-chat" class="hidden flex-1 overflow-y-auto pt-[calc(4.5rem+env(safe-area-inset-top))] pb-[calc(8rem+env(safe-area-inset-bottom))]" >
+        <div id="chat-history" class="flex flex-col gap-4 px-4 py-4"></div>
+    </div>
 
-    <!-- === INPUT BAR === -->
-    <div id="input-bar" class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-borderLight z-30" style="padding-bottom: env(safe-area-inset-bottom);">
-        <div class="p-3 flex items-center gap-3">
-            <div class="flex-1 bg-gray-100 rounded-full h-11 flex items-center px-4 border border-gray-200 focus-within:border-aiBlue transition-colors">
-                <input type="text" id="chat-input" placeholder="輸入你的回答..." 
-                    class="bg-transparent border-none outline-none text-textMain text-sm w-full placeholder-gray-400"
-                    autocomplete="off">
+    <!-- === TAB: HISTORY === -->
+    <div id="tab-history" class="hidden flex-1 overflow-y-auto pt-[calc(4.5rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom))]">
+        <div class="px-4 py-6">
+            <h2 class="text-lg font-bold text-white mb-4">對話紀錄</h2>
+            <div id="history-list" class="space-y-3">
+                <div class="text-center text-textSub py-8">
+                    <i class="fa-solid fa-clock-rotate-left text-3xl mb-3 opacity-50"></i>
+                    <p>尚無對話紀錄</p>
+                </div>
             </div>
-            <button id="send-btn" onclick="sendMessage()" 
-                class="w-11 h-11 rounded-full bg-aiBlue text-white flex items-center justify-center shadow-lg shadow-blue-200 touch-active disabled:opacity-50">
+        </div>
+    </div>
+
+    <!-- === TAB: PROFILE === -->
+    <div id="tab-profile" class="hidden flex-1 overflow-y-auto pt-[calc(4.5rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom))]">
+        <div class="px-4 py-6">
+            <!-- User Info -->
+            <div class="text-center mb-6">
+                <div id="profile-avatar" class="w-20 h-20 mx-auto mb-3 rounded-full bg-slate-700 border-2 border-primary flex items-center justify-center text-2xl font-bold text-white">?</div>
+                <h2 id="profile-name" class="text-lg font-bold text-white">未登入</h2>
+                <p id="profile-email" class="text-sm text-textSub">請先登入</p>
+            </div>
+
+            <!-- Upgrade Button -->
+            <button onclick="openPaywallModal()" class="w-full bg-gradient-to-r from-primary to-blue-600 p-4 rounded-2xl flex items-center justify-center gap-3 touch-active mb-4 shadow-lg shadow-primary/20">
+                <i class="fa-brands fa-paypal text-xl text-white"></i>
+                <span class="text-sm font-bold text-white">升級 Tesla Pro - US$1.99</span>
+            </button>
+
+            <!-- Menu -->
+            <div class="space-y-1">
+                <div class="bg-appSurface p-4 rounded-t-2xl border-b border-slate-800 flex justify-between items-center">
+                    <span class="text-sm font-medium">會員方案</span>
+                    <span id="profile-plan" class="text-xs text-textSub">免費版</span>
+                </div>
+                <button onclick="handleLogout()" class="w-full bg-appSurface p-4 rounded-b-2xl flex justify-between items-center touch-active">
+                    <span class="text-sm font-medium text-red-400">登出</span>
+                    <i class="fa-solid fa-arrow-right-from-bracket text-red-400 text-xs"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- === INPUT BAR (shown only in chat tab) === -->
+    <div id="input-bar" class="hidden fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] left-0 right-0 bg-appBg/95 backdrop-blur-md border-t border-slate-800 z-30 p-3">
+        <div class="flex items-center gap-3">
+            <div class="flex-1 bg-appSurface rounded-full h-11 flex items-center px-4 border border-slate-700 focus-within:border-primary transition-colors">
+                <input type="text" id="chat-input" placeholder="輸入你的回答..." class="bg-transparent border-none outline-none text-white text-sm w-full placeholder-slate-500" autocomplete="off">
+            </div>
+            <button id="send-btn" onclick="sendMessage()" class="w-11 h-11 rounded-full bg-primary text-white flex items-center justify-center shadow-lg touch-active disabled:opacity-50">
                 <i class="fa-solid fa-paper-plane text-sm"></i>
             </button>
         </div>
-        <!-- Disabled message (shown after turn 15) -->
-        <div id="input-disabled-msg" class="hidden text-center text-xs text-textSub pb-2 px-4">
-            免費模式本次 15 輪已用完，請解鎖 Tesla Pro 或明天再來
+        <div id="input-disabled-msg" class="hidden text-center text-xs text-textSub pt-2">免費模式 15 輪已用完</div>
+    </div>
+
+    <!-- === BOTTOM TAB BAR === -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-appBg/95 backdrop-blur-xl border-t border-slate-800 pb-safe-bottom z-50 h-[calc(3.5rem+env(safe-area-inset-bottom))]">
+        <div class="flex justify-around items-center h-14">
+            <button onclick="switchTab('home')" class="tab-btn flex-1 flex flex-col items-center justify-center gap-1 text-primary" data-target="home">
+                <i class="fa-solid fa-car text-lg"></i>
+                <span class="text-[10px] font-medium">首頁</span>
+            </button>
+            <button onclick="switchTab('chat')" class="tab-btn flex-1 flex flex-col items-center justify-center gap-1 text-textSub" data-target="chat">
+                <i class="fa-solid fa-comments text-lg"></i>
+                <span class="text-[10px] font-medium">諮詢</span>
+            </button>
+            <button onclick="switchTab('history')" class="tab-btn flex-1 flex flex-col items-center justify-center gap-1 text-textSub" data-target="history">
+                <i class="fa-solid fa-clock-rotate-left text-lg"></i>
+                <span class="text-[10px] font-medium">紀錄</span>
+            </button>
+            <button onclick="switchTab('profile')" class="tab-btn flex-1 flex flex-col items-center justify-center gap-1 text-textSub" data-target="profile">
+                <i class="fa-solid fa-user text-lg"></i>
+                <span class="text-[10px] font-medium">我的</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- === LOGIN OVERLAY === -->
+    <div id="login-overlay" class="fixed inset-0 z-[80] bg-appBg flex flex-col items-center justify-center p-6">
+        <div class="text-center max-w-sm">
+            <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center">
+                <img src="/modelx.png" alt="Tesla" class="w-14 h-14 object-contain blue-filter">
+            </div>
+            <h1 class="text-2xl font-bold text-white mb-2">Tesla 決策顧問</h1>
+            <p class="text-textSub text-sm mb-8">登入後開始你的專屬購車諮詢</p>
+            
+            <button onclick="handleGoogleLogin()" id="login-btn" class="w-full py-4 bg-white text-gray-800 font-bold rounded-xl flex items-center justify-center gap-3 touch-active shadow-lg">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google">
+                <span>使用 Google 帳號登入</span>
+            </button>
+            
+            <p class="text-xs text-textSub mt-6">登入即表示同意我們的服務條款與隱私政策</p>
         </div>
     </div>
 
-    <!-- === PRO PAYWALL MODAL (US$1.99) === -->
+    <!-- === PRO PAYWALL MODAL === -->
     <div id="paywall-modal" class="fixed inset-0 z-[60] hidden">
-        <div class="absolute inset-0 modal-overlay"></div>
-        <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 animate-slide-up shadow-2xl" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom));">
-            <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
+        <div class="absolute inset-0 modal-overlay" onclick="closePaywallModal()"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-appSurface rounded-t-3xl p-6 animate-slide-up" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom));">
+            <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-6"></div>
             <div class="text-center mb-4">
-                <div class="w-16 h-16 bg-gradient-to-br from-amber-100 to-amber-200 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-300">
-                    <i class="fa-solid fa-crown text-2xl text-amber-600"></i>
+                <div class="w-16 h-16 bg-amber-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-500/30">
+                    <i class="fa-solid fa-crown text-2xl text-amber-400"></i>
                 </div>
-                <h3 class="text-xl font-bold text-textMain mb-2">解鎖 Tesla Pro 檔案</h3>
+                <h3 class="text-xl font-bold text-white mb-2">解鎖 Tesla Pro</h3>
                 <p class="text-textSub text-sm">一次性付費，永久保存你的購車決策</p>
             </div>
-            
-            <div class="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200">
+            <div class="bg-slate-900 rounded-xl p-4 mb-4 border border-slate-800">
                 <div class="text-center mb-3">
-                    <span class="text-3xl font-bold text-textMain">US$ 1.99</span>
+                    <span class="text-3xl font-bold text-white">US$ 1.99</span>
                     <span class="text-textSub text-sm ml-1">一次性</span>
                 </div>
                 <ul class="text-sm text-textSub space-y-2">
-                    <li class="flex items-start gap-2">
-                        <i class="fa-solid fa-check text-green-500 mt-0.5"></i>
-                        <span>保存今天的全部需求與對話紀錄</span>
-                    </li>
-                    <li class="flex items-start gap-2">
-                        <i class="fa-solid fa-check text-green-500 mt-0.5"></i>
-                        <span>下次回來可直接接續，不用重講</span>
-                    </li>
-                    <li class="flex items-start gap-2">
-                        <i class="fa-solid fa-check text-green-500 mt-0.5"></i>
-                        <span>解鎖專屬車主模式與後續建議</span>
-                    </li>
+                    <li class="flex items-start gap-2"><i class="fa-solid fa-check text-green-400 mt-0.5"></i><span>保存全部對話紀錄</span></li>
+                    <li class="flex items-start gap-2"><i class="fa-solid fa-check text-green-400 mt-0.5"></i><span>下次可直接接續</span></li>
+                    <li class="flex items-start gap-2"><i class="fa-solid fa-check text-green-400 mt-0.5"></i><span>解鎖車主模式</span></li>
                 </ul>
             </div>
-
             <button onclick="handleTeslaProCheckout()" id="pro-pay-btn" class="w-full py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold rounded-xl touch-active shadow-lg mb-3">
-                <i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 解鎖 Tesla Pro
+                <i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 解鎖
             </button>
-            <button onclick="skipPaywall()" class="w-full py-3 bg-gray-100 text-textSub font-medium rounded-xl touch-active">
-                先免費體驗，之後再說
-            </button>
+            <button onclick="closePaywallModal()" class="w-full py-3 bg-slate-800 text-textSub font-medium rounded-xl touch-active">之後再說</button>
         </div>
     </div>
+
+    <!-- Firebase Auth & Store Scripts -->
+    <script src="/js/auth.js"></script>
+    <script src="/js/firebase-store.js"></script>
 
     <script>
         // === Config ===
@@ -408,14 +387,8 @@
         const TRAVEL_AI_URL = 'https://brotherg.ai/travel';
 
         // === State ===
-        let teslaState = {
-            turn: 0,
-            answers: [],
-            messages: [],
-            paid: false,
-            loading: false,
-            sessionEnded: false
-        };
+        let currentUser = null;
+        let teslaState = { turn: 0, answers: [], messages: [], paid: false, loading: false, sessionEnded: false };
 
         // === Toast ===
         function showToast(msg) {
@@ -425,14 +398,43 @@
             setTimeout(() => toast.classList.remove('show'), 2500);
         }
 
-        // === Init ===
+        // === Tab Switching ===
+        function switchTab(tabName) {
+            // Hide all tabs
+            ['home', 'chat', 'history', 'profile'].forEach(t => {
+                document.getElementById('tab-' + t).classList.add('hidden');
+                document.querySelector(`[data-target="${t}"]`).classList.remove('text-primary');
+                document.querySelector(`[data-target="${t}"]`).classList.add('text-textSub');
+            });
+            
+            // Show selected tab
+            document.getElementById('tab-' + tabName).classList.remove('hidden');
+            document.querySelector(`[data-target="${tabName}"]`).classList.remove('text-textSub');
+            document.querySelector(`[data-target="${tabName}"]`).classList.add('text-primary');
+            
+            // Show/hide input bar
+            document.getElementById('input-bar').classList.toggle('hidden', tabName !== 'chat');
+        }
+
+        // === Start Chat ===
+        function startChat() {
+            if (!currentUser) {
+                document.getElementById('login-overlay').classList.remove('hidden');
+                return;
+            }
+            switchTab('chat');
+            if (teslaState.turn === 0) {
+                initTesla();
+            }
+        }
+
+        // === Init Tesla ===
         function initTesla() {
             teslaState = { turn: 0, answers: [], messages: [], paid: false, loading: false, sessionEnded: false };
             document.getElementById('chat-history').innerHTML = '';
             document.getElementById('input-bar').classList.remove('input-disabled');
             document.getElementById('input-disabled-msg').classList.add('hidden');
             
-            // Welcome messages
             addBotMessage("歡迎來到 BrotherG Tesla 決策顧問！");
             setTimeout(() => {
                 addBotMessage("我是你的專屬購車陪伴顧問。接下來我會用 15 輪對話，幫你搞清楚「買不買、買哪台、何時買」。\n\n準備好了就跟我說說你在考慮什麼車款吧！");
@@ -457,20 +459,15 @@
 
         // === Chat Messages ===
         function addBotMessage(text, isMarkdown = false) {
-            // Task 1 Fix: Guard against empty content
-            if (!text || text.trim() === '') {
-                console.warn('Attempted to add empty bot message, skipping');
-                return;
-            }
-
+            if (!text || text.trim() === '') return;
             const chatHistory = document.getElementById('chat-history');
             const div = document.createElement('div');
             div.className = 'flex items-start gap-2 animate-fade-in';
-            
             const content = (isMarkdown && window.marked) ? marked.parse(text) : text.replace(/\n/g, '<br>');
-            
             div.innerHTML = `
-                <img src="/logo.png" alt="AI" class="w-8 h-8 rounded-full flex-shrink-0 bg-gray-100 p-1 border border-gray-200 mt-1">
+                <div class="w-8 h-8 rounded-full flex-shrink-0 bg-slate-800 border border-slate-700 flex items-center justify-center mt-1">
+                    <img src="/logo.png" alt="AI" class="w-5 h-5">
+                </div>
                 <div class="chat-bubble ai">${content}</div>
             `;
             chatHistory.appendChild(div);
@@ -479,7 +476,6 @@
 
         function addUserMessage(text) {
             if (!text || text.trim() === '') return;
-            
             const chatHistory = document.getElementById('chat-history');
             const div = document.createElement('div');
             div.className = 'flex justify-end animate-fade-in';
@@ -488,28 +484,24 @@
             scrollToBottom();
         }
 
-        // === Task 2: Mid-Summary Ad Card (Turn 10) ===
         function addMidSummaryWithAd(summaryText) {
             const chatHistory = document.getElementById('chat-history');
             const div = document.createElement('div');
             div.className = 'flex items-start gap-2 animate-fade-in';
-            
             div.innerHTML = `
-                <img src="/logo.png" alt="AI" class="w-8 h-8 rounded-full flex-shrink-0 bg-gray-100 p-1 border border-gray-200 mt-1">
+                <div class="w-8 h-8 rounded-full flex-shrink-0 bg-slate-800 border border-slate-700 flex items-center justify-center mt-1">
+                    <img src="/logo.png" alt="AI" class="w-5 h-5">
+                </div>
                 <div class="flex-1">
                     <div class="chat-bubble ai mb-3">${marked.parse(summaryText)}</div>
                     <div class="ad-card">
                         <h4><i class="fa-solid fa-gift mr-2"></i>Tesla 推薦碼專屬禮遇</h4>
                         <p>使用 BrotherG 推薦碼交車，可享新車主專屬好處！</p>
-                        <a href="${TESLA_REFERRAL_URL}" target="_blank" rel="noopener">
-                            <i class="fa-solid fa-bolt mr-2"></i>使用我的 Tesla 推薦碼
-                        </a>
+                        <a href="${TESLA_REFERRAL_URL}" target="_blank"><i class="fa-solid fa-bolt mr-2"></i>使用推薦碼</a>
                         <div class="divider"></div>
-                        <h4><i class="fa-solid fa-plane mr-2"></i>交車後，一鍵規劃自駕旅行</h4>
-                        <p>用 BrotherG 旅遊決策 AI 幫你排出最適合的電動車自駕行程！</p>
-                        <a href="${TRAVEL_AI_URL}" target="_blank" rel="noopener">
-                            <i class="fa-solid fa-route mr-2"></i>體驗旅遊決策 AI
-                        </a>
+                        <h4><i class="fa-solid fa-plane mr-2"></i>交車後規劃自駕旅行</h4>
+                        <p>用 BrotherG 旅遊 AI 排出電動車自駕行程！</p>
+                        <a href="${TRAVEL_AI_URL}" target="_blank"><i class="fa-solid fa-route mr-2"></i>體驗旅遊 AI</a>
                     </div>
                 </div>
             `;
@@ -517,36 +509,28 @@
             scrollToBottom();
         }
 
-        // === Task 3: Final Decision with Paywall Card (Turn 15) ===
         function addFinalDecisionWithPaywall(decisionText) {
             const chatHistory = document.getElementById('chat-history');
             const div = document.createElement('div');
             div.className = 'flex items-start gap-2 animate-fade-in';
-            
             div.innerHTML = `
-                <img src="/logo.png" alt="AI" class="w-8 h-8 rounded-full flex-shrink-0 bg-gray-100 p-1 border border-gray-200 mt-1">
+                <div class="w-8 h-8 rounded-full flex-shrink-0 bg-slate-800 border border-slate-700 flex items-center justify-center mt-1">
+                    <img src="/logo.png" alt="AI" class="w-5 h-5">
+                </div>
                 <div class="flex-1">
                     <div class="chat-bubble ai mb-3">${marked.parse(decisionText)}</div>
                     <div class="paywall-card">
-                        <h4><i class="fa-solid fa-circle-info mr-2"></i>目前為免費體驗模式</h4>
-                        <p>今天的 15 輪對話已經使用完畢。下次再來時，系統會從頭開始，無法完整延續你的準車主檔案。</p>
-                        <div class="divider" style="background:#FCD34D;height:1px;margin:12px 0;"></div>
-                        <h4><i class="fa-solid fa-crown mr-2"></i>解鎖 Tesla Pro 檔案（US$1.99）</h4>
-                        <ul>
-                            <li>✓ 為你保存今天的全部需求與對話紀錄</li>
-                            <li>✓ 下次回來可直接接續，不用重講</li>
-                            <li>✓ 之後加入更多專屬建議與車主模式</li>
-                        </ul>
-                        <button onclick="openPaywallModal()">
-                            <i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 解鎖 Tesla Pro
-                        </button>
+                        <h4><i class="fa-solid fa-circle-info mr-2"></i>免費體驗已結束</h4>
+                        <p>15 輪對話已用完。下次需從頭開始。</p>
+                        <div style="height:1px;background:#92400E;margin:12px 0;"></div>
+                        <h4><i class="fa-solid fa-crown mr-2"></i>解鎖 Tesla Pro（US$1.99）</h4>
+                        <ul><li>✓ 保存全部對話</li><li>✓ 下次可接續</li><li>✓ 解鎖車主模式</li></ul>
+                        <button onclick="openPaywallModal()"><i class="fa-brands fa-paypal mr-2"></i>US$1.99 解鎖</button>
                     </div>
                 </div>
             `;
             chatHistory.appendChild(div);
             scrollToBottom();
-
-            // Disable input after turn 15
             disableInput();
         }
 
@@ -556,36 +540,20 @@
             div.id = 'typing-indicator';
             div.className = 'flex items-start gap-2 animate-fade-in';
             div.innerHTML = `
-                <img src="/logo.png" alt="AI" class="w-8 h-8 rounded-full flex-shrink-0 bg-gray-100 p-1 border border-gray-200 mt-1">
+                <div class="w-8 h-8 rounded-full flex-shrink-0 bg-slate-800 border border-slate-700 flex items-center justify-center mt-1">
+                    <img src="/logo.png" alt="AI" class="w-5 h-5">
+                </div>
                 <div class="chat-bubble ai flex gap-1 py-4">
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
                 </div>
             `;
             chatHistory.appendChild(div);
             scrollToBottom();
         }
 
-        function removeTypingIndicator() {
-            const el = document.getElementById('typing-indicator');
-            if (el) el.remove();
-        }
-
-        function scrollToBottom() {
-            const container = document.getElementById('chat-container');
-            setTimeout(() => {
-                container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-            }, 100);
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // === Disable Input (after turn 15) ===
+        function removeTypingIndicator() { const el = document.getElementById('typing-indicator'); if (el) el.remove(); }
+        function scrollToBottom() { const c = document.getElementById('tab-chat'); setTimeout(() => c.scrollTo({ top: c.scrollHeight, behavior: 'smooth' }), 100); }
+        function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
         function disableInput() {
             teslaState.sessionEnded = true;
             document.getElementById('chat-input').disabled = true;
@@ -593,7 +561,6 @@
             document.getElementById('input-bar').classList.add('input-disabled');
             document.getElementById('input-disabled-msg').classList.remove('hidden');
         }
-
         function enableInput() {
             teslaState.sessionEnded = false;
             document.getElementById('chat-input').disabled = false;
@@ -604,25 +571,9 @@
 
         // === API Call ===
         async function callTeslaAPI(state, specialMode = null) {
-            const payload = {
-                messages: state.messages,
-                intakeAnswers: state.answers,
-                messageCount: state.turn,
-                paid: state.paid
-            };
-
-            // Add special mode for turn 10 and 15
-            if (specialMode) {
-                payload.summaryMode = specialMode;
-                payload.step = state.turn;
-            }
-
-            const res = await fetch('/.netlify/functions/tesla-chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            
+            const payload = { messages: state.messages, intakeAnswers: state.answers, messageCount: state.turn, paid: state.paid };
+            if (specialMode) { payload.summaryMode = specialMode; payload.step = state.turn; }
+            const res = await fetch('/.netlify/functions/tesla-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (!res.ok) throw new Error("API Fail");
             return await res.json();
         }
@@ -631,30 +582,19 @@
         async function sendMessage() {
             const input = document.getElementById('chat-input');
             const text = input.value.trim();
-            
             if (teslaState.loading || !text || teslaState.sessionEnded) return;
 
-            // Add user message
             addUserMessage(text);
             input.value = '';
             teslaState.messages.push({ role: 'user', content: text });
             teslaState.turn++;
-            
-            teslaState.answers.push({
-                turn: teslaState.turn,
-                question: `Turn ${teslaState.turn}`,
-                answer: text
-            });
-
+            teslaState.answers.push({ turn: teslaState.turn, question: `Turn ${teslaState.turn}`, answer: text });
             teslaState.loading = true;
             document.getElementById('send-btn').disabled = true;
             updateUI();
-            
-            // Show typing indicator (Task 1: use indicator, not empty message)
             showTypingIndicator();
             
             try {
-                // Determine special mode
                 let specialMode = null;
                 if (teslaState.turn === 10) specialMode = 'mid';
                 else if (teslaState.turn === 15) specialMode = 'final';
@@ -662,130 +602,91 @@
                 const data = await callTeslaAPI(teslaState, specialMode);
                 removeTypingIndicator();
 
-                // Task 1 Fix: Only add message if there's actual content
                 if (data.ok && data.reply && data.reply.trim() !== '') {
                     teslaState.messages.push({ role: 'assistant', content: data.reply });
-                    
-                    // Task 2: Turn 10 - Mid-way summary with ad card
-                    if (teslaState.turn === 10) {
-                        addMidSummaryWithAd(data.reply);
-                    }
-                    // Task 3: Turn 15 - Final decision with paywall
-                    else if (teslaState.turn >= 15) {
-                        addFinalDecisionWithPaywall(data.reply);
-                    }
-                    // Normal turns
-                    else {
-                        const isSpecialTurn = teslaState.turn === 11;
-                        addBotMessage(data.reply, isSpecialTurn);
-                    }
+                    if (teslaState.turn === 10) addMidSummaryWithAd(data.reply);
+                    else if (teslaState.turn >= 15) addFinalDecisionWithPaywall(data.reply);
+                    else addBotMessage(data.reply, teslaState.turn === 11);
                 } else if (!data.ok) {
-                    addBotMessage("抱歉，我需要多一點時間思考。請再說一次你的想法？");
+                    addBotMessage("抱歉，請再說一次你的想法？");
                 }
-
             } catch (e) {
                 console.error('Tesla chat error:', e);
                 removeTypingIndicator();
-                addBotMessage("抱歉，連線出了點問題。請稍後再試，或重新整理頁面。");
+                addBotMessage("連線出了點問題，請稍後再試。");
             }
             
             teslaState.loading = false;
-            if (!teslaState.sessionEnded) {
-                document.getElementById('send-btn').disabled = false;
-            }
+            if (!teslaState.sessionEnded) document.getElementById('send-btn').disabled = false;
             updateUI();
         }
 
         // === Paywall ===
-        function openPaywallModal() {
-            document.getElementById('paywall-modal').classList.remove('hidden');
-        }
+        function openPaywallModal() { document.getElementById('paywall-modal').classList.remove('hidden'); }
+        function closePaywallModal() { document.getElementById('paywall-modal').classList.add('hidden'); }
 
-        function closePaywallModal() {
-            document.getElementById('paywall-modal').classList.add('hidden');
-        }
-
-        function skipPaywall() {
-            closePaywallModal();
-            showToast('歡迎明天再來繼續！');
-        }
-
-        // === Task 3: Pro Checkout (US$1.99 via PayPal) ===
         async function handleTeslaProCheckout() {
             const btn = document.getElementById('pro-pay-btn');
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>正在跳轉 PayPal...';
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>跳轉中...';
             btn.disabled = true;
-
             try {
-                // 儲存當前對話狀態到 localStorage（付款成功後恢復）
                 localStorage.setItem('tesla_session', JSON.stringify(teslaState));
-                
-                // 呼叫 PayPal API
                 const res = await fetch('/.netlify/functions/paypal-checkout', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        product: 'TESLA_PRO',
-                        returnUrl: window.location.origin + '/payment/success?product=TESLA_PRO',
-                        cancelUrl: window.location.origin + '/payment/cancel?product=TESLA_PRO'
-                    })
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ product: 'TESLA_PRO', returnUrl: window.location.origin + '/payment/success?product=TESLA_PRO', cancelUrl: window.location.origin + '/payment/cancel?product=TESLA_PRO' })
                 });
-
                 const data = await res.json();
-                console.log('PayPal response:', data);
-
-                if (data.ok && data.checkoutUrl) {
-                    // 直接跳轉到 PayPal 付款頁面
-                    window.location.href = data.checkoutUrl;
-                } else {
-                    throw new Error(data.error || 'PayPal 訂單創建失敗');
-                }
-
+                if (data.ok && data.checkoutUrl) window.location.href = data.checkoutUrl;
+                else throw new Error(data.error || 'PayPal 訂單創建失敗');
             } catch (e) {
                 console.error('Payment error:', e);
-                btn.innerHTML = '<i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 解鎖 Tesla Pro';
+                btn.innerHTML = '<i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 解鎖';
                 btn.disabled = false;
-                showToast('PayPal 連線失敗：' + e.message);
+                showToast('PayPal 連線失敗');
             }
         }
 
-        // 檢查付款狀態（從 localStorage）
         function checkPaymentStatus() {
             const paid = localStorage.getItem('TESLA_PRO_paid');
             if (paid === 'true') {
                 teslaState.paid = true;
-                // 恢復之前的對話
-                const savedSession = localStorage.getItem('tesla_session');
-                if (savedSession) {
-                    try {
-                        const session = JSON.parse(savedSession);
-                        teslaState.turn = session.turn || 0;
-                        teslaState.answers = session.answers || [];
-                        teslaState.messages = session.messages || [];
-                    } catch (e) {}
-                }
+                document.getElementById('profile-plan').textContent = 'Tesla Pro';
                 enableInput();
-                showToast('🎉 歡迎回來！Tesla Pro 已解鎖');
+                showToast('🎉 Tesla Pro 已解鎖');
             }
         }
 
-        // === Input Enter Key ===
-        document.getElementById('chat-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                sendMessage();
+        // === Auth ===
+        window.addEventListener('authStateChanged', (e) => {
+            currentUser = e.detail.user;
+            if (currentUser) {
+                document.getElementById('login-overlay').classList.add('hidden');
+                document.getElementById('profile-name').textContent = currentUser.displayName || '用戶';
+                document.getElementById('profile-email').textContent = currentUser.email || '';
+                const avatar = document.getElementById('profile-avatar');
+                if (currentUser.photoURL) {
+                    avatar.style.backgroundImage = `url(${currentUser.photoURL})`;
+                    avatar.style.backgroundSize = 'cover';
+                    avatar.textContent = '';
+                } else {
+                    avatar.textContent = (currentUser.displayName || 'U').charAt(0).toUpperCase();
+                }
+            } else {
+                document.getElementById('login-overlay').classList.remove('hidden');
             }
         });
 
-        // === Init on Load ===
+        // === Input Enter Key ===
+        document.getElementById('chat-input').addEventListener('keypress', function(e) { if (e.key === 'Enter') sendMessage(); });
+
+        // === Init ===
         window.onload = function() {
-            initTesla();
-            // 檢查是否從 PayPal 付款成功返回
             checkPaymentStatus();
         };
     </script>
 
-</div><!-- end app content -->
-</div><!-- end app-phone-frame -->
-</div><!-- end app-shell -->
+</div>
+</div>
+</div>
 </body>
 </html>
