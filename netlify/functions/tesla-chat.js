@@ -157,22 +157,48 @@ exports.handler = async (event, context) => {
     }
 
     const userPlan = paid ? 'pro' : 'free';
-    const turnCount = messageCount; // 前端已經 +1 過了
+    const turnCount = messageCount; // 前端傳來的是用戶訊息數量
 
-    // Turn 15 without payment: Return paywall trigger
-    if (turnCount >= 15 && !paid) {
-      // 先讓 AI 生成付費牆前的說明
-      const paywallPrompt = getTeslaPrompt('free', 15);
-      const contextPrompt = buildContextPrompt(intakeAnswers, messages);
-      const paywallReply = await callGemini(apiKey, contextPrompt, paywallPrompt);
-      
+    // ★ Paywall 邏輯：Q1-Q10 免費，Q11 開始需要付費
+    // turnCount 代表「目前用戶已發送的訊息數」
+    // 當 turnCount >= 11 且未付費，觸發 Paywall
+    if (turnCount >= 11 && !paid) {
+      // Q11+: 需要付費
+      // 回傳中場總結 + Paywall 提示
+      const paywallMessage = `### 🎯 中場決策總結
+
+到目前為止，我已經掌握了你的：
+- 預算區間與付款方式
+- 主要用車場景
+- 家充條件與年里程
+- 家庭成員與載人需求
+- 主要擔心的點
+- 換車時間規劃
+
+**初步方向：**
+根據你的回答，我已經有了 1-2 台最適合你的車型建議。
+
+---
+
+### 🔓 解鎖完整諮詢
+
+如果你想拿到：
+✅ 完整的「最終決策卡」（具體車型 + 配備建議）
+✅ 個人化的風險提示與避坑方案
+✅ 保存你的準車主檔案，下次不用重新回答
+
+只要 **US$1.99** 一次性解鎖，我會陪你走完整個購車決策。`;
+
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({ 
           ok: true, 
-          reply: paywallReply,
-          needPaywall: true 
+          reply: paywallMessage,
+          needPaywall: true,
+          errorCode: 'TESLA_PAYMENT_REQUIRED',
+          requiredPrice: 1.99,
+          currency: 'USD'
         })
       };
     }

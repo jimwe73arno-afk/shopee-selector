@@ -145,7 +145,7 @@
             </div>
             <div class="flex items-center gap-2">
                 <span id="usage-badge" class="text-xs font-medium text-slate-400 bg-slate-800 px-2 py-1 rounded-full">
-                    <span id="usage-count">0</span>/<span id="usage-limit">10</span>
+                    Q<span id="usage-count">0</span>/<span id="usage-limit">15</span>
                 </span>
             </div>
         </div>
@@ -285,6 +285,50 @@
             <button onclick="handleGoogleLogin()" id="login-btn" class="w-full py-4 bg-white text-gray-800 font-bold rounded-2xl flex items-center justify-center gap-3 touch-active shadow-lg">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google">
                 <span>使用 Google 帳號登入</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- === TESLA PAYWALL (Q11 付費牆) === -->
+    <div id="tesla-paywall" class="fixed inset-0 z-[70] hidden">
+        <div class="absolute inset-0 sheet-overlay" onclick="closeTeslaPaywall()"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-appSurface rounded-t-3xl p-6 animate-slide-up" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom));">
+            <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-6"></div>
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-primary/30">
+                    <img src="/modelx.png" alt="Tesla" class="w-10 h-10 object-contain blue-filter">
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2">🎯 你已完成前 10 題</h3>
+                <p class="text-slate-400 text-sm">我已經掌握你的預算、里程、家充、家庭需求...</p>
+            </div>
+            <div class="bg-slate-900 rounded-xl p-4 mb-6 border border-slate-800">
+                <p class="text-sm text-slate-300 mb-3">
+                    如果你想拿到完整的 <strong class="text-white">「最終決策卡」</strong>：
+                </p>
+                <ul class="space-y-2 text-sm text-slate-300">
+                    <li class="flex items-start gap-2">
+                        <i class="fa-solid fa-check text-green-400 mt-1"></i>
+                        <span>具體車型、版本、顏色配備建議</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fa-solid fa-check text-green-400 mt-1"></i>
+                        <span>個人化風險提示與避坑方案</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fa-solid fa-check text-green-400 mt-1"></i>
+                        <span>保存你的準車主檔案</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fa-solid fa-check text-green-400 mt-1"></i>
+                        <span>陪你走完 Q11-Q15 深度諮詢</span>
+                    </li>
+                </ul>
+            </div>
+            <button onclick="handleTeslaProCheckout()" id="tesla-paywall-btn" class="w-full py-4 bg-gradient-to-r from-primary to-blue-600 rounded-xl text-white font-bold text-lg touch-active mb-3 shadow-lg">
+                <i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 解鎖 Tesla 決策卡
+            </button>
+            <button onclick="closeTeslaPaywall()" class="w-full py-3 bg-slate-800 rounded-xl text-slate-400 font-medium touch-active">
+                先不用，明天再來
             </button>
         </div>
     </div>
@@ -453,11 +497,8 @@
             }
             currentUser = user;
 
-            // 檢查額度
-            if (userCredits.remaining <= 0) {
-                showQuotaSheet();
-                return;
-            }
+            // ★ Tesla 不檢查每日額度，由後端控制 Paywall
+            // 這樣 Q1-Q10 可以不受限制地跑完
 
             addUserMessage(text);
             input.value = '';
@@ -465,30 +506,18 @@
             document.getElementById('send-btn').disabled = true;
             showTypingIndicator();
 
-            try {
-                // 消耗額度
-                if (typeof window.consumeQuota === 'function') {
-                    const result = await window.consumeQuota(currentUser, 1);
-                    if (!result.ok) {
-                        removeTypingIndicator();
-                        showQuotaSheet();
-                        isProcessing = false;
-                        document.getElementById('send-btn').disabled = false;
-                        return;
-                    }
-                    if (result.quota) {
-                        userCredits = result.quota;
-                        updateCreditsUI();
-                    }
-                }
+            // 計算當前用戶訊息數（發送後）
+            const userMsgCount = chatMessages.filter(m => m.role === 'user').length;
 
-                // 呼叫 API
+            try {
+                // 呼叫 API（不先消耗額度，讓後端決定是否需要 Paywall）
                 const res = await fetch('/.netlify/functions/tesla-chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         messages: chatMessages,
-                        messageCount: chatMessages.filter(m => m.role === 'user').length
+                        messageCount: userMsgCount,
+                        paid: userCredits.tier === 'pro' || localStorage.getItem('BROTHERG_PRO_paid') === 'true'
                     })
                 });
 
@@ -497,6 +526,15 @@
 
                 if (data.ok && data.reply && data.reply.trim()) {
                     addBotMessage(data.reply, true);
+                    
+                    // ★ 檢查是否需要 Paywall（Q11 開始）
+                    if (data.needPaywall) {
+                        // 顯示 Tesla Paywall，而不是一般額度提示
+                        showTeslaPaywall();
+                    }
+                    
+                    // 更新 UI 顯示（顯示 Tesla 進度而非每日額度）
+                    updateTeslaProgress(userMsgCount);
                 } else {
                     addBotMessage("抱歉，請再說一次你的問題？");
                 }
@@ -508,6 +546,21 @@
 
             isProcessing = false;
             document.getElementById('send-btn').disabled = false;
+        }
+
+        // === Tesla Paywall（專屬 Tesla 的付費牆）===
+        function showTeslaPaywall() {
+            document.getElementById('tesla-paywall').classList.remove('hidden');
+        }
+
+        function closeTeslaPaywall() {
+            document.getElementById('tesla-paywall').classList.add('hidden');
+        }
+
+        // === 更新 Tesla 進度 ===
+        function updateTeslaProgress(currentQ) {
+            document.getElementById('usage-count').textContent = Math.min(currentQ, 15);
+            document.getElementById('usage-limit').textContent = '15';
         }
 
         // === Quota Sheet ===
@@ -523,7 +576,7 @@
             showQuotaSheet();
         }
 
-        // === Upgrade to Pro ===
+        // === Upgrade to Pro (一般額度用完時) ===
         async function handleUpgradeToPro() {
             const btn = document.getElementById('quota-upgrade-btn');
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>跳轉 PayPal...';
@@ -549,6 +602,37 @@
             } catch (e) {
                 console.error('Payment error:', e);
                 btn.innerHTML = '<i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 升級 Pro';
+                btn.disabled = false;
+                showToast('PayPal 連線失敗');
+            }
+        }
+
+        // === Tesla Pro Checkout (Q11 Paywall 專用) ===
+        async function handleTeslaProCheckout() {
+            const btn = document.getElementById('tesla-paywall-btn');
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>跳轉 PayPal...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/.netlify/functions/paypal-checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        product: 'BROTHERG_PRO',
+                        returnUrl: window.location.origin + '/payment/success?product=BROTHERG_PRO&return=/tesla-app',
+                        cancelUrl: window.location.origin + '/payment/cancel?product=BROTHERG_PRO&return=/tesla-app'
+                    })
+                });
+
+                const data = await res.json();
+                if (data.ok && data.checkoutUrl) {
+                    window.location.href = data.checkoutUrl;
+                } else {
+                    throw new Error(data.error || 'PayPal 訂單創建失敗');
+                }
+            } catch (e) {
+                console.error('Payment error:', e);
+                btn.innerHTML = '<i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 解鎖 Tesla 決策卡';
                 btn.disabled = false;
                 showToast('PayPal 連線失敗');
             }
