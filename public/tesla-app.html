@@ -84,7 +84,7 @@
 
         .touch-active:active { transform: scale(0.96); opacity: 0.8; }
 
-        /* Chat Bubbles - 與 Shopee 完全一致 */
+        /* Chat Bubbles */
         .chat-bubble {
             max-width: 85%; padding: 12px 16px; font-size: 15px; line-height: 1.6;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -122,7 +122,6 @@
         }
         .toast.show { opacity: 1; }
 
-        /* Blue filter for Model X */
         .blue-filter { filter: brightness(0) saturate(100%) invert(55%) sepia(57%) saturate(2000%) hue-rotate(166deg) brightness(96%) contrast(101%); }
     </style>
 </head>
@@ -134,7 +133,7 @@
     <!-- Toast -->
     <div id="toast" class="toast"></div>
 
-    <!-- === HEADER (與 Shopee 一致) === -->
+    <!-- === HEADER === -->
     <header class="fixed top-0 left-0 right-0 z-40 bg-appBg/95 backdrop-blur-xl border-b border-slate-800" style="padding-top: env(safe-area-inset-top);">
         <div class="h-14 flex items-center justify-between px-4">
             <div class="flex items-center gap-3">
@@ -145,7 +144,7 @@
             </div>
             <div class="flex items-center gap-2">
                 <span id="usage-badge" class="text-xs font-medium text-slate-400 bg-slate-800 px-2 py-1 rounded-full">
-                    Q<span id="usage-count">0</span>/<span id="usage-limit">15</span>
+                    Q<span id="usage-count">0</span>/10
                 </span>
             </div>
         </div>
@@ -154,20 +153,17 @@
     <!-- === TAB: HOME === -->
     <div id="tab-home" class="flex-1 overflow-y-auto pt-[calc(4rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom))]">
         <div class="p-6 text-center">
-            <!-- Logo -->
             <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center">
                 <img src="/modelx.png" alt="Tesla" class="w-14 h-14 object-contain blue-filter">
             </div>
             <h1 class="font-display font-bold text-2xl text-white mb-2">Tesla 決策顧問</h1>
             <p class="text-slate-400 text-sm mb-6">買不買？買哪台？何時買？<br>讓 AI 幫你做出最好的決策</p>
             
-            <!-- Tier Badge -->
             <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-full mb-6">
                 <span id="home-tier" class="text-xs font-bold text-slate-300">FREE</span>
-                <span class="text-xs text-slate-500">每日 10 題</span>
+                <span class="text-xs text-slate-500">Q1-Q10 免費</span>
             </div>
             
-            <!-- Start Button -->
             <button onclick="startChat()" class="w-full max-w-xs mx-auto py-4 bg-primary text-white font-bold rounded-2xl touch-active shadow-lg shadow-primary/30 flex items-center justify-center gap-2">
                 <i class="fa-solid fa-comments"></i>
                 <span>開始諮詢</span>
@@ -176,25 +172,13 @@
     </div>
 
     <!-- === TAB: CHAT === -->
-    <div id="tab-chat" class="hidden flex-1 overflow-y-auto pt-[calc(4rem+env(safe-area-inset-top))] pb-[calc(8rem+env(safe-area-inset-bottom))]" id="chat-container">
+    <div id="tab-chat" class="hidden flex-1 overflow-y-auto pt-[calc(4rem+env(safe-area-inset-top))] pb-[calc(8rem+env(safe-area-inset-bottom))]">
         <div id="chat-history" class="flex flex-col gap-4 px-4 py-4"></div>
-    </div>
-
-    <!-- === TAB: HISTORY === -->
-    <div id="tab-history" class="hidden flex-1 overflow-y-auto pt-[calc(4rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom))]">
-        <div class="p-4">
-            <h2 class="text-lg font-bold text-white mb-4">對話紀錄</h2>
-            <div class="text-center text-slate-500 py-12">
-                <i class="fa-solid fa-clock-rotate-left text-3xl mb-3 opacity-50"></i>
-                <p>尚無對話紀錄</p>
-            </div>
-        </div>
     </div>
 
     <!-- === TAB: PROFILE === -->
     <div id="tab-profile" class="hidden flex-1 overflow-y-auto pt-[calc(4rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom))]">
         <div class="p-4">
-            <!-- User Card -->
             <div class="bg-appSurface rounded-2xl p-4 mb-4 border border-slate-800">
                 <div class="flex items-center gap-4">
                     <div id="profile-avatar" class="w-14 h-14 rounded-full bg-slate-700 flex items-center justify-center text-xl font-bold text-white border-2 border-primary">?</div>
@@ -205,35 +189,15 @@
                 </div>
             </div>
 
-            <!-- Stats -->
-            <div class="bg-appSurface rounded-2xl p-4 mb-4 border border-slate-800">
-                <div class="flex justify-between items-center mb-3">
-                    <span class="text-sm text-slate-400">今日已用</span>
-                    <span id="profile-used" class="font-bold text-white">0</span>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-sm text-slate-400">剩餘額度</span>
-                    <span id="profile-remaining" class="font-bold text-primary">10</span>
-                </div>
-            </div>
-
-            <!-- Upgrade Button -->
-            <button onclick="showUpgradeModal()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 p-4 rounded-2xl flex items-center justify-center gap-3 touch-active mb-4 shadow-lg">
+            <button onclick="showPaywall()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 p-4 rounded-2xl flex items-center justify-center gap-3 touch-active mb-4 shadow-lg">
                 <i class="fa-solid fa-crown text-white"></i>
-                <span class="text-sm font-bold text-white">升級 Pro - US$1.99 (每天 30 題)</span>
+                <span class="text-sm font-bold text-white">升級 Pro - US$1.99</span>
             </button>
 
-            <!-- Menu -->
-            <div class="space-y-1">
-                <div class="bg-appSurface p-4 rounded-t-2xl border-b border-slate-800 flex justify-between items-center">
-                    <span class="text-sm font-medium text-white">會員方案</span>
-                    <span id="profile-plan" class="text-xs text-slate-400">免費版 · 每日 10 次</span>
-                </div>
-                <button onclick="handleLogout()" class="w-full bg-appSurface p-4 rounded-b-2xl flex justify-between items-center touch-active">
-                    <span class="text-sm font-medium text-red-400">登出</span>
-                    <i class="fa-solid fa-arrow-right-from-bracket text-red-400 text-xs"></i>
-                </button>
-            </div>
+            <button onclick="handleLogout()" class="w-full bg-appSurface p-4 rounded-2xl flex justify-between items-center touch-active border border-slate-800">
+                <span class="text-sm font-medium text-red-400">登出</span>
+                <i class="fa-solid fa-arrow-right-from-bracket text-red-400 text-xs"></i>
+            </button>
         </div>
     </div>
 
@@ -251,7 +215,7 @@
         </div>
     </div>
 
-    <!-- === BOTTOM TAB BAR (與 Shopee 一致) === -->
+    <!-- === BOTTOM TAB BAR === -->
     <nav class="fixed bottom-0 left-0 right-0 bg-appBg/95 backdrop-blur-xl border-t border-slate-800 z-50" style="padding-bottom: env(safe-area-inset-bottom);">
         <div class="flex justify-around items-center h-14">
             <button onclick="switchTab('home')" class="tab-btn flex-1 flex flex-col items-center justify-center gap-1 text-primary" data-tab="home">
@@ -261,10 +225,6 @@
             <button onclick="switchTab('chat')" class="tab-btn flex-1 flex flex-col items-center justify-center gap-1 text-slate-500" data-tab="chat">
                 <i class="fa-solid fa-comments text-lg"></i>
                 <span class="text-[10px] font-medium">諮詢</span>
-            </button>
-            <button onclick="switchTab('history')" class="tab-btn flex-1 flex flex-col items-center justify-center gap-1 text-slate-500" data-tab="history">
-                <i class="fa-solid fa-clock-rotate-left text-lg"></i>
-                <span class="text-[10px] font-medium">紀錄</span>
             </button>
             <button onclick="switchTab('profile')" class="tab-btn flex-1 flex flex-col items-center justify-center gap-1 text-slate-500" data-tab="profile">
                 <i class="fa-solid fa-user text-lg"></i>
@@ -289,124 +249,57 @@
         </div>
     </div>
 
-    <!-- === AD GATE MODAL (Q10 前的廣告解鎖) === -->
-    <div id="ad-gate-modal" class="fixed inset-0 z-[70] hidden">
-        <div class="absolute inset-0 sheet-overlay"></div>
-        <div class="absolute bottom-0 left-0 right-0 bg-appSurface rounded-t-3xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom));">
-            <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-4"></div>
-            
-            <!-- Header -->
-            <div class="text-center mb-5">
-                <div class="w-14 h-14 bg-green-500/20 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-green-500/30">
-                    <i class="fa-solid fa-check-double text-2xl text-green-400"></i>
-                </div>
-                <h3 class="text-lg font-bold text-white mb-1">👏 你已完成 9 題基本盤點</h3>
-                <p class="text-slate-400 text-sm">在看到你的「專屬決策卡」之前<br>請花 30 秒看看這些對你有幫助的資訊</p>
-            </div>
-
-            <!-- Ad Cards -->
-            <div class="space-y-3 mb-5">
-                <!-- Tesla Referral -->
-                <a href="https://ts.la/arno873937" target="_blank" onclick="markAdClicked('tesla')" 
-                   class="block bg-gradient-to-r from-red-900/40 to-red-800/40 rounded-xl p-4 border border-red-500/30 touch-active">
-                    <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <img src="/modelx.png" alt="Tesla" class="w-8 h-8 object-contain">
-                        </div>
-                        <div class="flex-1">
-                            <h4 class="font-bold text-white text-sm mb-1">🚗 Tesla 官方推薦連結</h4>
-                            <p class="text-xs text-slate-400">用這個連結下訂可獲得官方積分獎勵</p>
-                        </div>
-                        <i class="fa-solid fa-arrow-up-right-from-square text-red-400"></i>
-                    </div>
-                </a>
-
-                <!-- Agoda -->
-                <a href="https://www.agoda.com/?cid=1954443" target="_blank" onclick="markAdClicked('agoda')"
-                   class="block bg-gradient-to-r from-blue-900/40 to-cyan-800/40 rounded-xl p-4 border border-cyan-500/30 touch-active">
-                    <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 bg-cyan-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <i class="fa-solid fa-plane text-xl text-cyan-400"></i>
-                        </div>
-                        <div class="flex-1">
-                            <h4 class="font-bold text-white text-sm mb-1">✈️ 買完車想去日本自駕？</h4>
-                            <p class="text-xs text-slate-400">Agoda 幫你找最划算的住宿優惠</p>
-                        </div>
-                        <i class="fa-solid fa-arrow-up-right-from-square text-cyan-400"></i>
-                    </div>
-                </a>
-            </div>
-
-            <!-- Unlock Button -->
-            <button onclick="handleAdUnlock()" id="ad-unlock-btn" 
-                    class="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-white font-bold text-base touch-active mb-3 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
-                <i class="fa-solid fa-unlock mr-2"></i>
-                <span id="ad-unlock-text">點擊上方連結後解鎖</span>
-            </button>
-
-            <!-- Divider -->
-            <div class="flex items-center gap-3 my-4">
-                <div class="flex-1 h-px bg-slate-700"></div>
-                <span class="text-xs text-slate-500">或者</span>
-                <div class="flex-1 h-px bg-slate-700"></div>
-            </div>
-
-            <!-- Pro Upgrade -->
-            <button onclick="handleTeslaProCheckout()" id="ad-gate-pro-btn" 
-                    class="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl text-white font-bold text-sm touch-active mb-3">
-                <i class="fa-brands fa-paypal mr-2"></i>US$1.99 升級 Pro，永久跳過廣告
-            </button>
-
-            <button onclick="closeAdGate()" class="w-full py-2 text-slate-500 text-sm touch-active">
-                先不用，明天再來
-            </button>
-        </div>
-    </div>
-
-    <!-- === QUOTA SHEET (額度用完) === -->
-    <div id="quota-sheet" class="fixed inset-0 z-[60] hidden">
-        <div class="absolute inset-0 sheet-overlay" onclick="closeQuotaSheet()"></div>
+    <!-- === PAYWALL (Q11+ 付費牆) === -->
+    <div id="paywall-modal" class="fixed inset-0 z-[70] hidden">
+        <div class="absolute inset-0 sheet-overlay" onclick="closePaywall()"></div>
         <div class="absolute bottom-0 left-0 right-0 bg-appSurface rounded-t-3xl p-6 animate-slide-up" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom));">
             <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-6"></div>
             <div class="text-center mb-6">
-                <div class="w-14 h-14 bg-amber-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-amber-400 border border-amber-500/30">
-                    <i class="fa-solid fa-bolt text-2xl"></i>
+                <div class="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-primary/30">
+                    <img src="/modelx.png" alt="Tesla" class="w-10 h-10 object-contain blue-filter">
                 </div>
-                <h3 class="text-xl font-bold text-white mb-1">今日免費 10 題已用完</h3>
-                <p class="text-slate-400 text-sm">如果你覺得 BrotherG.ai 對你有幫助</p>
+                <h3 class="text-xl font-bold text-white mb-2">🎯 你已拿到決策卡！</h3>
+                <p class="text-slate-400 text-sm">想繼續深度諮詢嗎？</p>
             </div>
-            <div class="space-y-3 mb-6">
-                <div class="flex items-center gap-3 p-3 bg-slate-900 rounded-xl border border-slate-800">
-                    <i class="fa-solid fa-check text-green-400"></i>
-                    <span class="text-sm text-slate-300">Pro 每天 <strong class="text-white">30 題</strong>（Tesla + 蝦皮共用）</span>
-                </div>
-                <div class="flex items-center gap-3 p-3 bg-slate-900 rounded-xl border border-slate-800">
-                    <i class="fa-solid fa-check text-green-400"></i>
-                    <span class="text-sm text-slate-300">一次付費，永久升級</span>
-                </div>
+            <div class="bg-slate-900 rounded-xl p-4 mb-6 border border-slate-800">
+                <p class="text-sm text-slate-300 mb-3">升級 Pro 可以：</p>
+                <ul class="space-y-2 text-sm text-slate-300">
+                    <li class="flex items-start gap-2">
+                        <i class="fa-solid fa-check text-green-400 mt-1"></i>
+                        <span>繼續 Q11-Q15 深度諮詢</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fa-solid fa-check text-green-400 mt-1"></i>
+                        <span>比較不同車型配備</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fa-solid fa-check text-green-400 mt-1"></i>
+                        <span>保險、充電、保值問題</span>
+                    </li>
+                </ul>
             </div>
-            <button onclick="handleUpgradeToPro()" id="quota-upgrade-btn" class="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl text-white font-bold text-lg touch-active mb-3">
-                <i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 升級 Pro
+            <button onclick="handlePayPalCheckout()" id="paywall-btn" class="w-full py-4 bg-gradient-to-r from-primary to-blue-600 rounded-xl text-white font-bold text-lg touch-active mb-3 shadow-lg">
+                <i class="fa-brands fa-paypal mr-2"></i>US$1.99 解鎖深度諮詢
             </button>
-            <button onclick="closeQuotaSheet()" class="w-full py-3 bg-slate-800 rounded-xl text-slate-400 font-medium touch-active">
-                知道了，明天再來
+            <button onclick="closePaywall()" class="w-full py-3 bg-slate-800 rounded-xl text-slate-400 font-medium touch-active">
+                先這樣，我明天再來
             </button>
         </div>
     </div>
 
-    <!-- Firebase Store Script (不載入 auth.js 避免衝突) -->
+    <!-- Firebase Store Script -->
     <script src="/js/firebase-store.js"></script>
 
     <script>
+        // === 常數 ===
+        const FREE_QUESTION_LIMIT = 10; // Q1-Q10 免費
+
         // === State ===
         let currentUser = null;
-        let userCredits = { tier: 'free', remaining: 10, usedToday: 0, quota: 10 };
+        let isPro = false;
         let isProcessing = false;
         let chatMessages = [];
-        let currentQuestionId = 0; // 追蹤當前問題編號 (0 = 尚未開始, 1-10 = Q1-Q10)
-        let hasWatchedAdToday = false; // 今天是否已看過廣告
-        let adClickedCount = 0; // 廣告點擊計數
-        let pendingQ10Request = null; // 暫存 Q9 回答後要發送的 Q10 請求
+        let questionCount = 0; // 已回答的問題數
 
         // === Toast ===
         function showToast(msg) {
@@ -416,9 +309,9 @@
             setTimeout(() => toast.classList.remove('show'), 2500);
         }
 
-        // === Tab Switch (與 Shopee 一致) ===
+        // === Tab Switch ===
         function switchTab(tabName) {
-            ['home', 'chat', 'history', 'profile'].forEach(t => {
+            ['home', 'chat', 'profile'].forEach(t => {
                 document.getElementById('tab-' + t)?.classList.add('hidden');
                 document.querySelector(`[data-tab="${t}"]`)?.classList.remove('text-primary');
                 document.querySelector(`[data-tab="${t}"]`)?.classList.add('text-slate-500');
@@ -428,24 +321,23 @@
             document.querySelector(`[data-tab="${tabName}"]`)?.classList.remove('text-slate-500');
             document.querySelector(`[data-tab="${tabName}"]`)?.classList.add('text-primary');
             
-            // 顯示/隱藏輸入框
             document.getElementById('input-bar').classList.toggle('hidden', tabName !== 'chat');
         }
 
         // === Start Chat ===
         function startChat() {
-            // 檢查是否已登入（優先使用 Firebase auth 狀態）
             const user = currentUser || firebase.auth().currentUser;
             if (!user) {
                 document.getElementById('login-overlay').classList.remove('hidden');
                 return;
             }
-            currentUser = user; // 確保更新
+            currentUser = user;
             switchTab('chat');
+            
             if (chatMessages.length === 0) {
                 addBotMessage("歡迎來到 Tesla 決策顧問！");
                 setTimeout(() => {
-                    addBotMessage("我會幫你搞清楚「買不買、買哪台、何時買」。\n\n告訴我，你現在在考慮哪款 Tesla？有什麼讓你猶豫的嗎？");
+                    addBotMessage("我會用 10 個關鍵問題，幫你搞清楚「買不買、買哪台、何時買」。\n\n準備好了嗎？告訴我，你現在在考慮哪款 Tesla？");
                 }, 500);
             }
         }
@@ -517,7 +409,7 @@
             return div.innerHTML;
         }
 
-        // === Send Message ===
+        // === Send Message (版本 B：簡單 Paywall) ===
         async function sendMessage() {
             const input = document.getElementById('chat-input');
             const text = input.value.trim();
@@ -531,30 +423,13 @@
             }
             currentUser = user;
 
-            // 計算當前用戶訊息數（發送後會是第幾題）
-            const userMsgCount = chatMessages.filter(m => m.role === 'user').length + 1;
-            const isPro = userCredits.tier === 'pro' || localStorage.getItem('BROTHERG_PRO_paid') === 'true';
+            // ★ 版本 B：Q1-Q10 免費，Q11+ 才擋
+            // questionCount 是已回答的問題數，+1 後是即將回答的問題
+            const nextQuestionNumber = questionCount + 1;
 
-            // ★ Q9 回答完、要進入 Q10 前：檢查是否需要 Gate
-            // userMsgCount === 10 代表用戶正在回答 Q9（回答完後是第 10 則用戶訊息）
-            // 但實際上 Q10 是「總結」，所以 Gate 應該在 Q9 回答完後
-            const isAboutToEnterQ10 = userMsgCount === 10 && !isPro && !hasWatchedAdToday;
-
-            if (isAboutToEnterQ10) {
-                // 先把 Q9 回答收下
-                addUserMessage(text);
-                input.value = '';
-                currentQuestionId = 9;
-                updateTeslaProgress(9);
-                
-                // 暫存請求，等廣告看完再發送
-                pendingQ10Request = {
-                    messages: [...chatMessages],
-                    messageCount: userMsgCount
-                };
-                
-                // 顯示廣告 Gate
-                showAdGate();
+            // 如果已經超過 10 題，且不是 Pro → 彈付費視窗
+            if (!isPro && questionCount >= FREE_QUESTION_LIMIT) {
+                showPaywall();
                 return;
             }
 
@@ -565,20 +440,14 @@
             document.getElementById('send-btn').disabled = true;
             showTypingIndicator();
 
-            await callTeslaAPI(userMsgCount, isPro);
-        }
-
-        // === 呼叫 Tesla API ===
-        async function callTeslaAPI(messageCount, isPro) {
             try {
                 const res = await fetch('/.netlify/functions/tesla-chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         messages: chatMessages,
-                        messageCount: messageCount,
-                        paid: isPro,
-                        hasWatchedAdToday: hasWatchedAdToday
+                        messageCount: nextQuestionNumber,
+                        paid: isPro
                     })
                 });
 
@@ -587,15 +456,18 @@
 
                 if (data.ok && data.reply && data.reply.trim()) {
                     addBotMessage(data.reply, true);
+                    questionCount = nextQuestionNumber;
+                    updateProgress();
                     
-                    // 更新問題進度
-                    currentQuestionId = messageCount;
-                    updateTeslaProgress(messageCount);
-                    
-                    // 檢查是否需要 Paywall（Q11+ 且未付費）
+                    // 後端回傳 needPaywall = true 表示下一題要付費
                     if (data.needPaywall) {
-                        showAdGate(); // Q11+ 也用廣告 Gate
+                        // Q10 回答完，下次輸入會被擋
+                        // 不需要立即彈窗，等用戶再輸入時才彈
                     }
+                } else if (data.needPaywall) {
+                    // 後端直接擋住（Q11+）
+                    addBotMessage(data.reply || "你已經完成 10 題免費諮詢，升級 Pro 可以繼續深度諮詢。", true);
+                    showPaywall();
                 } else {
                     addBotMessage("抱歉，請再說一次你的問題？");
                 }
@@ -609,147 +481,23 @@
             document.getElementById('send-btn').disabled = false;
         }
 
-        // === 廣告 Gate 相關 ===
-        function showAdGate() {
-            adClickedCount = 0;
-            updateAdUnlockButton();
-            document.getElementById('ad-gate-modal').classList.remove('hidden');
+        // === 更新進度 ===
+        function updateProgress() {
+            document.getElementById('usage-count').textContent = Math.min(questionCount, 10);
         }
 
-        function closeAdGate() {
-            document.getElementById('ad-gate-modal').classList.add('hidden');
-            pendingQ10Request = null;
+        // === Paywall ===
+        function showPaywall() {
+            document.getElementById('paywall-modal').classList.remove('hidden');
         }
 
-        function markAdClicked(adType) {
-            adClickedCount++;
-            console.log(`Ad clicked: ${adType}, total: ${adClickedCount}`);
-            updateAdUnlockButton();
+        function closePaywall() {
+            document.getElementById('paywall-modal').classList.add('hidden');
         }
 
-        function updateAdUnlockButton() {
-            const btn = document.getElementById('ad-unlock-btn');
-            const text = document.getElementById('ad-unlock-text');
-            
-            if (adClickedCount >= 1) {
-                btn.disabled = false;
-                btn.classList.remove('from-slate-600', 'to-slate-700');
-                btn.classList.add('from-green-500', 'to-emerald-600');
-                text.textContent = '✓ 我已看完，顯示決策卡';
-            } else {
-                btn.disabled = true;
-                btn.classList.remove('from-green-500', 'to-emerald-600');
-                btn.classList.add('from-slate-600', 'to-slate-700');
-                text.textContent = '點擊上方連結後解鎖';
-            }
-        }
-
-        // === 廣告解鎖處理 ===
-        async function handleAdUnlock() {
-            if (adClickedCount < 1) {
-                showToast('請先點擊查看上方連結');
-                return;
-            }
-
-            const btn = document.getElementById('ad-unlock-btn');
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>解鎖中...';
-            btn.disabled = true;
-
-            try {
-                // 記錄廣告解鎖到後端
-                if (currentUser) {
-                    await fetch('/.netlify/functions/unlock-by-ad', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            userId: currentUser.uid,
-                            scene: 'tesla_q10'
-                        })
-                    });
-                }
-
-                hasWatchedAdToday = true;
-                localStorage.setItem('tesla_ad_watched_' + getTodayKey(), 'true');
-                
-                closeAdGate();
-                showToast('🎉 已解鎖！正在生成你的決策卡...');
-
-                // 如果有暫存的 Q10 請求，現在發送
-                if (pendingQ10Request) {
-                    isProcessing = true;
-                    document.getElementById('send-btn').disabled = true;
-                    showTypingIndicator();
-                    
-                    const isPro = userCredits.tier === 'pro' || localStorage.getItem('BROTHERG_PRO_paid') === 'true';
-                    await callTeslaAPI(pendingQ10Request.messageCount, isPro);
-                    pendingQ10Request = null;
-                }
-            } catch (e) {
-                console.error('Ad unlock error:', e);
-                btn.innerHTML = '<i class="fa-solid fa-unlock mr-2"></i><span>✓ 我已看完，顯示決策卡</span>';
-                btn.disabled = false;
-                showToast('解鎖失敗，請重試');
-            }
-        }
-
-        function getTodayKey() {
-            const now = new Date();
-            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        }
-
-        // === 更新 Tesla 進度 ===
-        function updateTeslaProgress(currentQ) {
-            document.getElementById('usage-count').textContent = Math.min(currentQ, 15);
-            document.getElementById('usage-limit').textContent = '15';
-        }
-
-        // === Quota Sheet ===
-        function showQuotaSheet() {
-            document.getElementById('quota-sheet').classList.remove('hidden');
-        }
-
-        function closeQuotaSheet() {
-            document.getElementById('quota-sheet').classList.add('hidden');
-        }
-
-        function showUpgradeModal() {
-            showQuotaSheet();
-        }
-
-        // === Upgrade to Pro (一般額度用完時) ===
-        async function handleUpgradeToPro() {
-            const btn = document.getElementById('quota-upgrade-btn');
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>跳轉 PayPal...';
-            btn.disabled = true;
-
-            try {
-                const res = await fetch('/.netlify/functions/paypal-checkout', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        product: 'BROTHERG_PRO',
-                        returnUrl: window.location.origin + '/payment/success?product=BROTHERG_PRO',
-                        cancelUrl: window.location.origin + '/payment/cancel?product=BROTHERG_PRO'
-                    })
-                });
-
-                const data = await res.json();
-                if (data.ok && data.checkoutUrl) {
-                    window.location.href = data.checkoutUrl;
-                } else {
-                    throw new Error(data.error || 'PayPal 訂單創建失敗');
-                }
-            } catch (e) {
-                console.error('Payment error:', e);
-                btn.innerHTML = '<i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 升級 Pro';
-                btn.disabled = false;
-                showToast('PayPal 連線失敗');
-            }
-        }
-
-        // === Tesla Pro Checkout (Q11 Paywall 專用) ===
-        async function handleTeslaProCheckout() {
-            const btn = document.getElementById('tesla-paywall-btn');
+        // === PayPal Checkout ===
+        async function handlePayPalCheckout() {
+            const btn = document.getElementById('paywall-btn');
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>跳轉 PayPal...';
             btn.disabled = true;
 
@@ -772,25 +520,13 @@
                 }
             } catch (e) {
                 console.error('Payment error:', e);
-                btn.innerHTML = '<i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 解鎖 Tesla 決策卡';
+                btn.innerHTML = '<i class="fa-brands fa-paypal mr-2"></i>US$1.99 解鎖深度諮詢';
                 btn.disabled = false;
                 showToast('PayPal 連線失敗');
             }
         }
 
-        // === Update Credits UI ===
-        function updateCreditsUI() {
-            document.getElementById('usage-count').textContent = userCredits.usedToday;
-            document.getElementById('usage-limit').textContent = userCredits.quota;
-            document.getElementById('profile-used').textContent = userCredits.usedToday;
-            document.getElementById('profile-remaining').textContent = userCredits.remaining;
-            
-            const tierNames = { free: 'FREE', basic: 'FREE', pro: 'PRO' };
-            document.getElementById('home-tier').textContent = tierNames[userCredits.tier] || 'FREE';
-            document.getElementById('profile-plan').textContent = `${tierNames[userCredits.tier] || 'FREE'} · 每日 ${userCredits.quota} 次`;
-        }
-
-        // === Update Profile UI ===
+        // === Profile UI ===
         function updateProfileUI(user) {
             if (user) {
                 document.getElementById('login-overlay').classList.add('hidden');
@@ -810,7 +546,7 @@
             }
         }
 
-        // === Auth Handler (本頁專用，不會跳轉) ===
+        // === Google Login ===
         window.handleGoogleLogin = async function() {
             const btn = document.getElementById('login-btn');
             try {
@@ -821,10 +557,11 @@
                 currentUser = result.user;
                 updateProfileUI(currentUser);
                 
-                // 載入用戶額度
+                // 檢查是否為 Pro
                 if (typeof window.checkQuota === 'function') {
-                    userCredits = await window.checkQuota(currentUser);
-                    updateCreditsUI();
+                    const quota = await window.checkQuota(currentUser);
+                    isPro = quota.tier === 'pro';
+                    document.getElementById('home-tier').textContent = isPro ? 'PRO' : 'FREE';
                 }
                 
                 showToast(`${currentUser.displayName || '用戶'} 登入成功！`);
@@ -844,7 +581,9 @@
             try {
                 await firebase.auth().signOut();
                 currentUser = null;
+                isPro = false;
                 chatMessages = [];
+                questionCount = 0;
                 document.getElementById('chat-history').innerHTML = '';
                 switchTab('home');
                 document.getElementById('login-overlay').classList.remove('hidden');
@@ -862,43 +601,27 @@
 
         // === Init ===
         window.onload = function() {
-            // 檢查今天是否已看過廣告（從 localStorage）
-            const todayKey = getTodayKey();
-            hasWatchedAdToday = localStorage.getItem('tesla_ad_watched_' + todayKey) === 'true';
-            
-            // 監聽登入狀態
             firebase.auth().onAuthStateChanged(async (user) => {
                 currentUser = user;
                 updateProfileUI(user);
                 
                 if (user) {
-                    // 載入用戶額度
+                    // 檢查是否為 Pro
                     if (typeof window.checkQuota === 'function') {
-                        userCredits = await window.checkQuota(user);
-                        updateCreditsUI();
+                        const quota = await window.checkQuota(user);
+                        isPro = quota.tier === 'pro';
+                        document.getElementById('home-tier').textContent = isPro ? 'PRO' : 'FREE';
                     }
                     
-                    // 檢查付款狀態
+                    // 檢查 localStorage 付款狀態
                     const paid = localStorage.getItem('BROTHERG_PRO_paid');
-                    if (paid === 'true' && userCredits.tier !== 'pro') {
+                    if (paid === 'true' && !isPro) {
                         if (typeof window.upgradeUserToPro === 'function') {
                             await window.upgradeUserToPro(user);
-                            userCredits = await window.checkQuota(user);
-                            updateCreditsUI();
+                            isPro = true;
+                            document.getElementById('home-tier').textContent = 'PRO';
                             showToast('🎉 Pro 會員已啟用！');
                         }
-                    }
-                    
-                    // 從 Firestore 檢查是否已看過廣告
-                    try {
-                        const res = await fetch('/.netlify/functions/check-ad-status?userId=' + user.uid);
-                        const data = await res.json();
-                        if (data.hasWatchedAdToday) {
-                            hasWatchedAdToday = true;
-                            localStorage.setItem('tesla_ad_watched_' + todayKey, 'true');
-                        }
-                    } catch (e) {
-                        console.log('Check ad status failed, using localStorage');
                     }
                 }
             });
