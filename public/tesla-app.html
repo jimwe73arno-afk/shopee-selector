@@ -58,8 +58,8 @@
 <div class="app-phone-frame">
 <div id="app-root" class="h-[100dvh] w-full flex flex-col overflow-hidden relative bg-appBg">
 
-    <!-- ===== VIEW: LOGIN (未登入時顯示) ===== -->
-    <div id="view-login" class="absolute inset-0 z-50 bg-appBg flex flex-col items-center justify-center p-6">
+    <!-- ===== 登入畫面（未登入時顯示）===== -->
+    <div id="login-view" class="absolute inset-0 z-50 bg-appBg flex flex-col items-center justify-center p-6">
         <div class="text-center max-w-sm">
             <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center">
                 <img src="/modelx.png" alt="Tesla" class="w-14 h-14 object-contain blue-filter">
@@ -73,8 +73,8 @@
         </div>
     </div>
 
-    <!-- ===== VIEW: MAIN (已登入時顯示) ===== -->
-    <div id="view-main" class="hidden flex-1 flex flex-col">
+    <!-- ===== 主畫面（已登入時顯示）===== -->
+    <div id="main-view" class="hidden flex-1 flex flex-col">
         
         <!-- Header -->
         <header class="bg-appBg/95 backdrop-blur-xl border-b border-slate-800 z-40" style="padding-top: env(safe-area-inset-top);">
@@ -84,25 +84,25 @@
                     <span class="font-display font-bold text-lg text-white">Tesla 顧問</span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span id="progress-badge" class="text-xs font-medium text-slate-400 bg-slate-800 px-2 py-1 rounded-full">Q0/10</span>
+                    <span id="progress-badge" class="text-xs font-medium text-slate-400 bg-slate-800 px-2 py-1 rounded-full">Q1/10</span>
                     <button onclick="handleLogout()" class="text-slate-500 text-sm"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
                 </div>
             </div>
         </header>
 
-        <!-- Chat Area -->
+        <!-- 聊天區域 -->
         <div id="chat-container" class="flex-1 overflow-y-auto px-4 py-4">
             <div id="chat-history" class="flex flex-col gap-4"></div>
         </div>
 
-        <!-- Input Bar (只在非 Paywall 時顯示) -->
+        <!-- 輸入框 -->
         <div id="input-bar" class="bg-appBg/95 backdrop-blur-xl border-t border-slate-800" style="padding-bottom: env(safe-area-inset-bottom);">
             <div class="p-3 flex items-center gap-3">
                 <div class="flex-1 bg-appSurface rounded-full h-11 flex items-center px-4 border border-slate-700 focus-within:border-primary">
-                    <input type="text" id="chat-input" placeholder="說說你在考慮什麼車款..." 
+                    <input type="text" id="tesla-input" placeholder="說說你在考慮什麼車款..." 
                         class="bg-transparent border-none outline-none text-white text-sm w-full placeholder-slate-500" autocomplete="off">
                 </div>
-                <button id="send-btn" onclick="sendMessage()" 
+                <button id="tesla-send-btn" onclick="handleSend()" 
                     class="w-11 h-11 rounded-full bg-primary text-white flex items-center justify-center shadow-lg touch-active disabled:opacity-50">
                     <i class="fa-solid fa-paper-plane text-sm"></i>
                 </button>
@@ -110,8 +110,8 @@
         </div>
     </div>
 
-    <!-- ===== VIEW: PAYWALL (Q11+ 時顯示，蓋在 MAIN 上面) ===== -->
-    <div id="view-paywall" class="hidden absolute inset-0 z-60">
+    <!-- ===== Paywall（預設隱藏，只有 Q11+ 且非 Pro 才顯示）===== -->
+    <div id="tesla-paywall" class="hidden absolute inset-0 z-60">
         <div class="absolute inset-0 sheet-overlay"></div>
         <div class="absolute bottom-0 left-0 right-0 bg-appSurface rounded-t-3xl p-6 animate-slide-up" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom));">
             <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-6"></div>
@@ -130,10 +130,10 @@
                     <li class="flex items-start gap-2"><i class="fa-solid fa-check text-green-400 mt-1"></i><span>永久升級，一次付費</span></li>
                 </ul>
             </div>
-            <button onclick="handlePayPalCheckout()" id="paywall-btn" class="w-full py-4 bg-gradient-to-r from-primary to-blue-600 rounded-xl text-white font-bold text-lg touch-active mb-3 shadow-lg">
+            <button id="tesla-upgrade-btn" class="w-full py-4 bg-gradient-to-r from-primary to-blue-600 rounded-xl text-white font-bold text-lg touch-active mb-3 shadow-lg">
                 <i class="fa-brands fa-paypal mr-2"></i>US$1.99 升級 Pro
             </button>
-            <button onclick="closePaywall()" class="w-full py-3 bg-slate-800 rounded-xl text-slate-400 font-medium touch-active">
+            <button id="tesla-later-btn" class="w-full py-3 bg-slate-800 rounded-xl text-slate-400 font-medium touch-active">
                 明天再來（每天重置 10 題）
             </button>
         </div>
@@ -145,68 +145,59 @@
 
 <script src="/js/firebase-store.js"></script>
 <script>
-    // ========== 常數 ==========
-    const FREE_LIMIT = 10;
+    // ========================================
+    // Tesla 顧問 - 最終版邏輯
+    // Q1-Q10：永遠免費
+    // Q10：輸出決策卡，nextQuestionId = 11
+    // Q11+：非 Pro 觸發 Paywall
+    // ========================================
 
-    // ========== State ==========
+    // --- 狀態變數 ---
     let currentUser = null;
+    let currentQuestionId = 1;      // 從 Q1 開始
+    let hasDecisionCard = false;    // Q10 出現後會設成 true
     let isPro = false;
     let isProcessing = false;
     let chatMessages = [];
-    let questionId = 0; // 目前已完成的問題數（0 = 尚未開始，10 = 已完成 Q10）
-    let showPaywall = false;
 
-    // ========== View 切換（互斥渲染）==========
-    function updateViews() {
-        const loginView = document.getElementById('view-login');
-        const mainView = document.getElementById('view-main');
-        const paywallView = document.getElementById('view-paywall');
-        const inputBar = document.getElementById('input-bar');
+    // --- DOM 元素 ---
+    const loginView = document.getElementById('login-view');
+    const mainView = document.getElementById('main-view');
+    const inputEl = document.getElementById('tesla-input');
+    const sendBtn = document.getElementById('tesla-send-btn');
+    const paywallEl = document.getElementById('tesla-paywall');
+    const chatHistory = document.getElementById('chat-history');
+    const progressBadge = document.getElementById('progress-badge');
 
-        // ★ 互斥邏輯
+    // ========== 畫面控制 ==========
+    function updateView() {
         if (!currentUser) {
-            // 未登入：只顯示 Login
             loginView.classList.remove('hidden');
             mainView.classList.add('hidden');
-            paywallView.classList.add('hidden');
-        } else if (showPaywall) {
-            // 已登入 + Paywall：顯示 Main + Paywall overlay，隱藏輸入框
-            loginView.classList.add('hidden');
-            mainView.classList.remove('hidden');
-            paywallView.classList.remove('hidden');
-            inputBar.classList.add('hidden');
         } else {
-            // 已登入 + 正常聊天
             loginView.classList.add('hidden');
             mainView.classList.remove('hidden');
-            paywallView.classList.add('hidden');
-            inputBar.classList.remove('hidden');
         }
-
-        // 更新進度顯示
         updateProgress();
-        
-        console.log(`[View] user=${currentUser?.email || 'null'}, questionId=${questionId}, showPaywall=${showPaywall}, isPro=${isPro}`);
     }
 
     function updateProgress() {
-        const badge = document.getElementById('progress-badge');
-        if (badge) {
+        if (progressBadge) {
+            const display = hasDecisionCard ? '✓' : `Q${currentQuestionId}`;
             const limit = isPro ? 30 : 10;
-            badge.textContent = `Q${questionId}/${limit}`;
-            badge.className = isPro 
+            progressBadge.textContent = hasDecisionCard ? '決策卡已產出' : `${display}/${limit}`;
+            progressBadge.className = isPro 
                 ? 'text-xs font-bold text-amber-400 bg-amber-900/50 px-2 py-1 rounded-full'
                 : 'text-xs font-medium text-slate-400 bg-slate-800 px-2 py-1 rounded-full';
         }
     }
 
-    // ========== Chat ==========
-    function addBotMessage(text, isMarkdown = false) {
+    // ========== 聊天功能 ==========
+    function addBotMessage(text) {
         if (!text || text.trim() === '') return;
-        const chatHistory = document.getElementById('chat-history');
         const div = document.createElement('div');
         div.className = 'flex items-end gap-2 animate-fade-in';
-        const content = (isMarkdown && window.marked) ? marked.parse(text) : text.replace(/\n/g, '<br>');
+        const content = window.marked ? marked.parse(text) : text.replace(/\n/g, '<br>');
         div.innerHTML = `
             <div class="w-8 h-8 rounded-full flex-shrink-0 bg-slate-800 border border-slate-700 flex items-center justify-center">
                 <img src="/logo.png" alt="AI" class="w-5 h-5">
@@ -220,7 +211,6 @@
 
     function addUserMessage(text) {
         if (!text || text.trim() === '') return;
-        const chatHistory = document.getElementById('chat-history');
         const div = document.createElement('div');
         div.className = 'flex justify-end animate-fade-in';
         div.innerHTML = `<div class="chat-bubble user">${escapeHtml(text)}</div>`;
@@ -230,7 +220,6 @@
     }
 
     function showTypingIndicator() {
-        const chatHistory = document.getElementById('chat-history');
         const div = document.createElement('div');
         div.id = 'typing-indicator';
         div.className = 'flex items-end gap-2 animate-fade-in';
@@ -261,32 +250,26 @@
         return div.innerHTML;
     }
 
-    // ========== 發送訊息 ==========
-    async function sendMessage() {
-        const input = document.getElementById('chat-input');
-        const text = input.value.trim();
-        
-        if (isProcessing || !text) return;
-        if (!currentUser) { updateViews(); return; }
+    // ========== 核心：發送訊息 ==========
+    async function handleSend() {
+        const text = inputEl.value.trim();
+        if (!text || isProcessing) return;
+        if (!currentUser) { updateView(); return; }
 
-        // ★ 計算下一題的 ID
-        const nextQuestionId = questionId + 1;
-        
-        console.log(`[Send] nextQuestionId=${nextQuestionId}, isPro=${isPro}, FREE_LIMIT=${FREE_LIMIT}`);
+        console.log(`[Tesla] handleSend: currentQuestionId=${currentQuestionId}, hasDecisionCard=${hasDecisionCard}, isPro=${isPro}`);
 
-        // ★ 關鍵：只有當 nextQuestionId > 10 且非 Pro 時才擋
-        if (!isPro && nextQuestionId > FREE_LIMIT) {
-            console.log('[Send] Paywall triggered - trying Q11+ without Pro');
-            showPaywall = true;
-            updateViews();
+        // ★ 關鍵判斷：已有決策卡 + 非 Pro + 要問 Q11+ → 觸發 Paywall
+        if (!isPro && hasDecisionCard && currentQuestionId > 10) {
+            console.log('[Tesla] Paywall triggered: Q11+ without Pro');
+            paywallEl.classList.remove('hidden');
             return;
         }
 
-        // Q1-Q10：正常發送
+        // 正常發送到後端
         addUserMessage(text);
-        input.value = '';
+        inputEl.value = '';
         isProcessing = true;
-        document.getElementById('send-btn').disabled = true;
+        sendBtn.disabled = true;
         showTypingIndicator();
 
         try {
@@ -295,7 +278,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     messages: chatMessages,
-                    messageCount: nextQuestionId,
+                    messageCount: currentQuestionId,
                     paid: isPro,
                     userId: currentUser.uid
                 })
@@ -303,41 +286,48 @@
 
             removeTypingIndicator();
             const data = await res.json();
+            console.log('[Tesla] API response:', data);
 
             if (data.ok && data.reply && data.reply.trim()) {
-                addBotMessage(data.reply, true);
-                questionId = nextQuestionId;
+                addBotMessage(data.reply);
+                
+                // 更新 currentQuestionId
+                if (data.nextQuestionId) {
+                    currentQuestionId = data.nextQuestionId;
+                } else {
+                    currentQuestionId++;
+                }
+
+                // ★ 如果 currentQuestionId 變成 11，代表 Q10 決策卡已產出
+                if (currentQuestionId >= 11 && !hasDecisionCard) {
+                    hasDecisionCard = true;
+                    console.log('[Tesla] Decision card delivered, hasDecisionCard = true');
+                }
+
                 updateProgress();
-                console.log(`[Send] Q${questionId} completed`);
-            } else if (data.needPaywall) {
-                // 後端回傳需要付費
-                showPaywall = true;
-                updateViews();
+                console.log(`[Tesla] Updated: currentQuestionId=${currentQuestionId}, hasDecisionCard=${hasDecisionCard}`);
+
+            } else if (data.needPaywall || data.code === 'TESLA_PAYMENT_REQUIRED') {
+                // 後端說要付費
+                addBotMessage(data.reply || '你已完成 10 題免費諮詢，升級 Pro 繼續深度諮詢。');
+                paywallEl.classList.remove('hidden');
             } else {
-                addBotMessage("抱歉，系統暫時無法處理，請稍後再試。");
+                addBotMessage('好的，讓我想一下...');
             }
+
         } catch (e) {
-            console.error('Chat error:', e);
+            console.error('[Tesla] Error:', e);
             removeTypingIndicator();
-            addBotMessage("連線出了點問題，請稍後再試。");
+            addBotMessage('連線出了點問題，請稍後再試。');
         }
 
         isProcessing = false;
-        document.getElementById('send-btn').disabled = false;
+        sendBtn.disabled = false;
     }
 
-    // ========== Paywall ==========
-    function closePaywall() {
-        showPaywall = false;
-        updateViews();
-        // 重新 focus 輸入框
-        setTimeout(() => {
-            document.getElementById('chat-input')?.focus();
-        }, 100);
-    }
-
-    async function handlePayPalCheckout() {
-        const btn = document.getElementById('paywall-btn');
+    // ========== Paywall 按鈕 ==========
+    document.getElementById('tesla-upgrade-btn')?.addEventListener('click', async () => {
+        const btn = document.getElementById('tesla-upgrade-btn');
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>跳轉 PayPal...';
         btn.disabled = true;
 
@@ -354,15 +344,18 @@
             const data = await res.json();
             if (data.ok && data.checkoutUrl) {
                 window.location.href = data.checkoutUrl;
-            } else {
-                throw new Error('PayPal error');
             }
         } catch (e) {
-            console.error('Payment error:', e);
+            console.error('[Tesla] Payment error:', e);
             btn.innerHTML = '<i class="fa-brands fa-paypal mr-2"></i>US$1.99 升級 Pro';
             btn.disabled = false;
         }
-    }
+    });
+
+    document.getElementById('tesla-later-btn')?.addEventListener('click', () => {
+        paywallEl.classList.add('hidden');
+        inputEl.focus();
+    });
 
     // ========== Auth ==========
     async function handleGoogleLogin() {
@@ -388,14 +381,11 @@
                 }
             }
 
-            updateViews();
-            
-            // 開始聊天
-            if (chatMessages.length === 0) {
-                addBotMessage("歡迎來到 Tesla 決策顧問！\n\n我會用 10 個關鍵問題，幫你搞清楚「買不買、買哪台、何時買」。\n\n準備好了嗎？告訴我，你現在在考慮哪款 Tesla？");
-            }
+            updateView();
+            startConversation();
+
         } catch (err) {
-            console.error('Login error:', err);
+            console.error('[Tesla] Login error:', err);
         } finally {
             btn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google"><span>使用 Google 帳號登入</span>';
             btn.disabled = false;
@@ -408,34 +398,42 @@
             currentUser = null;
             isPro = false;
             chatMessages = [];
-            questionId = 0;
-            showPaywall = false;
-            document.getElementById('chat-history').innerHTML = '';
-            updateViews();
+            currentQuestionId = 1;
+            hasDecisionCard = false;
+            chatHistory.innerHTML = '';
+            paywallEl.classList.add('hidden');
+            updateView();
         } catch (e) {
-            console.error('Logout error:', e);
+            console.error('[Tesla] Logout error:', e);
         }
     }
 
-    // ========== Input Enter ==========
-    document.getElementById('chat-input').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') sendMessage();
+    function startConversation() {
+        if (chatMessages.length === 0) {
+            addBotMessage("歡迎來到 Tesla 決策顧問！\n\n我會用 10 個關鍵問題，幫你搞清楚「買不買、買哪台、何時買」。\n\n準備好了嗎？告訴我，**你現在在考慮哪款 Tesla？**");
+        }
+    }
+
+    // ========== Enter 鍵 ==========
+    inputEl?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') handleSend();
     });
 
     // ========== Init ==========
     window.onload = function() {
-        console.log('[Init] Tesla App starting...');
+        console.log('[Tesla] App initialized');
         
         firebase.auth().onAuthStateChanged(async (user) => {
             currentUser = user;
             
             if (user) {
-                console.log(`[Init] User: ${user.email}`);
+                console.log(`[Tesla] User: ${user.email}`);
                 
                 // 檢查 Pro 狀態
                 if (typeof window.checkQuota === 'function') {
                     const quota = await window.checkQuota(user);
                     isPro = quota.tier === 'pro';
+                    console.log(`[Tesla] isPro: ${isPro}`);
                 }
                 
                 // 檢查 localStorage
@@ -446,13 +444,10 @@
                     }
                 }
                 
-                // 開始聊天
-                if (chatMessages.length === 0) {
-                    addBotMessage("歡迎來到 Tesla 決策顧問！\n\n我會用 10 個關鍵問題，幫你搞清楚「買不買、買哪台、何時買」。\n\n準備好了嗎？告訴我，你現在在考慮哪款 Tesla？");
-                }
+                startConversation();
             }
             
-            updateViews();
+            updateView();
         });
     };
 </script>

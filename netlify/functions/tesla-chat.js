@@ -227,21 +227,23 @@ exports.handler = async (event, context) => {
 
     console.log(`[Tesla] turnCount=${turnCount}, paid=${paid}, userPlan=${userPlan}`);
 
-    // ★ 版本 B：簡單 Paywall
-    // Q1-Q10：永遠免費，正常處理（不擋！）
-    // Q11+：需要付費才能繼續
+    // ★ 最終版邏輯：
+    // Q1-Q10：永遠免費，正常處理
+    // Q10：固定輸出決策卡 + nextQuestionId = 11
+    // Q11+：非 Pro 回 TESLA_PAYMENT_REQUIRED
     
-    // ★ 關鍵：只有 turnCount > 10 才擋，Q1-Q10 一定放行
+    // Q11+ 且非 Pro → 回付費提示
     if (turnCount > 10 && !paid) {
-      console.log(`[Tesla] Paywall triggered: turnCount=${turnCount}, paid=${paid}`);
+      console.log(`[Tesla] Paywall: turnCount=${turnCount}, paid=${paid}`);
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({ 
           ok: true, 
-          reply: '你已經完成前 10 題的完整盤點，也拿到 Tesla 決策卡了！\n\n如果接下來想讓我陪你做更深的比較與情境模擬（例如：保險、折舊、充電規劃），建議你升級 Pro（一次 US$1.99）。',
+          reply: '你已經拿到今天的 Tesla 決策卡。\n\n如果覺得這個顧問對你有幫助，建議你以 US$1.99 升級 Pro，之後每天都可以繼續深度諮詢（保險、折舊、充電、配備比較）。',
           needPaywall: true,
-          errorCode: 'TESLA_PAYMENT_REQUIRED'
+          code: 'TESLA_PAYMENT_REQUIRED',
+          nextQuestionId: turnCount
         })
       };
     }
@@ -254,10 +256,27 @@ exports.handler = async (event, context) => {
 
     const reply = await callGemini(apiKey, contextPrompt, systemPrompt);
 
+    // ★ 計算 nextQuestionId
+    let nextQuestionId;
+    if (turnCount < 10) {
+      nextQuestionId = turnCount + 1;  // Q1→Q2, Q2→Q3, ..., Q9→Q10
+    } else if (turnCount === 10) {
+      nextQuestionId = 11;  // Q10 結束後，下一題是 Q11（自由問）
+    } else {
+      nextQuestionId = turnCount + 1;  // Q11+ 繼續
+    }
+
+    console.log(`[Tesla] Q${turnCount} complete, nextQuestionId=${nextQuestionId}`);
+
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ ok: true, reply, turnCount })
+      body: JSON.stringify({ 
+        ok: true, 
+        reply, 
+        turnCount,
+        nextQuestionId  // ★ 告訴前端下一題是幾
+      })
     };
 
   } catch (error) {
