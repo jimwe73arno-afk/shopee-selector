@@ -258,15 +258,15 @@
                 <div class="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-primary/30">
                     <img src="/modelx.png" alt="Tesla" class="w-10 h-10 object-contain blue-filter">
                 </div>
-                <h3 class="text-xl font-bold text-white mb-2">🎯 你已拿到決策卡！</h3>
-                <p class="text-slate-400 text-sm">想繼續深度諮詢嗎？</p>
+                <h3 class="text-xl font-bold text-white mb-2">🎯 今天 10 題免費諮詢已用完</h3>
+                <p class="text-slate-400 text-sm">你已經拿到 Tesla 決策卡了！<br>想繼續深度諮詢嗎？</p>
             </div>
             <div class="bg-slate-900 rounded-xl p-4 mb-6 border border-slate-800">
-                <p class="text-sm text-slate-300 mb-3">升級 Pro 可以：</p>
+                <p class="text-sm text-slate-300 mb-3">升級 Pro（<span class="text-amber-400 font-bold">每天 30 題</span>）可以：</p>
                 <ul class="space-y-2 text-sm text-slate-300">
                     <li class="flex items-start gap-2">
                         <i class="fa-solid fa-check text-green-400 mt-1"></i>
-                        <span>繼續 Q11-Q15 深度諮詢</span>
+                        <span>繼續深度諮詢（保險、折舊、充電規劃）</span>
                     </li>
                     <li class="flex items-start gap-2">
                         <i class="fa-solid fa-check text-green-400 mt-1"></i>
@@ -274,15 +274,15 @@
                     </li>
                     <li class="flex items-start gap-2">
                         <i class="fa-solid fa-check text-green-400 mt-1"></i>
-                        <span>保險、充電、保值問題</span>
+                        <span>永久升級，一次付費</span>
                     </li>
                 </ul>
             </div>
             <button onclick="handlePayPalCheckout()" id="paywall-btn" class="w-full py-4 bg-gradient-to-r from-primary to-blue-600 rounded-xl text-white font-bold text-lg touch-active mb-3 shadow-lg">
-                <i class="fa-brands fa-paypal mr-2"></i>US$1.99 解鎖深度諮詢
+                <i class="fa-brands fa-paypal mr-2"></i>US$1.99 升級 Pro
             </button>
             <button onclick="closePaywall()" class="w-full py-3 bg-slate-800 rounded-xl text-slate-400 font-medium touch-active">
-                先這樣，我明天再來
+                明天再來（每天重置 10 題）
             </button>
         </div>
     </div>
@@ -299,7 +299,9 @@
         let isPro = false;
         let isProcessing = false;
         let chatMessages = [];
-        let questionCount = 0; // 已回答的問題數
+        let questionCount = 0; // 已回答的問題數（前端顯示用）
+        let serverQuestionCount = 0; // 後端今日已用量（真正的計數）
+        let dailyLimit = 10; // 每日上限
 
         // === Toast ===
         function showToast(msg) {
@@ -409,7 +411,7 @@
             return div.innerHTML;
         }
 
-        // === Send Message (版本 B：簡單 Paywall) ===
+        // === Send Message (版本 B：簡單 Paywall + 後端同步) ===
         async function sendMessage() {
             const input = document.getElementById('chat-input');
             const text = input.value.trim();
@@ -423,22 +425,18 @@
             }
             currentUser = user;
 
-            // ★ 版本 B：Q1-Q10 免費，Q11+ 才擋
-            // questionCount = 已回答的問題數
-            // Q10 回答完後 questionCount = 10
-            // 下次嘗試發送時 questionCount >= 10 → 彈 Paywall
-            
-            console.log(`[Tesla] questionCount=${questionCount}, isPro=${isPro}, FREE_LIMIT=${FREE_QUESTION_LIMIT}`);
+            // ★ 使用後端的 serverQuestionCount 作為真正的計數
+            // 這樣即使 refresh 也不會重置
+            console.log(`[Tesla] serverQuestionCount=${serverQuestionCount}, questionCount=${questionCount}, isPro=${isPro}, dailyLimit=${dailyLimit}`);
 
             // ★ 關鍵：Q11+ 不 call API，直接彈 Paywall
-            if (!isPro && questionCount >= FREE_QUESTION_LIMIT) {
-                console.log('[Tesla] Paywall triggered - Q11+ without Pro');
+            if (!isPro && serverQuestionCount >= FREE_QUESTION_LIMIT) {
+                console.log('[Tesla] Paywall triggered - over daily limit');
                 showPaywall();
                 return; // 不發送到後端
             }
 
             // Q1-Q10：正常發送訊息
-            const nextQuestionNumber = questionCount + 1;
             addUserMessage(text);
             input.value = '';
             isProcessing = true;
@@ -446,12 +444,39 @@
             showTypingIndicator();
 
             try {
+                // ★ 先向後端請求增加用量
+                const usageRes = await fetch('/.netlify/functions/tesla-usage', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: user.uid,
+                        action: 'increment'
+                    })
+                });
+                const usageData = await usageRes.json();
+                
+                // 檢查是否超過限制
+                if (!usageData.ok && usageData.errorCode === 'OVER_LIMIT') {
+                    removeTypingIndicator();
+                    console.log('[Tesla] Backend rejected - over limit');
+                    showPaywall();
+                    isProcessing = false;
+                    document.getElementById('send-btn').disabled = false;
+                    return;
+                }
+
+                // 更新本地狀態
+                serverQuestionCount = usageData.todayUsed || (serverQuestionCount + 1);
+                dailyLimit = usageData.dailyLimit || dailyLimit;
+                isPro = usageData.isPro || isPro;
+
+                // 呼叫 AI
                 const res = await fetch('/.netlify/functions/tesla-chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         messages: chatMessages,
-                        messageCount: nextQuestionNumber,
+                        messageCount: serverQuestionCount,
                         paid: isPro
                     })
                 });
@@ -461,16 +486,17 @@
 
                 if (data.ok && data.reply && data.reply.trim()) {
                     addBotMessage(data.reply, true);
-                    questionCount = nextQuestionNumber;
+                    questionCount = serverQuestionCount;
                     updateProgress();
-                    console.log(`[Tesla] Q${questionCount} completed`);
+                    console.log(`[Tesla] Q${questionCount} completed (server: ${serverQuestionCount})`);
                 } else {
                     addBotMessage("抱歉，請再說一次你的問題？");
                 }
             } catch (e) {
                 console.error('Chat error:', e);
                 removeTypingIndicator();
-                addBotMessage("連線出了點問題，請稍後再試。");
+                addBotMessage("連線出了點問題，這一題不會算在次數裡。");
+                // ★ 錯誤時不增加計數（後端已經增加了，但這裡不更新本地）
             }
 
             isProcessing = false;
@@ -479,7 +505,13 @@
 
         // === 更新進度 ===
         function updateProgress() {
-            document.getElementById('usage-count').textContent = Math.min(questionCount, 10);
+            const count = Math.min(serverQuestionCount || questionCount, dailyLimit);
+            document.getElementById('usage-count').textContent = count;
+            // 更新上限顯示（根據 Pro 狀態）
+            const limitEl = document.querySelector('#usage-badge');
+            if (limitEl) {
+                limitEl.innerHTML = `Q<span id="usage-count">${count}</span>/${isPro ? '30' : '10'}`;
+            }
         }
 
         // === Paywall ===
@@ -634,6 +666,34 @@
             if (e.key === 'Enter') sendMessage();
         });
 
+        // === 從後端同步 Tesla 用量 ===
+        async function syncTeslaUsage(userId) {
+            try {
+                const res = await fetch(`/.netlify/functions/tesla-usage?userId=${userId}`);
+                const data = await res.json();
+                
+                if (data.ok) {
+                    serverQuestionCount = data.todayUsed || 0;
+                    dailyLimit = data.dailyLimit || 10;
+                    isPro = data.isPro || false;
+                    
+                    // 同步前端顯示
+                    questionCount = serverQuestionCount;
+                    updateProgress();
+                    updateProStatus();
+                    
+                    console.log(`[Tesla] Synced from server: used=${serverQuestionCount}/${dailyLimit}, isPro=${isPro}`);
+                    
+                    // 如果今天已經用完，提示用戶
+                    if (!isPro && serverQuestionCount >= FREE_QUESTION_LIMIT) {
+                        console.log('[Tesla] Already over limit today');
+                    }
+                }
+            } catch (e) {
+                console.error('[Tesla] Failed to sync usage:', e);
+            }
+        }
+
         // === Init ===
         window.onload = function() {
             console.log('[Tesla] App initialized');
@@ -645,12 +705,8 @@
                 if (user) {
                     console.log(`[Tesla] Auth state changed: ${user.email}`);
                     
-                    // 檢查是否為 Pro
-                    if (typeof window.checkQuota === 'function') {
-                        const quota = await window.checkQuota(user);
-                        isPro = quota.tier === 'pro';
-                        updateProStatus();
-                    }
+                    // ★ 從後端同步 Tesla 用量（這會設定 isPro, serverQuestionCount, dailyLimit）
+                    await syncTeslaUsage(user.uid);
                     
                     // 檢查 localStorage 付款狀態
                     const paid = localStorage.getItem('BROTHERG_PRO_paid');
@@ -658,6 +714,7 @@
                         if (typeof window.upgradeUserToPro === 'function') {
                             await window.upgradeUserToPro(user);
                             isPro = true;
+                            dailyLimit = 30;
                             updateProStatus();
                             showToast('🎉 Pro 會員已啟用！');
                         }
@@ -665,6 +722,9 @@
                 } else {
                     console.log('[Tesla] No user logged in');
                     isPro = false;
+                    serverQuestionCount = 0;
+                    questionCount = 0;
+                    dailyLimit = 10;
                     updateProStatus();
                 }
             });
