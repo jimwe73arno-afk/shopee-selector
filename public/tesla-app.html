@@ -424,16 +424,21 @@
             currentUser = user;
 
             // ★ 版本 B：Q1-Q10 免費，Q11+ 才擋
-            // questionCount 是已回答的問題數，+1 後是即將回答的問題
-            const nextQuestionNumber = questionCount + 1;
+            // questionCount = 已回答的問題數
+            // Q10 回答完後 questionCount = 10
+            // 下次嘗試發送時 questionCount >= 10 → 彈 Paywall
+            
+            console.log(`[Tesla] questionCount=${questionCount}, isPro=${isPro}, FREE_LIMIT=${FREE_QUESTION_LIMIT}`);
 
-            // 如果已經超過 10 題，且不是 Pro → 彈付費視窗
+            // ★ 關鍵：Q11+ 不 call API，直接彈 Paywall
             if (!isPro && questionCount >= FREE_QUESTION_LIMIT) {
+                console.log('[Tesla] Paywall triggered - Q11+ without Pro');
                 showPaywall();
-                return;
+                return; // 不發送到後端
             }
 
-            // 正常發送訊息
+            // Q1-Q10：正常發送訊息
+            const nextQuestionNumber = questionCount + 1;
             addUserMessage(text);
             input.value = '';
             isProcessing = true;
@@ -458,16 +463,7 @@
                     addBotMessage(data.reply, true);
                     questionCount = nextQuestionNumber;
                     updateProgress();
-                    
-                    // 後端回傳 needPaywall = true 表示下一題要付費
-                    if (data.needPaywall) {
-                        // Q10 回答完，下次輸入會被擋
-                        // 不需要立即彈窗，等用戶再輸入時才彈
-                    }
-                } else if (data.needPaywall) {
-                    // 後端直接擋住（Q11+）
-                    addBotMessage(data.reply || "你已經完成 10 題免費諮詢，升級 Pro 可以繼續深度諮詢。", true);
-                    showPaywall();
+                    console.log(`[Tesla] Q${questionCount} completed`);
                 } else {
                     addBotMessage("抱歉，請再說一次你的問題？");
                 }
@@ -528,8 +524,12 @@
 
         // === Profile UI ===
         function updateProfileUI(user) {
+            const loginOverlay = document.getElementById('login-overlay');
+            
             if (user) {
-                document.getElementById('login-overlay').classList.add('hidden');
+                // ★ 登入後隱藏登入區塊
+                loginOverlay.classList.add('hidden');
+                
                 document.getElementById('profile-name').textContent = user.displayName || '用戶';
                 document.getElementById('profile-email').textContent = user.email || '';
                 
@@ -541,9 +541,33 @@
                 } else {
                     avatar.textContent = (user.displayName || 'U').charAt(0).toUpperCase();
                 }
+                
+                console.log(`[Tesla] User logged in: ${user.email}, isPro: ${isPro}`);
             } else {
-                document.getElementById('login-overlay').classList.remove('hidden');
+                // ★ 未登入時顯示登入區塊
+                loginOverlay.classList.remove('hidden');
+                console.log('[Tesla] User not logged in');
             }
+        }
+        
+        // === 更新 Pro 狀態 UI ===
+        function updateProStatus() {
+            const tierBadge = document.getElementById('home-tier');
+            const tierText = tierBadge?.nextElementSibling;
+            
+            if (isPro) {
+                tierBadge.textContent = 'PRO';
+                tierBadge.classList.remove('text-slate-300');
+                tierBadge.classList.add('text-amber-400');
+                if (tierText) tierText.textContent = '無限深度諮詢';
+            } else {
+                tierBadge.textContent = 'FREE';
+                tierBadge.classList.remove('text-amber-400');
+                tierBadge.classList.add('text-slate-300');
+                if (tierText) tierText.textContent = 'Q1-Q10 免費';
+            }
+            
+            console.log(`[Tesla] Pro status updated: ${isPro}`);
         }
 
         // === Google Login ===
@@ -561,7 +585,18 @@
                 if (typeof window.checkQuota === 'function') {
                     const quota = await window.checkQuota(currentUser);
                     isPro = quota.tier === 'pro';
-                    document.getElementById('home-tier').textContent = isPro ? 'PRO' : 'FREE';
+                    updateProStatus();
+                }
+                
+                // 檢查 localStorage 付款狀態
+                const paid = localStorage.getItem('BROTHERG_PRO_paid');
+                if (paid === 'true' && !isPro) {
+                    if (typeof window.upgradeUserToPro === 'function') {
+                        await window.upgradeUserToPro(currentUser);
+                        isPro = true;
+                        updateProStatus();
+                        showToast('🎉 Pro 會員已啟用！');
+                    }
                 }
                 
                 showToast(`${currentUser.displayName || '用戶'} 登入成功！`);
@@ -601,16 +636,20 @@
 
         // === Init ===
         window.onload = function() {
+            console.log('[Tesla] App initialized');
+            
             firebase.auth().onAuthStateChanged(async (user) => {
                 currentUser = user;
                 updateProfileUI(user);
                 
                 if (user) {
+                    console.log(`[Tesla] Auth state changed: ${user.email}`);
+                    
                     // 檢查是否為 Pro
                     if (typeof window.checkQuota === 'function') {
                         const quota = await window.checkQuota(user);
                         isPro = quota.tier === 'pro';
-                        document.getElementById('home-tier').textContent = isPro ? 'PRO' : 'FREE';
+                        updateProStatus();
                     }
                     
                     // 檢查 localStorage 付款狀態
@@ -619,10 +658,14 @@
                         if (typeof window.upgradeUserToPro === 'function') {
                             await window.upgradeUserToPro(user);
                             isPro = true;
-                            document.getElementById('home-tier').textContent = 'PRO';
+                            updateProStatus();
                             showToast('🎉 Pro 會員已啟用！');
                         }
                     }
+                } else {
+                    console.log('[Tesla] No user logged in');
+                    isPro = false;
+                    updateProStatus();
                 }
             });
         };
