@@ -5,21 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Tesla 顧問 | BrotherGAi</title>
     
-    <!-- Favicon -->
     <link rel="icon" type="image/png" href="/logo.png">
     <link rel="apple-touch-icon" href="/logo.png">
-    
-    <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Marked.js for Markdown -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -28,22 +19,9 @@
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        display: ['Rajdhani', 'sans-serif'],
-                    },
-                    colors: {
-                        appBg: '#020617',
-                        appSurface: '#0F172A',
-                        primary: '#00A0E9',
-                        accent: '#F59E0B',
-                        chatUser: '#00A0E9',
-                        chatAi: '#1E293B',
-                    },
-                    animation: {
-                        'slide-up': 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                        'fade-in': 'fadeIn 0.2s ease-out',
-                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'], display: ['Rajdhani', 'sans-serif'] },
+                    colors: { appBg: '#020617', appSurface: '#0F172A', primary: '#00A0E9' },
+                    animation: { 'slide-up': 'slideUp 0.3s ease-out', 'fade-in': 'fadeIn 0.2s ease-out' },
                     keyframes: {
                         slideUp: { '0%': { transform: 'translateY(100%)' }, '100%': { transform: 'translateY(0)' } },
                         fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } }
@@ -54,194 +32,40 @@
     </script>
 
     <style>
-        body {
-            background-color: #020617;
-            color: #F8FAFC;
-            overscroll-behavior-y: none;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none;
-            user-select: none;
-        }
+        body { background-color: #020617; color: #F8FAFC; overscroll-behavior-y: none; }
         ::-webkit-scrollbar { display: none; }
-
-        /* Desktop Phone Frame */
-        .app-shell {
-            min-height: 100vh; min-height: 100dvh;
-            display: flex; justify-content: center; align-items: center;
-            background: #050816;
-        }
-        .app-phone-frame {
-            width: 100%; max-width: 430px;
-            height: 100vh; height: 100dvh; max-height: 932px;
-            border-radius: 40px; overflow: hidden;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1);
-            position: relative;
-        }
-        @media (max-width: 768px) {
-            .app-shell { background: #020617; }
-            .app-phone-frame { max-width: 100%; max-height: 100%; border-radius: 0; box-shadow: none; }
-        }
-
+        .app-shell { min-height: 100vh; min-height: 100dvh; display: flex; justify-content: center; align-items: center; background: #050816; }
+        .app-phone-frame { width: 100%; max-width: 430px; height: 100vh; height: 100dvh; max-height: 932px; border-radius: 40px; overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.5); position: relative; }
+        @media (max-width: 768px) { .app-shell { background: #020617; } .app-phone-frame { max-width: 100%; max-height: 100%; border-radius: 0; box-shadow: none; } }
         .touch-active:active { transform: scale(0.96); opacity: 0.8; }
-
-        /* Chat Bubbles */
-        .chat-bubble {
-            max-width: 85%; padding: 12px 16px; font-size: 15px; line-height: 1.6;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .chat-bubble.ai {
-            background-color: #1E293B; color: #F1F5F9;
-            border-radius: 20px 20px 20px 4px;
-        }
-        .chat-bubble.user {
-            background-color: #00A0E9; color: white;
-            border-radius: 20px 20px 4px 20px; margin-left: auto;
-        }
-        .chat-bubble.ai h3 { color: #38BDF8; font-weight: 700; font-size: 1rem; margin-top: 1rem; margin-bottom: 0.5rem; border-left: 3px solid #00A0E9; padding-left: 8px; }
+        .chat-bubble { max-width: 85%; padding: 12px 16px; font-size: 15px; line-height: 1.6; }
+        .chat-bubble.ai { background-color: #1E293B; color: #F1F5F9; border-radius: 20px 20px 20px 4px; }
+        .chat-bubble.user { background-color: #00A0E9; color: white; border-radius: 20px 20px 4px 20px; margin-left: auto; }
+        .chat-bubble.ai h3 { color: #38BDF8; font-weight: 700; margin-top: 1rem; margin-bottom: 0.5rem; border-left: 3px solid #00A0E9; padding-left: 8px; }
         .chat-bubble.ai h3:first-child { margin-top: 0; }
         .chat-bubble.ai p { margin-bottom: 0.75rem; }
-        .chat-bubble.ai ul { list-style: none; padding-left: 0; margin-bottom: 0.75rem; }
-        .chat-bubble.ai li { margin-bottom: 0.5rem; padding-left: 1rem; position: relative; }
-        .chat-bubble.ai li::before { content: "•"; color: #00A0E9; position: absolute; left: 0; }
         .chat-bubble.ai strong { color: #F8FAFC; }
-
-        .typing-dot {
-            width: 6px; height: 6px; background-color: #94A3B8; border-radius: 50%;
-            display: inline-block; animation: typing 1.4s infinite ease-in-out both;
-        }
+        .typing-dot { width: 6px; height: 6px; background-color: #94A3B8; border-radius: 50%; display: inline-block; animation: typing 1.4s infinite ease-in-out both; }
         .typing-dot:nth-child(1) { animation-delay: -0.32s; }
         .typing-dot:nth-child(2) { animation-delay: -0.16s; }
         @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
-
         .sheet-overlay { background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }
-        .toast {
-            position: fixed; top: calc(4rem + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
-            background: #1E293B; border: 1px solid #334155; color: #F8FAFC;
-            padding: 12px 20px; border-radius: 12px; font-size: 14px; z-index: 100;
-            opacity: 0; transition: opacity 0.3s; pointer-events: none;
-        }
-        .toast.show { opacity: 1; }
-
         .blue-filter { filter: brightness(0) saturate(100%) invert(55%) sepia(57%) saturate(2000%) hue-rotate(166deg) brightness(96%) contrast(101%); }
     </style>
 </head>
 <body>
 <div class="app-shell">
 <div class="app-phone-frame">
-<div class="h-[100dvh] w-full flex flex-col overflow-hidden relative bg-appBg">
+<div id="app-root" class="h-[100dvh] w-full flex flex-col overflow-hidden relative bg-appBg">
 
-    <!-- Toast -->
-    <div id="toast" class="toast"></div>
-
-    <!-- === HEADER === -->
-    <header class="fixed top-0 left-0 right-0 z-40 bg-appBg/95 backdrop-blur-xl border-b border-slate-800" style="padding-top: env(safe-area-inset-top);">
-        <div class="h-14 flex items-center justify-between px-4">
-            <div class="flex items-center gap-3">
-                <a href="/" class="flex items-center gap-2">
-                    <img src="/logo.png" alt="BrotherG" class="w-8 h-8 rounded-lg">
-                </a>
-                <span class="font-display font-bold text-lg text-white">Tesla 顧問</span>
-            </div>
-            <div class="flex items-center gap-2">
-                <span id="usage-badge" class="text-xs font-medium text-slate-400 bg-slate-800 px-2 py-1 rounded-full">
-                    Q<span id="usage-count">0</span>/10
-                </span>
-            </div>
-        </div>
-    </header>
-
-    <!-- === TAB: HOME === -->
-    <div id="tab-home" class="flex-1 overflow-y-auto pt-[calc(4rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom))]">
-        <div class="p-6 text-center">
-            <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center">
-                <img src="/modelx.png" alt="Tesla" class="w-14 h-14 object-contain blue-filter">
-            </div>
-            <h1 class="font-display font-bold text-2xl text-white mb-2">Tesla 決策顧問</h1>
-            <p class="text-slate-400 text-sm mb-6">買不買？買哪台？何時買？<br>讓 AI 幫你做出最好的決策</p>
-            
-            <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-full mb-6">
-                <span id="home-tier" class="text-xs font-bold text-slate-300">FREE</span>
-                <span class="text-xs text-slate-500">Q1-Q10 免費</span>
-            </div>
-            
-            <button onclick="startChat()" class="w-full max-w-xs mx-auto py-4 bg-primary text-white font-bold rounded-2xl touch-active shadow-lg shadow-primary/30 flex items-center justify-center gap-2">
-                <i class="fa-solid fa-comments"></i>
-                <span>開始諮詢</span>
-            </button>
-        </div>
-    </div>
-
-    <!-- === TAB: CHAT === -->
-    <div id="tab-chat" class="hidden flex-1 overflow-y-auto pt-[calc(4rem+env(safe-area-inset-top))] pb-[calc(8rem+env(safe-area-inset-bottom))]">
-        <div id="chat-history" class="flex flex-col gap-4 px-4 py-4"></div>
-    </div>
-
-    <!-- === TAB: PROFILE === -->
-    <div id="tab-profile" class="hidden flex-1 overflow-y-auto pt-[calc(4rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom))]">
-        <div class="p-4">
-            <div class="bg-appSurface rounded-2xl p-4 mb-4 border border-slate-800">
-                <div class="flex items-center gap-4">
-                    <div id="profile-avatar" class="w-14 h-14 rounded-full bg-slate-700 flex items-center justify-center text-xl font-bold text-white border-2 border-primary">?</div>
-                    <div class="flex-1">
-                        <h3 id="profile-name" class="font-bold text-white">未登入</h3>
-                        <p id="profile-email" class="text-sm text-slate-400">請先登入</p>
-                    </div>
-                </div>
-            </div>
-
-            <button onclick="showPaywall()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 p-4 rounded-2xl flex items-center justify-center gap-3 touch-active mb-4 shadow-lg">
-                <i class="fa-solid fa-crown text-white"></i>
-                <span class="text-sm font-bold text-white">升級 Pro - US$1.99</span>
-            </button>
-
-            <button onclick="handleLogout()" class="w-full bg-appSurface p-4 rounded-2xl flex justify-between items-center touch-active border border-slate-800">
-                <span class="text-sm font-medium text-red-400">登出</span>
-                <i class="fa-solid fa-arrow-right-from-bracket text-red-400 text-xs"></i>
-            </button>
-        </div>
-    </div>
-
-    <!-- === INPUT BAR === -->
-    <div id="input-bar" class="hidden fixed left-0 right-0 bg-appBg/95 backdrop-blur-xl border-t border-slate-800 z-30" style="bottom: calc(3.5rem + env(safe-area-inset-bottom));">
-        <div class="p-3 flex items-center gap-3">
-            <div class="flex-1 bg-appSurface rounded-full h-11 flex items-center px-4 border border-slate-700 focus-within:border-primary transition-colors">
-                <input type="text" id="chat-input" placeholder="說說你在考慮什麼車款..." 
-                    class="bg-transparent border-none outline-none text-white text-sm w-full placeholder-slate-500" autocomplete="off">
-            </div>
-            <button id="send-btn" onclick="sendMessage()" 
-                class="w-11 h-11 rounded-full bg-primary text-white flex items-center justify-center shadow-lg touch-active disabled:opacity-50">
-                <i class="fa-solid fa-paper-plane text-sm"></i>
-            </button>
-        </div>
-    </div>
-
-    <!-- === BOTTOM TAB BAR === -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-appBg/95 backdrop-blur-xl border-t border-slate-800 z-50" style="padding-bottom: env(safe-area-inset-bottom);">
-        <div class="flex justify-around items-center h-14">
-            <button onclick="switchTab('home')" class="tab-btn flex-1 flex flex-col items-center justify-center gap-1 text-primary" data-tab="home">
-                <i class="fa-solid fa-car text-lg"></i>
-                <span class="text-[10px] font-medium">首頁</span>
-            </button>
-            <button onclick="switchTab('chat')" class="tab-btn flex-1 flex flex-col items-center justify-center gap-1 text-slate-500" data-tab="chat">
-                <i class="fa-solid fa-comments text-lg"></i>
-                <span class="text-[10px] font-medium">諮詢</span>
-            </button>
-            <button onclick="switchTab('profile')" class="tab-btn flex-1 flex flex-col items-center justify-center gap-1 text-slate-500" data-tab="profile">
-                <i class="fa-solid fa-user text-lg"></i>
-                <span class="text-[10px] font-medium">我的</span>
-            </button>
-        </div>
-    </nav>
-
-    <!-- === LOGIN OVERLAY === -->
-    <div id="login-overlay" class="fixed inset-0 z-[80] bg-appBg flex flex-col items-center justify-center p-6">
+    <!-- ===== VIEW: LOGIN (未登入時顯示) ===== -->
+    <div id="view-login" class="absolute inset-0 z-50 bg-appBg flex flex-col items-center justify-center p-6">
         <div class="text-center max-w-sm">
             <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center">
                 <img src="/modelx.png" alt="Tesla" class="w-14 h-14 object-contain blue-filter">
             </div>
             <h1 class="text-2xl font-bold text-white mb-2">Tesla 決策顧問</h1>
             <p class="text-slate-400 text-sm mb-8">登入後開始你的購車諮詢</p>
-            
             <button onclick="handleGoogleLogin()" id="login-btn" class="w-full py-4 bg-white text-gray-800 font-bold rounded-2xl flex items-center justify-center gap-3 touch-active shadow-lg">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google">
                 <span>使用 Google 帳號登入</span>
@@ -249,33 +73,61 @@
         </div>
     </div>
 
-    <!-- === PAYWALL (Q11+ 付費牆) === -->
-    <div id="paywall-modal" class="fixed inset-0 z-[70] hidden">
-        <div class="absolute inset-0 sheet-overlay" onclick="closePaywall()"></div>
+    <!-- ===== VIEW: MAIN (已登入時顯示) ===== -->
+    <div id="view-main" class="hidden flex-1 flex flex-col">
+        
+        <!-- Header -->
+        <header class="bg-appBg/95 backdrop-blur-xl border-b border-slate-800 z-40" style="padding-top: env(safe-area-inset-top);">
+            <div class="h-14 flex items-center justify-between px-4">
+                <div class="flex items-center gap-3">
+                    <a href="/"><img src="/logo.png" alt="BrotherG" class="w-8 h-8 rounded-lg"></a>
+                    <span class="font-display font-bold text-lg text-white">Tesla 顧問</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span id="progress-badge" class="text-xs font-medium text-slate-400 bg-slate-800 px-2 py-1 rounded-full">Q0/10</span>
+                    <button onclick="handleLogout()" class="text-slate-500 text-sm"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Chat Area -->
+        <div id="chat-container" class="flex-1 overflow-y-auto px-4 py-4">
+            <div id="chat-history" class="flex flex-col gap-4"></div>
+        </div>
+
+        <!-- Input Bar (只在非 Paywall 時顯示) -->
+        <div id="input-bar" class="bg-appBg/95 backdrop-blur-xl border-t border-slate-800" style="padding-bottom: env(safe-area-inset-bottom);">
+            <div class="p-3 flex items-center gap-3">
+                <div class="flex-1 bg-appSurface rounded-full h-11 flex items-center px-4 border border-slate-700 focus-within:border-primary">
+                    <input type="text" id="chat-input" placeholder="說說你在考慮什麼車款..." 
+                        class="bg-transparent border-none outline-none text-white text-sm w-full placeholder-slate-500" autocomplete="off">
+                </div>
+                <button id="send-btn" onclick="sendMessage()" 
+                    class="w-11 h-11 rounded-full bg-primary text-white flex items-center justify-center shadow-lg touch-active disabled:opacity-50">
+                    <i class="fa-solid fa-paper-plane text-sm"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== VIEW: PAYWALL (Q11+ 時顯示，蓋在 MAIN 上面) ===== -->
+    <div id="view-paywall" class="hidden absolute inset-0 z-60">
+        <div class="absolute inset-0 sheet-overlay"></div>
         <div class="absolute bottom-0 left-0 right-0 bg-appSurface rounded-t-3xl p-6 animate-slide-up" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom));">
             <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-6"></div>
             <div class="text-center mb-6">
-                <div class="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-primary/30">
-                    <img src="/modelx.png" alt="Tesla" class="w-10 h-10 object-contain blue-filter">
+                <div class="w-16 h-16 bg-green-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-green-500/30">
+                    <i class="fa-solid fa-check text-3xl text-green-400"></i>
                 </div>
-                <h3 class="text-xl font-bold text-white mb-2">🎯 今天 10 題免費諮詢已用完</h3>
-                <p class="text-slate-400 text-sm">你已經拿到 Tesla 決策卡了！<br>想繼續深度諮詢嗎？</p>
+                <h3 class="text-xl font-bold text-white mb-2">🎯 恭喜！你已拿到決策卡</h3>
+                <p class="text-slate-400 text-sm">今天 10 題免費諮詢已完成</p>
             </div>
             <div class="bg-slate-900 rounded-xl p-4 mb-6 border border-slate-800">
-                <p class="text-sm text-slate-300 mb-3">升級 Pro（<span class="text-amber-400 font-bold">每天 30 題</span>）可以：</p>
+                <p class="text-sm text-slate-300 mb-3">升級 Pro（<span class="text-amber-400 font-bold">每天 30 題</span>）：</p>
                 <ul class="space-y-2 text-sm text-slate-300">
-                    <li class="flex items-start gap-2">
-                        <i class="fa-solid fa-check text-green-400 mt-1"></i>
-                        <span>繼續深度諮詢（保險、折舊、充電規劃）</span>
-                    </li>
-                    <li class="flex items-start gap-2">
-                        <i class="fa-solid fa-check text-green-400 mt-1"></i>
-                        <span>比較不同車型配備</span>
-                    </li>
-                    <li class="flex items-start gap-2">
-                        <i class="fa-solid fa-check text-green-400 mt-1"></i>
-                        <span>永久升級，一次付費</span>
-                    </li>
+                    <li class="flex items-start gap-2"><i class="fa-solid fa-check text-green-400 mt-1"></i><span>繼續深度諮詢（保險、折舊、充電）</span></li>
+                    <li class="flex items-start gap-2"><i class="fa-solid fa-check text-green-400 mt-1"></i><span>比較不同車型配備</span></li>
+                    <li class="flex items-start gap-2"><i class="fa-solid fa-check text-green-400 mt-1"></i><span>永久升級，一次付費</span></li>
                 </ul>
             </div>
             <button onclick="handlePayPalCheckout()" id="paywall-btn" class="w-full py-4 bg-gradient-to-r from-primary to-blue-600 rounded-xl text-white font-bold text-lg touch-active mb-3 shadow-lg">
@@ -287,452 +139,322 @@
         </div>
     </div>
 
-    <!-- Firebase Store Script -->
-    <script src="/js/firebase-store.js"></script>
+</div>
+</div>
+</div>
 
-    <script>
-        // === 常數 ===
-        const FREE_QUESTION_LIMIT = 10; // Q1-Q10 免費
+<script src="/js/firebase-store.js"></script>
+<script>
+    // ========== 常數 ==========
+    const FREE_LIMIT = 10;
 
-        // === State ===
-        let currentUser = null;
-        let isPro = false;
-        let isProcessing = false;
-        let chatMessages = [];
-        let questionCount = 0; // 已回答的問題數（前端顯示用）
-        let serverQuestionCount = 0; // 後端今日已用量（真正的計數）
-        let dailyLimit = 10; // 每日上限
+    // ========== State ==========
+    let currentUser = null;
+    let isPro = false;
+    let isProcessing = false;
+    let chatMessages = [];
+    let questionId = 0; // 目前已完成的問題數（0 = 尚未開始，10 = 已完成 Q10）
+    let showPaywall = false;
 
-        // === Toast ===
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            toast.textContent = msg;
-            toast.classList.add('show');
-            setTimeout(() => toast.classList.remove('show'), 2500);
+    // ========== View 切換（互斥渲染）==========
+    function updateViews() {
+        const loginView = document.getElementById('view-login');
+        const mainView = document.getElementById('view-main');
+        const paywallView = document.getElementById('view-paywall');
+        const inputBar = document.getElementById('input-bar');
+
+        // ★ 互斥邏輯
+        if (!currentUser) {
+            // 未登入：只顯示 Login
+            loginView.classList.remove('hidden');
+            mainView.classList.add('hidden');
+            paywallView.classList.add('hidden');
+        } else if (showPaywall) {
+            // 已登入 + Paywall：顯示 Main + Paywall overlay，隱藏輸入框
+            loginView.classList.add('hidden');
+            mainView.classList.remove('hidden');
+            paywallView.classList.remove('hidden');
+            inputBar.classList.add('hidden');
+        } else {
+            // 已登入 + 正常聊天
+            loginView.classList.add('hidden');
+            mainView.classList.remove('hidden');
+            paywallView.classList.add('hidden');
+            inputBar.classList.remove('hidden');
         }
 
-        // === Tab Switch ===
-        function switchTab(tabName) {
-            ['home', 'chat', 'profile'].forEach(t => {
-                document.getElementById('tab-' + t)?.classList.add('hidden');
-                document.querySelector(`[data-tab="${t}"]`)?.classList.remove('text-primary');
-                document.querySelector(`[data-tab="${t}"]`)?.classList.add('text-slate-500');
+        // 更新進度顯示
+        updateProgress();
+        
+        console.log(`[View] user=${currentUser?.email || 'null'}, questionId=${questionId}, showPaywall=${showPaywall}, isPro=${isPro}`);
+    }
+
+    function updateProgress() {
+        const badge = document.getElementById('progress-badge');
+        if (badge) {
+            const limit = isPro ? 30 : 10;
+            badge.textContent = `Q${questionId}/${limit}`;
+            badge.className = isPro 
+                ? 'text-xs font-bold text-amber-400 bg-amber-900/50 px-2 py-1 rounded-full'
+                : 'text-xs font-medium text-slate-400 bg-slate-800 px-2 py-1 rounded-full';
+        }
+    }
+
+    // ========== Chat ==========
+    function addBotMessage(text, isMarkdown = false) {
+        if (!text || text.trim() === '') return;
+        const chatHistory = document.getElementById('chat-history');
+        const div = document.createElement('div');
+        div.className = 'flex items-end gap-2 animate-fade-in';
+        const content = (isMarkdown && window.marked) ? marked.parse(text) : text.replace(/\n/g, '<br>');
+        div.innerHTML = `
+            <div class="w-8 h-8 rounded-full flex-shrink-0 bg-slate-800 border border-slate-700 flex items-center justify-center">
+                <img src="/logo.png" alt="AI" class="w-5 h-5">
+            </div>
+            <div class="chat-bubble ai">${content}</div>
+        `;
+        chatHistory.appendChild(div);
+        chatMessages.push({ role: 'assistant', content: text });
+        scrollToBottom();
+    }
+
+    function addUserMessage(text) {
+        if (!text || text.trim() === '') return;
+        const chatHistory = document.getElementById('chat-history');
+        const div = document.createElement('div');
+        div.className = 'flex justify-end animate-fade-in';
+        div.innerHTML = `<div class="chat-bubble user">${escapeHtml(text)}</div>`;
+        chatHistory.appendChild(div);
+        chatMessages.push({ role: 'user', content: text });
+        scrollToBottom();
+    }
+
+    function showTypingIndicator() {
+        const chatHistory = document.getElementById('chat-history');
+        const div = document.createElement('div');
+        div.id = 'typing-indicator';
+        div.className = 'flex items-end gap-2 animate-fade-in';
+        div.innerHTML = `
+            <div class="w-8 h-8 rounded-full flex-shrink-0 bg-slate-800 border border-slate-700 flex items-center justify-center">
+                <img src="/logo.png" alt="AI" class="w-5 h-5">
+            </div>
+            <div class="chat-bubble ai flex gap-1 py-4">
+                <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+            </div>
+        `;
+        chatHistory.appendChild(div);
+        scrollToBottom();
+    }
+
+    function removeTypingIndicator() {
+        document.getElementById('typing-indicator')?.remove();
+    }
+
+    function scrollToBottom() {
+        const container = document.getElementById('chat-container');
+        setTimeout(() => container?.scrollTo({ top: container.scrollHeight, behavior: 'smooth' }), 100);
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // ========== 發送訊息 ==========
+    async function sendMessage() {
+        const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        
+        if (isProcessing || !text) return;
+        if (!currentUser) { updateViews(); return; }
+
+        // ★ 計算下一題的 ID
+        const nextQuestionId = questionId + 1;
+        
+        console.log(`[Send] nextQuestionId=${nextQuestionId}, isPro=${isPro}, FREE_LIMIT=${FREE_LIMIT}`);
+
+        // ★ 關鍵：只有當 nextQuestionId > 10 且非 Pro 時才擋
+        if (!isPro && nextQuestionId > FREE_LIMIT) {
+            console.log('[Send] Paywall triggered - trying Q11+ without Pro');
+            showPaywall = true;
+            updateViews();
+            return;
+        }
+
+        // Q1-Q10：正常發送
+        addUserMessage(text);
+        input.value = '';
+        isProcessing = true;
+        document.getElementById('send-btn').disabled = true;
+        showTypingIndicator();
+
+        try {
+            const res = await fetch('/.netlify/functions/tesla-chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: chatMessages,
+                    messageCount: nextQuestionId,
+                    paid: isPro,
+                    userId: currentUser.uid
+                })
             });
-            
-            document.getElementById('tab-' + tabName)?.classList.remove('hidden');
-            document.querySelector(`[data-tab="${tabName}"]`)?.classList.remove('text-slate-500');
-            document.querySelector(`[data-tab="${tabName}"]`)?.classList.add('text-primary');
-            
-            document.getElementById('input-bar').classList.toggle('hidden', tabName !== 'chat');
-        }
 
-        // === Start Chat ===
-        function startChat() {
-            const user = currentUser || firebase.auth().currentUser;
-            if (!user) {
-                document.getElementById('login-overlay').classList.remove('hidden');
-                return;
+            removeTypingIndicator();
+            const data = await res.json();
+
+            if (data.ok && data.reply && data.reply.trim()) {
+                addBotMessage(data.reply, true);
+                questionId = nextQuestionId;
+                updateProgress();
+                console.log(`[Send] Q${questionId} completed`);
+            } else if (data.needPaywall) {
+                // 後端回傳需要付費
+                showPaywall = true;
+                updateViews();
+            } else {
+                addBotMessage("抱歉，系統暫時無法處理，請稍後再試。");
             }
-            currentUser = user;
-            switchTab('chat');
-            
-            if (chatMessages.length === 0) {
-                addBotMessage("歡迎來到 Tesla 決策顧問！");
-                setTimeout(() => {
-                    addBotMessage("我會用 10 個關鍵問題，幫你搞清楚「買不買、買哪台、何時買」。\n\n準備好了嗎？告訴我，你現在在考慮哪款 Tesla？");
-                }, 500);
+        } catch (e) {
+            console.error('Chat error:', e);
+            removeTypingIndicator();
+            addBotMessage("連線出了點問題，請稍後再試。");
+        }
+
+        isProcessing = false;
+        document.getElementById('send-btn').disabled = false;
+    }
+
+    // ========== Paywall ==========
+    function closePaywall() {
+        showPaywall = false;
+        updateViews();
+        // 重新 focus 輸入框
+        setTimeout(() => {
+            document.getElementById('chat-input')?.focus();
+        }, 100);
+    }
+
+    async function handlePayPalCheckout() {
+        const btn = document.getElementById('paywall-btn');
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>跳轉 PayPal...';
+        btn.disabled = true;
+
+        try {
+            const res = await fetch('/.netlify/functions/paypal-checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    product: 'BROTHERG_PRO',
+                    returnUrl: window.location.origin + '/payment/success?product=BROTHERG_PRO&return=/tesla-app',
+                    cancelUrl: window.location.origin + '/payment/cancel?product=BROTHERG_PRO&return=/tesla-app'
+                })
+            });
+            const data = await res.json();
+            if (data.ok && data.checkoutUrl) {
+                window.location.href = data.checkoutUrl;
+            } else {
+                throw new Error('PayPal error');
             }
+        } catch (e) {
+            console.error('Payment error:', e);
+            btn.innerHTML = '<i class="fa-brands fa-paypal mr-2"></i>US$1.99 升級 Pro';
+            btn.disabled = false;
         }
+    }
 
-        // === Chat Messages ===
-        function addBotMessage(text, isMarkdown = false) {
-            if (!text || text.trim() === '') return;
-            
-            const chatHistory = document.getElementById('chat-history');
-            const div = document.createElement('div');
-            div.className = 'flex items-end gap-2 animate-fade-in';
-            
-            const content = (isMarkdown && window.marked) ? marked.parse(text) : text.replace(/\n/g, '<br>');
-            
-            div.innerHTML = `
-                <div class="w-8 h-8 rounded-full flex-shrink-0 bg-slate-800 border border-slate-700 flex items-center justify-center">
-                    <img src="/logo.png" alt="AI" class="w-5 h-5">
-                </div>
-                <div class="chat-bubble ai">${content}</div>
-            `;
-            chatHistory.appendChild(div);
-            chatMessages.push({ role: 'assistant', content: text });
-            scrollToBottom();
-        }
-
-        function addUserMessage(text) {
-            if (!text || text.trim() === '') return;
-            
-            const chatHistory = document.getElementById('chat-history');
-            const div = document.createElement('div');
-            div.className = 'flex justify-end animate-fade-in';
-            div.innerHTML = `<div class="chat-bubble user">${escapeHtml(text)}</div>`;
-            chatHistory.appendChild(div);
-            chatMessages.push({ role: 'user', content: text });
-            scrollToBottom();
-        }
-
-        function showTypingIndicator() {
-            const chatHistory = document.getElementById('chat-history');
-            const div = document.createElement('div');
-            div.id = 'typing-indicator';
-            div.className = 'flex items-end gap-2 animate-fade-in';
-            div.innerHTML = `
-                <div class="w-8 h-8 rounded-full flex-shrink-0 bg-slate-800 border border-slate-700 flex items-center justify-center">
-                    <img src="/logo.png" alt="AI" class="w-5 h-5">
-                </div>
-                <div class="chat-bubble ai flex gap-1 py-4">
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                </div>
-            `;
-            chatHistory.appendChild(div);
-            scrollToBottom();
-        }
-
-        function removeTypingIndicator() {
-            document.getElementById('typing-indicator')?.remove();
-        }
-
-        function scrollToBottom() {
-            const container = document.getElementById('tab-chat');
-            setTimeout(() => container?.scrollTo({ top: container.scrollHeight, behavior: 'smooth' }), 100);
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // === Send Message (版本 B：簡單 Paywall + 後端同步) ===
-        async function sendMessage() {
-            const input = document.getElementById('chat-input');
-            const text = input.value.trim();
-            
-            if (isProcessing || !text) return;
-            
-            const user = currentUser || firebase.auth().currentUser;
-            if (!user) {
-                document.getElementById('login-overlay').classList.remove('hidden');
-                return;
-            }
-            currentUser = user;
-
-            // ★ 使用後端的 serverQuestionCount 作為真正的計數
-            // 這樣即使 refresh 也不會重置
-            console.log(`[Tesla] serverQuestionCount=${serverQuestionCount}, questionCount=${questionCount}, isPro=${isPro}, dailyLimit=${dailyLimit}`);
-
-            // ★ 關鍵：Q11+ 不 call API，直接彈 Paywall
-            if (!isPro && serverQuestionCount >= FREE_QUESTION_LIMIT) {
-                console.log('[Tesla] Paywall triggered - over daily limit');
-                showPaywall();
-                return; // 不發送到後端
-            }
-
-            // Q1-Q10：正常發送訊息
-            addUserMessage(text);
-            input.value = '';
-            isProcessing = true;
-            document.getElementById('send-btn').disabled = true;
-            showTypingIndicator();
-
-            try {
-                // ★ 先向後端請求增加用量
-                const usageRes = await fetch('/.netlify/functions/tesla-usage', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId: user.uid,
-                        action: 'increment'
-                    })
-                });
-                const usageData = await usageRes.json();
-                
-                // 檢查是否超過限制
-                if (!usageData.ok && usageData.errorCode === 'OVER_LIMIT') {
-                    removeTypingIndicator();
-                    console.log('[Tesla] Backend rejected - over limit');
-                    showPaywall();
-                    isProcessing = false;
-                    document.getElementById('send-btn').disabled = false;
-                    return;
-                }
-
-                // 更新本地狀態
-                serverQuestionCount = usageData.todayUsed || (serverQuestionCount + 1);
-                dailyLimit = usageData.dailyLimit || dailyLimit;
-                isPro = usageData.isPro || isPro;
-
-                // 呼叫 AI
-                const res = await fetch('/.netlify/functions/tesla-chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        messages: chatMessages,
-                        messageCount: serverQuestionCount,
-                        paid: isPro
-                    })
-                });
-
-                removeTypingIndicator();
-                const data = await res.json();
-
-                if (data.ok && data.reply && data.reply.trim()) {
-                    addBotMessage(data.reply, true);
-                    questionCount = serverQuestionCount;
-                    updateProgress();
-                    console.log(`[Tesla] Q${questionCount} completed (server: ${serverQuestionCount})`);
-                } else {
-                    addBotMessage("抱歉，請再說一次你的問題？");
-                }
-            } catch (e) {
-                console.error('Chat error:', e);
-                removeTypingIndicator();
-                addBotMessage("連線出了點問題，這一題不會算在次數裡。");
-                // ★ 錯誤時不增加計數（後端已經增加了，但這裡不更新本地）
-            }
-
-            isProcessing = false;
-            document.getElementById('send-btn').disabled = false;
-        }
-
-        // === 更新進度 ===
-        function updateProgress() {
-            const count = Math.min(serverQuestionCount || questionCount, dailyLimit);
-            document.getElementById('usage-count').textContent = count;
-            // 更新上限顯示（根據 Pro 狀態）
-            const limitEl = document.querySelector('#usage-badge');
-            if (limitEl) {
-                limitEl.innerHTML = `Q<span id="usage-count">${count}</span>/${isPro ? '30' : '10'}`;
-            }
-        }
-
-        // === Paywall ===
-        function showPaywall() {
-            document.getElementById('paywall-modal').classList.remove('hidden');
-        }
-
-        function closePaywall() {
-            document.getElementById('paywall-modal').classList.add('hidden');
-        }
-
-        // === PayPal Checkout ===
-        async function handlePayPalCheckout() {
-            const btn = document.getElementById('paywall-btn');
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>跳轉 PayPal...';
+    // ========== Auth ==========
+    async function handleGoogleLogin() {
+        const btn = document.getElementById('login-btn');
+        try {
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i>驗證中...';
             btn.disabled = true;
 
-            try {
-                const res = await fetch('/.netlify/functions/paypal-checkout', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        product: 'BROTHERG_PRO',
-                        returnUrl: window.location.origin + '/payment/success?product=BROTHERG_PRO&return=/tesla-app',
-                        cancelUrl: window.location.origin + '/payment/cancel?product=BROTHERG_PRO&return=/tesla-app'
-                    })
-                });
-
-                const data = await res.json();
-                if (data.ok && data.checkoutUrl) {
-                    window.location.href = data.checkoutUrl;
-                } else {
-                    throw new Error(data.error || 'PayPal 訂單創建失敗');
-                }
-            } catch (e) {
-                console.error('Payment error:', e);
-                btn.innerHTML = '<i class="fa-brands fa-paypal mr-2"></i>US$1.99 解鎖深度諮詢';
-                btn.disabled = false;
-                showToast('PayPal 連線失敗');
+            const result = await firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider());
+            currentUser = result.user;
+            
+            // 檢查 Pro 狀態
+            if (typeof window.checkQuota === 'function') {
+                const quota = await window.checkQuota(currentUser);
+                isPro = quota.tier === 'pro';
             }
-        }
+            
+            // 檢查 localStorage
+            if (localStorage.getItem('BROTHERG_PRO_paid') === 'true' && !isPro) {
+                if (typeof window.upgradeUserToPro === 'function') {
+                    await window.upgradeUserToPro(currentUser);
+                    isPro = true;
+                }
+            }
 
-        // === Profile UI ===
-        function updateProfileUI(user) {
-            const loginOverlay = document.getElementById('login-overlay');
+            updateViews();
+            
+            // 開始聊天
+            if (chatMessages.length === 0) {
+                addBotMessage("歡迎來到 Tesla 決策顧問！\n\n我會用 10 個關鍵問題，幫你搞清楚「買不買、買哪台、何時買」。\n\n準備好了嗎？告訴我，你現在在考慮哪款 Tesla？");
+            }
+        } catch (err) {
+            console.error('Login error:', err);
+        } finally {
+            btn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google"><span>使用 Google 帳號登入</span>';
+            btn.disabled = false;
+        }
+    }
+
+    async function handleLogout() {
+        try {
+            await firebase.auth().signOut();
+            currentUser = null;
+            isPro = false;
+            chatMessages = [];
+            questionId = 0;
+            showPaywall = false;
+            document.getElementById('chat-history').innerHTML = '';
+            updateViews();
+        } catch (e) {
+            console.error('Logout error:', e);
+        }
+    }
+
+    // ========== Input Enter ==========
+    document.getElementById('chat-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') sendMessage();
+    });
+
+    // ========== Init ==========
+    window.onload = function() {
+        console.log('[Init] Tesla App starting...');
+        
+        firebase.auth().onAuthStateChanged(async (user) => {
+            currentUser = user;
             
             if (user) {
-                // ★ 登入後隱藏登入區塊
-                loginOverlay.classList.add('hidden');
+                console.log(`[Init] User: ${user.email}`);
                 
-                document.getElementById('profile-name').textContent = user.displayName || '用戶';
-                document.getElementById('profile-email').textContent = user.email || '';
-                
-                const avatar = document.getElementById('profile-avatar');
-                if (user.photoURL) {
-                    avatar.style.backgroundImage = `url(${user.photoURL})`;
-                    avatar.style.backgroundSize = 'cover';
-                    avatar.textContent = '';
-                } else {
-                    avatar.textContent = (user.displayName || 'U').charAt(0).toUpperCase();
-                }
-                
-                console.log(`[Tesla] User logged in: ${user.email}, isPro: ${isPro}`);
-            } else {
-                // ★ 未登入時顯示登入區塊
-                loginOverlay.classList.remove('hidden');
-                console.log('[Tesla] User not logged in');
-            }
-        }
-        
-        // === 更新 Pro 狀態 UI ===
-        function updateProStatus() {
-            const tierBadge = document.getElementById('home-tier');
-            const tierText = tierBadge?.nextElementSibling;
-            
-            if (isPro) {
-                tierBadge.textContent = 'PRO';
-                tierBadge.classList.remove('text-slate-300');
-                tierBadge.classList.add('text-amber-400');
-                if (tierText) tierText.textContent = '無限深度諮詢';
-            } else {
-                tierBadge.textContent = 'FREE';
-                tierBadge.classList.remove('text-amber-400');
-                tierBadge.classList.add('text-slate-300');
-                if (tierText) tierText.textContent = 'Q1-Q10 免費';
-            }
-            
-            console.log(`[Tesla] Pro status updated: ${isPro}`);
-        }
-
-        // === Google Login ===
-        window.handleGoogleLogin = async function() {
-            const btn = document.getElementById('login-btn');
-            try {
-                btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i>驗證中...';
-                btn.disabled = true;
-
-                const result = await firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider());
-                currentUser = result.user;
-                updateProfileUI(currentUser);
-                
-                // 檢查是否為 Pro
+                // 檢查 Pro 狀態
                 if (typeof window.checkQuota === 'function') {
-                    const quota = await window.checkQuota(currentUser);
+                    const quota = await window.checkQuota(user);
                     isPro = quota.tier === 'pro';
-                    updateProStatus();
                 }
                 
-                // 檢查 localStorage 付款狀態
-                const paid = localStorage.getItem('BROTHERG_PRO_paid');
-                if (paid === 'true' && !isPro) {
+                // 檢查 localStorage
+                if (localStorage.getItem('BROTHERG_PRO_paid') === 'true' && !isPro) {
                     if (typeof window.upgradeUserToPro === 'function') {
-                        await window.upgradeUserToPro(currentUser);
+                        await window.upgradeUserToPro(user);
                         isPro = true;
-                        updateProStatus();
-                        showToast('🎉 Pro 會員已啟用！');
                     }
                 }
                 
-                showToast(`${currentUser.displayName || '用戶'} 登入成功！`);
-            } catch (err) {
-                console.error('Login error:', err);
-                if (err.code !== 'auth/popup-closed-by-user') {
-                    showToast('登入失敗');
+                // 開始聊天
+                if (chatMessages.length === 0) {
+                    addBotMessage("歡迎來到 Tesla 決策顧問！\n\n我會用 10 個關鍵問題，幫你搞清楚「買不買、買哪台、何時買」。\n\n準備好了嗎？告訴我，你現在在考慮哪款 Tesla？");
                 }
-            } finally {
-                btn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" alt="Google"><span>使用 Google 帳號登入</span>';
-                btn.disabled = false;
             }
-        };
-
-        // === Logout ===
-        window.handleLogout = async function() {
-            try {
-                await firebase.auth().signOut();
-                currentUser = null;
-                isPro = false;
-                chatMessages = [];
-                questionCount = 0;
-                document.getElementById('chat-history').innerHTML = '';
-                switchTab('home');
-                document.getElementById('login-overlay').classList.remove('hidden');
-                showToast('已安全登出');
-            } catch (e) {
-                console.error('Logout error:', e);
-                showToast('登出失敗');
-            }
-        };
-
-        // === Input Enter Key ===
-        document.getElementById('chat-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') sendMessage();
-        });
-
-        // === 從後端同步 Tesla 用量 ===
-        async function syncTeslaUsage(userId) {
-            try {
-                const res = await fetch(`/.netlify/functions/tesla-usage?userId=${userId}`);
-                const data = await res.json();
-                
-                if (data.ok) {
-                    serverQuestionCount = data.todayUsed || 0;
-                    dailyLimit = data.dailyLimit || 10;
-                    isPro = data.isPro || false;
-                    
-                    // 同步前端顯示
-                    questionCount = serverQuestionCount;
-                    updateProgress();
-                    updateProStatus();
-                    
-                    console.log(`[Tesla] Synced from server: used=${serverQuestionCount}/${dailyLimit}, isPro=${isPro}`);
-                    
-                    // 如果今天已經用完，提示用戶
-                    if (!isPro && serverQuestionCount >= FREE_QUESTION_LIMIT) {
-                        console.log('[Tesla] Already over limit today');
-                    }
-                }
-            } catch (e) {
-                console.error('[Tesla] Failed to sync usage:', e);
-            }
-        }
-
-        // === Init ===
-        window.onload = function() {
-            console.log('[Tesla] App initialized');
             
-            firebase.auth().onAuthStateChanged(async (user) => {
-                currentUser = user;
-                updateProfileUI(user);
-                
-                if (user) {
-                    console.log(`[Tesla] Auth state changed: ${user.email}`);
-                    
-                    // ★ 從後端同步 Tesla 用量（這會設定 isPro, serverQuestionCount, dailyLimit）
-                    await syncTeslaUsage(user.uid);
-                    
-                    // 檢查 localStorage 付款狀態
-                    const paid = localStorage.getItem('BROTHERG_PRO_paid');
-                    if (paid === 'true' && !isPro) {
-                        if (typeof window.upgradeUserToPro === 'function') {
-                            await window.upgradeUserToPro(user);
-                            isPro = true;
-                            dailyLimit = 30;
-                            updateProStatus();
-                            showToast('🎉 Pro 會員已啟用！');
-                        }
-                    }
-                } else {
-                    console.log('[Tesla] No user logged in');
-                    isPro = false;
-                    serverQuestionCount = 0;
-                    questionCount = 0;
-                    dailyLimit = 10;
-                    updateProStatus();
-                }
-            });
-        };
-    </script>
-
-</div>
-</div>
-</div>
+            updateViews();
+        });
+    };
+</script>
 </body>
 </html>
