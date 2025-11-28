@@ -289,45 +289,75 @@
         </div>
     </div>
 
-    <!-- === TESLA PAYWALL (Q11 付費牆) === -->
-    <div id="tesla-paywall" class="fixed inset-0 z-[70] hidden">
-        <div class="absolute inset-0 sheet-overlay" onclick="closeTeslaPaywall()"></div>
-        <div class="absolute bottom-0 left-0 right-0 bg-appSurface rounded-t-3xl p-6 animate-slide-up" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom));">
-            <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-6"></div>
-            <div class="text-center mb-6">
-                <div class="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-primary/30">
-                    <img src="/modelx.png" alt="Tesla" class="w-10 h-10 object-contain blue-filter">
+    <!-- === AD GATE MODAL (Q10 前的廣告解鎖) === -->
+    <div id="ad-gate-modal" class="fixed inset-0 z-[70] hidden">
+        <div class="absolute inset-0 sheet-overlay"></div>
+        <div class="absolute bottom-0 left-0 right-0 bg-appSurface rounded-t-3xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto" style="padding-bottom: calc(2rem + env(safe-area-inset-bottom));">
+            <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-4"></div>
+            
+            <!-- Header -->
+            <div class="text-center mb-5">
+                <div class="w-14 h-14 bg-green-500/20 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-green-500/30">
+                    <i class="fa-solid fa-check-double text-2xl text-green-400"></i>
                 </div>
-                <h3 class="text-xl font-bold text-white mb-2">🎯 你已完成前 10 題</h3>
-                <p class="text-slate-400 text-sm">我已經掌握你的預算、里程、家充、家庭需求...</p>
+                <h3 class="text-lg font-bold text-white mb-1">👏 你已完成 9 題基本盤點</h3>
+                <p class="text-slate-400 text-sm">在看到你的「專屬決策卡」之前<br>請花 30 秒看看這些對你有幫助的資訊</p>
             </div>
-            <div class="bg-slate-900 rounded-xl p-4 mb-6 border border-slate-800">
-                <p class="text-sm text-slate-300 mb-3">
-                    如果你想拿到完整的 <strong class="text-white">「最終決策卡」</strong>：
-                </p>
-                <ul class="space-y-2 text-sm text-slate-300">
-                    <li class="flex items-start gap-2">
-                        <i class="fa-solid fa-check text-green-400 mt-1"></i>
-                        <span>具體車型、版本、顏色配備建議</span>
-                    </li>
-                    <li class="flex items-start gap-2">
-                        <i class="fa-solid fa-check text-green-400 mt-1"></i>
-                        <span>個人化風險提示與避坑方案</span>
-                    </li>
-                    <li class="flex items-start gap-2">
-                        <i class="fa-solid fa-check text-green-400 mt-1"></i>
-                        <span>保存你的準車主檔案</span>
-                    </li>
-                    <li class="flex items-start gap-2">
-                        <i class="fa-solid fa-check text-green-400 mt-1"></i>
-                        <span>陪你走完 Q11-Q15 深度諮詢</span>
-                    </li>
-                </ul>
+
+            <!-- Ad Cards -->
+            <div class="space-y-3 mb-5">
+                <!-- Tesla Referral -->
+                <a href="https://ts.la/arno873937" target="_blank" onclick="markAdClicked('tesla')" 
+                   class="block bg-gradient-to-r from-red-900/40 to-red-800/40 rounded-xl p-4 border border-red-500/30 touch-active">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <img src="/modelx.png" alt="Tesla" class="w-8 h-8 object-contain">
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-white text-sm mb-1">🚗 Tesla 官方推薦連結</h4>
+                            <p class="text-xs text-slate-400">用這個連結下訂可獲得官方積分獎勵</p>
+                        </div>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-red-400"></i>
+                    </div>
+                </a>
+
+                <!-- Agoda -->
+                <a href="https://www.agoda.com/?cid=1954443" target="_blank" onclick="markAdClicked('agoda')"
+                   class="block bg-gradient-to-r from-blue-900/40 to-cyan-800/40 rounded-xl p-4 border border-cyan-500/30 touch-active">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-cyan-500/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <i class="fa-solid fa-plane text-xl text-cyan-400"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="font-bold text-white text-sm mb-1">✈️ 買完車想去日本自駕？</h4>
+                            <p class="text-xs text-slate-400">Agoda 幫你找最划算的住宿優惠</p>
+                        </div>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-cyan-400"></i>
+                    </div>
+                </a>
             </div>
-            <button onclick="handleTeslaProCheckout()" id="tesla-paywall-btn" class="w-full py-4 bg-gradient-to-r from-primary to-blue-600 rounded-xl text-white font-bold text-lg touch-active mb-3 shadow-lg">
-                <i class="fa-brands fa-paypal mr-2"></i>以 US$1.99 解鎖 Tesla 決策卡
+
+            <!-- Unlock Button -->
+            <button onclick="handleAdUnlock()" id="ad-unlock-btn" 
+                    class="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-white font-bold text-base touch-active mb-3 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fa-solid fa-unlock mr-2"></i>
+                <span id="ad-unlock-text">點擊上方連結後解鎖</span>
             </button>
-            <button onclick="closeTeslaPaywall()" class="w-full py-3 bg-slate-800 rounded-xl text-slate-400 font-medium touch-active">
+
+            <!-- Divider -->
+            <div class="flex items-center gap-3 my-4">
+                <div class="flex-1 h-px bg-slate-700"></div>
+                <span class="text-xs text-slate-500">或者</span>
+                <div class="flex-1 h-px bg-slate-700"></div>
+            </div>
+
+            <!-- Pro Upgrade -->
+            <button onclick="handleTeslaProCheckout()" id="ad-gate-pro-btn" 
+                    class="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 rounded-xl text-white font-bold text-sm touch-active mb-3">
+                <i class="fa-brands fa-paypal mr-2"></i>US$1.99 升級 Pro，永久跳過廣告
+            </button>
+
+            <button onclick="closeAdGate()" class="w-full py-2 text-slate-500 text-sm touch-active">
                 先不用，明天再來
             </button>
         </div>
@@ -373,6 +403,10 @@
         let userCredits = { tier: 'free', remaining: 10, usedToday: 0, quota: 10 };
         let isProcessing = false;
         let chatMessages = [];
+        let currentQuestionId = 0; // 追蹤當前問題編號 (0 = 尚未開始, 1-10 = Q1-Q10)
+        let hasWatchedAdToday = false; // 今天是否已看過廣告
+        let adClickedCount = 0; // 廣告點擊計數
+        let pendingQ10Request = null; // 暫存 Q9 回答後要發送的 Q10 請求
 
         // === Toast ===
         function showToast(msg) {
@@ -497,27 +531,54 @@
             }
             currentUser = user;
 
-            // ★ Tesla 不檢查每日額度，由後端控制 Paywall
-            // 這樣 Q1-Q10 可以不受限制地跑完
+            // 計算當前用戶訊息數（發送後會是第幾題）
+            const userMsgCount = chatMessages.filter(m => m.role === 'user').length + 1;
+            const isPro = userCredits.tier === 'pro' || localStorage.getItem('BROTHERG_PRO_paid') === 'true';
 
+            // ★ Q9 回答完、要進入 Q10 前：檢查是否需要 Gate
+            // userMsgCount === 10 代表用戶正在回答 Q9（回答完後是第 10 則用戶訊息）
+            // 但實際上 Q10 是「總結」，所以 Gate 應該在 Q9 回答完後
+            const isAboutToEnterQ10 = userMsgCount === 10 && !isPro && !hasWatchedAdToday;
+
+            if (isAboutToEnterQ10) {
+                // 先把 Q9 回答收下
+                addUserMessage(text);
+                input.value = '';
+                currentQuestionId = 9;
+                updateTeslaProgress(9);
+                
+                // 暫存請求，等廣告看完再發送
+                pendingQ10Request = {
+                    messages: [...chatMessages],
+                    messageCount: userMsgCount
+                };
+                
+                // 顯示廣告 Gate
+                showAdGate();
+                return;
+            }
+
+            // 正常發送訊息
             addUserMessage(text);
             input.value = '';
             isProcessing = true;
             document.getElementById('send-btn').disabled = true;
             showTypingIndicator();
 
-            // 計算當前用戶訊息數（發送後）
-            const userMsgCount = chatMessages.filter(m => m.role === 'user').length;
+            await callTeslaAPI(userMsgCount, isPro);
+        }
 
+        // === 呼叫 Tesla API ===
+        async function callTeslaAPI(messageCount, isPro) {
             try {
-                // 呼叫 API（不先消耗額度，讓後端決定是否需要 Paywall）
                 const res = await fetch('/.netlify/functions/tesla-chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         messages: chatMessages,
-                        messageCount: userMsgCount,
-                        paid: userCredits.tier === 'pro' || localStorage.getItem('BROTHERG_PRO_paid') === 'true'
+                        messageCount: messageCount,
+                        paid: isPro,
+                        hasWatchedAdToday: hasWatchedAdToday
                     })
                 });
 
@@ -527,14 +588,14 @@
                 if (data.ok && data.reply && data.reply.trim()) {
                     addBotMessage(data.reply, true);
                     
-                    // ★ 檢查是否需要 Paywall（Q11 開始）
-                    if (data.needPaywall) {
-                        // 顯示 Tesla Paywall，而不是一般額度提示
-                        showTeslaPaywall();
-                    }
+                    // 更新問題進度
+                    currentQuestionId = messageCount;
+                    updateTeslaProgress(messageCount);
                     
-                    // 更新 UI 顯示（顯示 Tesla 進度而非每日額度）
-                    updateTeslaProgress(userMsgCount);
+                    // 檢查是否需要 Paywall（Q11+ 且未付費）
+                    if (data.needPaywall) {
+                        showAdGate(); // Q11+ 也用廣告 Gate
+                    }
                 } else {
                     addBotMessage("抱歉，請再說一次你的問題？");
                 }
@@ -548,13 +609,92 @@
             document.getElementById('send-btn').disabled = false;
         }
 
-        // === Tesla Paywall（專屬 Tesla 的付費牆）===
-        function showTeslaPaywall() {
-            document.getElementById('tesla-paywall').classList.remove('hidden');
+        // === 廣告 Gate 相關 ===
+        function showAdGate() {
+            adClickedCount = 0;
+            updateAdUnlockButton();
+            document.getElementById('ad-gate-modal').classList.remove('hidden');
         }
 
-        function closeTeslaPaywall() {
-            document.getElementById('tesla-paywall').classList.add('hidden');
+        function closeAdGate() {
+            document.getElementById('ad-gate-modal').classList.add('hidden');
+            pendingQ10Request = null;
+        }
+
+        function markAdClicked(adType) {
+            adClickedCount++;
+            console.log(`Ad clicked: ${adType}, total: ${adClickedCount}`);
+            updateAdUnlockButton();
+        }
+
+        function updateAdUnlockButton() {
+            const btn = document.getElementById('ad-unlock-btn');
+            const text = document.getElementById('ad-unlock-text');
+            
+            if (adClickedCount >= 1) {
+                btn.disabled = false;
+                btn.classList.remove('from-slate-600', 'to-slate-700');
+                btn.classList.add('from-green-500', 'to-emerald-600');
+                text.textContent = '✓ 我已看完，顯示決策卡';
+            } else {
+                btn.disabled = true;
+                btn.classList.remove('from-green-500', 'to-emerald-600');
+                btn.classList.add('from-slate-600', 'to-slate-700');
+                text.textContent = '點擊上方連結後解鎖';
+            }
+        }
+
+        // === 廣告解鎖處理 ===
+        async function handleAdUnlock() {
+            if (adClickedCount < 1) {
+                showToast('請先點擊查看上方連結');
+                return;
+            }
+
+            const btn = document.getElementById('ad-unlock-btn');
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>解鎖中...';
+            btn.disabled = true;
+
+            try {
+                // 記錄廣告解鎖到後端
+                if (currentUser) {
+                    await fetch('/.netlify/functions/unlock-by-ad', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: currentUser.uid,
+                            scene: 'tesla_q10'
+                        })
+                    });
+                }
+
+                hasWatchedAdToday = true;
+                localStorage.setItem('tesla_ad_watched_' + getTodayKey(), 'true');
+                
+                closeAdGate();
+                showToast('🎉 已解鎖！正在生成你的決策卡...');
+
+                // 如果有暫存的 Q10 請求，現在發送
+                if (pendingQ10Request) {
+                    isProcessing = true;
+                    document.getElementById('send-btn').disabled = true;
+                    showTypingIndicator();
+                    
+                    const isPro = userCredits.tier === 'pro' || localStorage.getItem('BROTHERG_PRO_paid') === 'true';
+                    await callTeslaAPI(pendingQ10Request.messageCount, isPro);
+                    pendingQ10Request = null;
+                }
+            } catch (e) {
+                console.error('Ad unlock error:', e);
+                btn.innerHTML = '<i class="fa-solid fa-unlock mr-2"></i><span>✓ 我已看完，顯示決策卡</span>';
+                btn.disabled = false;
+                showToast('解鎖失敗，請重試');
+            }
+        }
+
+        function getTodayKey() {
+            const now = new Date();
+            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         }
 
         // === 更新 Tesla 進度 ===
@@ -722,6 +862,10 @@
 
         // === Init ===
         window.onload = function() {
+            // 檢查今天是否已看過廣告（從 localStorage）
+            const todayKey = getTodayKey();
+            hasWatchedAdToday = localStorage.getItem('tesla_ad_watched_' + todayKey) === 'true';
+            
             // 監聽登入狀態
             firebase.auth().onAuthStateChanged(async (user) => {
                 currentUser = user;
@@ -743,6 +887,18 @@
                             updateCreditsUI();
                             showToast('🎉 Pro 會員已啟用！');
                         }
+                    }
+                    
+                    // 從 Firestore 檢查是否已看過廣告
+                    try {
+                        const res = await fetch('/.netlify/functions/check-ad-status?userId=' + user.uid);
+                        const data = await res.json();
+                        if (data.hasWatchedAdToday) {
+                            hasWatchedAdToday = true;
+                            localStorage.setItem('tesla_ad_watched_' + todayKey, 'true');
+                        }
+                    } catch (e) {
+                        console.log('Check ad status failed, using localStorage');
                     }
                 }
             });
