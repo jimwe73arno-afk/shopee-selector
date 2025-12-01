@@ -69,17 +69,21 @@
             document.getElementById('order-id').textContent = token;
         }
 
+        // 取得 sessionId（如果有）
+        const sessionId = params.get('sessionId');
+        const returnPath = params.get('return') || '/';
+
         // 根據產品類型設定訊息和返回連結
         const productConfig = {
             'BROTHERG_PRO': {
-                message: '🎉 恭喜成為 Pro 會員！每天可問 30 題（Tesla + 蝦皮共用）',
-                returnUrl: '/tesla-app',
-                returnText: '開始使用 Pro'
+                message: '🎉 付款成功！正在生成你的 Tesla 決策卡...',
+                returnUrl: sessionId ? `/tesla-app?sessionId=${sessionId}&paid=true` : '/tesla-app',
+                returnText: '查看決策卡'
             },
             'TESLA_PRO': {
-                message: '🎉 恭喜成為 Pro 會員！每天可問 30 題',
-                returnUrl: '/tesla-app',
-                returnText: '返回 Tesla 顧問'
+                message: '🎉 付款成功！正在生成你的 Tesla 決策卡...',
+                returnUrl: sessionId ? `/tesla-app?sessionId=${sessionId}&paid=true` : '/tesla-app',
+                returnText: '查看決策卡'
             },
             'SHOPEE_PRO': {
                 message: '🎉 恭喜成為 Pro 會員！每天可問 30 題',
@@ -88,15 +92,26 @@
             },
             'PRO': {
                 message: '🎉 恭喜成為 Pro 會員！每天可問 30 題',
-                returnUrl: '/',
+                returnUrl: returnPath,
                 returnText: '開始使用'
             }
         };
 
         const config = productConfig[product] || productConfig['BROTHERG_PRO'];
         document.getElementById('success-message').textContent = config.message;
-        document.getElementById('return-btn').href = config.returnUrl;
-        document.getElementById('return-btn').innerHTML = `<i class="fa-solid fa-arrow-left mr-2"></i>${config.returnText}`;
+        
+        // 如果有 sessionId，自動跳轉到 tesla-app 顯示決策卡
+        if (sessionId && (product === 'BROTHERG_PRO' || product === 'TESLA_PRO')) {
+            document.getElementById('return-btn').href = config.returnUrl;
+            document.getElementById('return-btn').innerHTML = `<i class="fa-solid fa-arrow-right mr-2"></i>${config.returnText}`;
+            // 3 秒後自動跳轉
+            setTimeout(() => {
+                window.location.href = config.returnUrl;
+            }, 3000);
+        } else {
+            document.getElementById('return-btn').href = config.returnUrl;
+            document.getElementById('return-btn').innerHTML = `<i class="fa-solid fa-arrow-left mr-2"></i>${config.returnText}`;
+        }
 
         // 儲存付款狀態到 localStorage（統一使用 BROTHERG_PRO_paid）
         localStorage.setItem('BROTHERG_PRO_paid', 'true');
