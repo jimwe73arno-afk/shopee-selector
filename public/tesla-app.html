@@ -102,19 +102,14 @@
         </div>
     </div>
 
-    <!-- ===== 最終決策 Modal（簡化決策卡 + 三選一）===== -->
-    <div id="final-modal" class="hidden fixed inset-0 z-60 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
+    <!-- ===== 決策卡 + 付費牆 Modal ===== -->
+    <div id="decision-modal" class="hidden fixed inset-0 z-60 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
         <div class="w-full max-w-md bg-white rounded-2xl p-6 text-gray-900 max-h-[90vh] overflow-y-auto">
-            <h2 class="text-xl font-bold mb-4">🎯 您的 Tesla 決策建議</h2>
+            <h2 class="text-xl font-bold mb-4">🎯 你的 Tesla 決策卡</h2>
             
-            <!-- 簡化決策卡 -->
-            <div id="simplified-card" class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 mb-6 border border-blue-100">
-                <p class="text-sm mb-2"><strong>結論：</strong><span id="card-conclusion">-</span></p>
-                <p class="text-sm mb-2"><strong>主要依據：</strong><span id="card-reasons">-</span></p>
-                <p class="text-sm mb-3"><strong>建議行動：</strong><span id="card-action">-</span></p>
-                <p class="text-xs text-gray-600 bg-white/50 rounded p-2">
-                    💎 <strong>支付 $1.99 解鎖完整版：</strong>詳細風險分析、改款時機建議、保險攻略、財務規劃、充電方案...
-                </p>
+            <!-- 決策卡內容 -->
+            <div id="decision-card-content" class="mb-6 space-y-4">
+                <!-- 由 JS 動態填入 -->
             </div>
             
             <!-- 三選一按鈕 -->
@@ -132,17 +127,6 @@
         </div>
     </div>
 
-    <!-- ===== 完整決策卡顯示 Modal ===== -->
-    <div id="decision-card-modal" class="hidden fixed inset-0 z-70 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
-        <div class="w-full max-w-md bg-white rounded-2xl p-6 text-gray-900 max-h-[90vh] overflow-y-auto">
-            <h2 class="text-xl font-bold mb-4">🎯 你的 Tesla 決策卡</h2>
-            <div id="decision-card-content" class="mb-6 text-sm whitespace-pre-wrap"></div>
-            <button onclick="closeDecisionCard()" class="w-full py-3.5 bg-primary text-white rounded-xl touch-active font-medium">
-                完成
-            </button>
-        </div>
-    </div>
-
 </div>
 </div>
 </div>
@@ -150,62 +134,49 @@
 <script src="/js/firebase-store.js"></script>
 <script>
 // ===============================
-// TESLA 決策器 v1.0 - 完整修正版
+// TESLA 決策器 v1.0 - 極簡版（固定 10 題）
 // ===============================
 
-// === 常數 ===
-const DAILY_FREE_QUESTIONS = 10;
+// === 固定 10 題 ===
+const TESLA_QUESTIONS = [
+  "Q1/10 你現在在考慮購買哪一款 Tesla？（Model 3 / Y / X / S / 還在猶豫）",
+  "Q2/10 你的總預算大概在哪個區間？（含稅金＋牌照）",
+  "Q3/10 這台車主要會用在什麼場景？（通勤 / 家庭 / 商務 / 長途旅行）",
+  "Q4/10 你家裡目前可不可以安裝家用充電樁？（可以 / 不行 / 不確定）",
+  "Q5/10 你一年大概會開幾公里？",
+  "Q6/10 你常跑的長途路線大概是哪些？（例如：台中↔台北、台中↔高雄）",
+  "Q7/10 你最在意的前三件事是什麼？（外觀 / 加速 / 續航 / 品牌 / 科技感 / 安全 / 保值）",
+  "Q8/10 你目前有沒有油車或其他車？如果有，是什麼？",
+  "Q9/10 你希望這台車至少開幾年再換？",
+  "Q10/10 你最怕買錯的是哪一點？（例如：續航不夠、保值爛、空間太小…）"
+];
 
 // === 狀態 ===
 let currentUser = null;
 let currentQuestionIndex = 0;
 let answers = [];
-let inputDisabled = false;
+let isLoading = false;
 let sessionId = null;
-let userState = {
-    freeQuestionsUsed: 0,
-    lastResetDate: new Date().toDateString(),
-    hasPaid: false
-};
-
-// === 十大固定提問 ===
-const scriptedQuestions = [
-  "你現在在考慮哪款 Tesla？",
-  "你的總預算大概落在哪個區間？（含稅金＋保險粗抓）",
-  "這台車主要會用在什麼場景？（通勤 / 家庭 / 商務 / 長途旅行）",
-  "你家裡目前可不可以安裝家用充電樁？（可以 / 不能 / 不確定）",
-  "一年大概開幾公里？",
-  "你的長途需求是哪些路段？（例如：台北↔高雄）",
-  "你目前所在的城市／國家？",
-  "你更在意什麼？（安全 / 性能 / 舒適 / 空間 / 品牌）",
-  "你現在有沒有舊車要處理？",
-  "你打算什麼時候下決定？（1 個月 / 3 個月 / 半年）",
-];
 
 // ===============================
 // 初始化
 // ===============================
-function initTeslaApp() {
+function initTeslaChat() {
     if (!currentUser) return;
     
-    // 初始化用戶狀態
-    initUserState();
+    // 重置狀態
+    currentQuestionIndex = 0;
+    answers = [];
+    isLoading = false;
+    sessionId = `tesla_${currentUser.uid}_${Date.now()}`;
     
-    // 檢查免費額度
-    if (!checkFreeQuota()) {
-        addBotMessage("⚠️ 今日免費額度已用完！\n💰 支付 $1.99 可解鎖無限提問和完整決策分析。");
-        inputDisabled = true;
-        document.getElementById("user-input").disabled = true;
-        document.getElementById("send-btn").disabled = true;
-        return;
-    }
-    
+    // 顯示第一題
     updateProgress();
-    addBotMessage(`Q${currentQuestionIndex + 1}/10\n${scriptedQuestions[currentQuestionIndex]}`);
+    addBotMessage(TESLA_QUESTIONS[currentQuestionIndex]);
     
     // 綁定事件
     document.getElementById("user-input").addEventListener("keydown", async (e) => {
-        if (e.key === "Enter" && !inputDisabled) {
+        if (e.key === "Enter" && !isLoading) {
             await handleSubmit();
         }
     });
@@ -220,194 +191,145 @@ function initTeslaApp() {
     };
     
     document.getElementById("btn-tomorrow").onclick = () => {
-        localStorage.setItem("teslaDecisionLastVisit", new Date().toISOString());
         window.location.href = "/";
     };
-}
-
-// ===============================
-// 用戶狀態管理
-// ===============================
-function initUserState() {
-    const savedState = localStorage.getItem("teslaDecisionUserState");
-    if (savedState) {
-        try {
-            const parsed = JSON.parse(savedState);
-            userState.freeQuestionsUsed = parsed.freeQuestionsUsed || 0;
-            userState.lastResetDate = parsed.lastResetDate || new Date().toDateString();
-        } catch (e) {
-            console.error('[Tesla] Failed to parse user state:', e);
-        }
-    }
-    
-    // 檢查是否新的一天
-    const today = new Date().toDateString();
-    if (today !== userState.lastResetDate) {
-        userState.freeQuestionsUsed = 0;
-        userState.lastResetDate = today;
-        saveUserState();
-    }
-    
-    // 檢查是否已付費
-    if (localStorage.getItem('BROTHERG_PRO_paid') === 'true') {
-        userState.hasPaid = true;
-    }
-}
-
-function checkFreeQuota() {
-    if (userState.hasPaid) return true;
-    
-    const today = new Date().toDateString();
-    if (today !== userState.lastResetDate) {
-        userState.freeQuestionsUsed = 0;
-        userState.lastResetDate = today;
-        saveUserState();
-    }
-    
-    if (userState.freeQuestionsUsed >= DAILY_FREE_QUESTIONS) {
-        return false;
-    }
-    
-    return true;
-}
-
-function saveUserState() {
-    localStorage.setItem("teslaDecisionUserState", JSON.stringify(userState));
 }
 
 // ===============================
 // 主邏輯：送出答案
 // ===============================
 async function handleSubmit() {
-    if (inputDisabled || !currentUser) return;
+    if (isLoading) return;
     
-    // 檢查免費額度
-    if (!checkFreeQuota()) {
-        addBotMessage("⚠️ 今日免費額度已用完！\n💰 支付 $1.99 可解鎖無限提問和完整決策分析。");
-        inputDisabled = true;
-        document.getElementById("user-input").disabled = true;
-        document.getElementById("send-btn").disabled = true;
-        return;
-    }
-
     const inputEl = document.getElementById("user-input");
-    const userAnswer = inputEl.value.trim();
-    if (!userAnswer) return;
+    const userText = inputEl.value.trim();
+    if (!userText) return;
 
-    // 1. 顯示用戶答案
-    addUserMessage(userAnswer);
-    
-    // 2. 儲存答案
-    answers.push({ questionId: currentQuestionIndex + 1, answerText: userAnswer });
-    userState.freeQuestionsUsed++;
-    saveUserState();
+    // 1. 顯示使用者訊息
+    addUserMessage(userText);
 
-    // 3. 保存到後端
-    try {
-        const res = await fetch('/.netlify/functions/tesla-save-answer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                userId: currentUser.uid,
-                questionId: currentQuestionIndex + 1,
-                answerText: userAnswer,
-                sessionId: sessionId
-            })
-        });
-        const data = await res.json();
-        if (data.ok && data.sessionId) {
-            sessionId = data.sessionId;
-        }
-    } catch (e) {
-        console.error('[Tesla] Save answer error:', e);
-    }
+    // 2. 存答案
+    answers.push({
+        questionIndex: currentQuestionIndex,
+        question: TESLA_QUESTIONS[currentQuestionIndex],
+        answer: userText
+    });
 
-    // 4. 清除輸入框
+    // 3. 清除輸入框
     inputEl.value = "";
 
-    // 5. 如果還沒進入結尾 → 題號 +1
-    if (currentQuestionIndex < scriptedQuestions.length - 1) {
+    // 4. 決定下一步
+    if (currentQuestionIndex < TESLA_QUESTIONS.length - 1) {
+        // 還沒到最後一題 → 顯示下一題
         currentQuestionIndex++;
         updateProgress();
-        addBotMessage(`了解，我們來看下一題。\n\nQ${currentQuestionIndex + 1}/10\n${scriptedQuestions[currentQuestionIndex]}`);
+        addBotMessage(TESLA_QUESTIONS[currentQuestionIndex]);
         return;
     }
 
-    // 6. 如果這就是第 10 題 → 進入結尾流程
-    if (currentQuestionIndex === scriptedQuestions.length - 1) {
-        inputDisabled = true;
-        document.getElementById("user-input").disabled = true;
-        document.getElementById("send-btn").disabled = true;
-        await showResults();
-    }
-}
-
-// ===============================
-// 顯示最終結果（簡化決策卡 + 三選一）
-// ===============================
-async function showResults() {
-    addBotMessage("正在生成您的 Tesla 決策建議...");
+    // 5. 已經是第 10 題 → 呼叫後端生成決策卡
+    isLoading = true;
+    document.getElementById("send-btn").disabled = true;
+    document.getElementById("user-input").disabled = true;
     
-    try {
-        // 生成簡化決策卡
-        const simplifiedCard = await generateSimplifiedDecisionCard();
-        
-        // 顯示簡化決策卡
-        document.getElementById("card-conclusion").textContent = simplifiedCard.conclusion;
-        document.getElementById("card-reasons").textContent = simplifiedCard.reasons;
-        document.getElementById("card-action").textContent = simplifiedCard.action;
-        
-        // 顯示 Modal
-        document.getElementById("final-modal").classList.remove("hidden");
-        
-    } catch (error) {
-        console.error('[Tesla] Generate simplified card error:', error);
-        // Fallback
-        document.getElementById("card-conclusion").textContent = "建議考慮 Tesla Model 3 標準續航版";
-        document.getElementById("card-reasons").textContent = "預算符合日常使用，充電條件滿足";
-        document.getElementById("card-action").textContent = "預約試駕體驗實際駕駛感受";
-        document.getElementById("final-modal").classList.remove("hidden");
-    }
-}
+    addBotMessage("了解，我幫你整理成一張 Brother G Tesla 決策卡，稍等幾秒…");
 
-// ===============================
-// 生成簡化決策卡
-// ===============================
-async function generateSimplifiedDecisionCard() {
     try {
-        const res = await fetch('/.netlify/functions/tesla-simplified-card', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+        const res = await fetch("/.netlify/functions/tesla-decision", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                answers,
                 userId: currentUser.uid,
                 sessionId: sessionId
             })
         });
-        
+
+        if (!res.ok) throw new Error("API error");
+
         const data = await res.json();
         
-        if (data.ok && data.simplifiedCard) {
-            return data.simplifiedCard;
+        if (data.ok) {
+            showDecisionCardAndPaywall(data);
+        } else {
+            throw new Error(data.error || "Unknown error");
         }
-        
-        throw new Error('API returned invalid data');
-        
-    } catch (error) {
-        console.error('[Tesla] Generate simplified card error:', error);
-        // Fallback
-        return {
-            conclusion: "建議考慮 Tesla Model 3 標準續航版",
-            reasons: "預算符合日常使用，充電條件滿足",
-            action: "預約試駕體驗實際駕駛感受"
-        };
+
+    } catch (err) {
+        console.error("[Tesla] decision error:", err);
+        addBotMessage(
+            "系統剛剛有點忙，沒成功生成決策卡，但你前面 10 題我都有記錄。\n" +
+            "你可以稍後重整頁面再試一次，或截圖傳給我人工幫你看。"
+        );
+    } finally {
+        isLoading = false;
+        document.getElementById("send-btn").disabled = false;
+        document.getElementById("user-input").disabled = false;
     }
+}
+
+// ===============================
+// 顯示決策卡 + 付費牆
+// ===============================
+function showDecisionCardAndPaywall(data) {
+    const contentDiv = document.getElementById("decision-card-content");
+    
+    // 清空內容
+    contentDiv.innerHTML = "";
+    
+    // 決策摘要
+    if (data.decisionSummary) {
+        const summaryDiv = document.createElement("div");
+        summaryDiv.className = "bg-blue-50 rounded-lg p-4 border border-blue-100";
+        summaryDiv.innerHTML = `<p class="font-bold text-gray-900 mb-2">結論：</p><p class="text-gray-700">${escapeHtml(data.decisionSummary)}</p>`;
+        contentDiv.appendChild(summaryDiv);
+    }
+    
+    // 關鍵理由
+    if (data.keyReasons && data.keyReasons.length > 0) {
+        const reasonsDiv = document.createElement("div");
+        reasonsDiv.className = "bg-green-50 rounded-lg p-4 border border-green-100";
+        reasonsDiv.innerHTML = `<p class="font-bold text-gray-900 mb-2">主要依據：</p><ul class="list-disc list-inside text-gray-700 space-y-1">`;
+        data.keyReasons.forEach(reason => {
+            reasonsDiv.innerHTML += `<li>${escapeHtml(reason)}</li>`;
+        });
+        reasonsDiv.innerHTML += `</ul>`;
+        contentDiv.appendChild(reasonsDiv);
+    }
+    
+    // 風險提示
+    if (data.risks && data.risks.length > 0) {
+        const risksDiv = document.createElement("div");
+        risksDiv.className = "bg-yellow-50 rounded-lg p-4 border border-yellow-100";
+        risksDiv.innerHTML = `<p class="font-bold text-gray-900 mb-2">風險提醒：</p><ul class="list-disc list-inside text-gray-700 space-y-1">`;
+        data.risks.forEach(risk => {
+            risksDiv.innerHTML += `<li>${escapeHtml(risk)}</li>`;
+        });
+        risksDiv.innerHTML += `</ul>`;
+        contentDiv.appendChild(risksDiv);
+    }
+    
+    // 建議行動
+    if (data.suggestedActions && data.suggestedActions.length > 0) {
+        const actionsDiv = document.createElement("div");
+        actionsDiv.className = "bg-purple-50 rounded-lg p-4 border border-purple-100";
+        actionsDiv.innerHTML = `<p class="font-bold text-gray-900 mb-2">建議行動：</p><ul class="list-disc list-inside text-gray-700 space-y-1">`;
+        data.suggestedActions.forEach(action => {
+            actionsDiv.innerHTML += `<li>${escapeHtml(action)}</li>`;
+        });
+        actionsDiv.innerHTML += `</ul>`;
+        contentDiv.appendChild(actionsDiv);
+    }
+    
+    // 顯示 Modal
+    document.getElementById("decision-modal").classList.remove("hidden");
 }
 
 // ===============================
 // UI 更新
 // ===============================
 function updateProgress() {
-    const progress = ((currentQuestionIndex + 1) / scriptedQuestions.length) * 100;
+    const progress = ((currentQuestionIndex + 1) / TESLA_QUESTIONS.length) * 100;
     document.getElementById("progress-bar").style.width = `${progress}%`;
     document.getElementById("question-counter").textContent = `Q${currentQuestionIndex + 1}/10`;
 }
@@ -479,38 +401,6 @@ async function handlePayment() {
 }
 
 // ===============================
-// 顯示完整決策卡
-// ===============================
-async function showDecisionCard() {
-    if (!sessionId || !currentUser) return;
-
-    try {
-        const res = await fetch('/.netlify/functions/tesla-payment-success', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                userId: currentUser.uid,
-                sessionId: sessionId
-            })
-        });
-        const data = await res.json();
-        
-        if (data.ok && data.decisionCard) {
-            document.getElementById("decision-card-content").textContent = data.decisionCard;
-            document.getElementById("final-modal").classList.add("hidden");
-            document.getElementById("decision-card-modal").classList.remove("hidden");
-        }
-    } catch (e) {
-        console.error('[Tesla] Get decision card error:', e);
-    }
-}
-
-function closeDecisionCard() {
-    document.getElementById("decision-card-modal").classList.add("hidden");
-    window.location.href = "/";
-}
-
-// ===============================
 // Auth
 // ===============================
 async function handleGoogleLogin() {
@@ -525,7 +415,7 @@ async function handleGoogleLogin() {
         document.getElementById("login-view").classList.add("hidden");
         document.getElementById("main-view").classList.remove("hidden");
         
-        initTeslaApp();
+        initTeslaChat();
     } catch (err) {
         console.error('[Tesla] Login error:', err);
     } finally {
@@ -541,7 +431,6 @@ async function handleLogout() {
         currentQuestionIndex = 0;
         answers = [];
         sessionId = null;
-        inputDisabled = false;
         document.getElementById("chat-history").innerHTML = "";
         document.getElementById("login-view").classList.remove("hidden");
         document.getElementById("main-view").classList.add("hidden");
@@ -551,32 +440,17 @@ async function handleLogout() {
 }
 
 // ===============================
-// 檢查付款成功回調
+// 初始化
 // ===============================
 window.onload = function() {
-    const params = new URLSearchParams(window.location.search);
-    const sessionIdParam = params.get('sessionId');
-    
-    if (sessionIdParam && params.get('paid') === 'true') {
-        sessionId = sessionIdParam;
-        firebase.auth().onAuthStateChanged(async (user) => {
-            if (user) {
-                currentUser = user;
-                document.getElementById("login-view").classList.add("hidden");
-                document.getElementById("main-view").classList.remove("hidden");
-                await showDecisionCard();
-            }
-        });
-    } else {
-        firebase.auth().onAuthStateChanged((user) => {
-            currentUser = user;
-            if (user) {
-                document.getElementById("login-view").classList.add("hidden");
-                document.getElementById("main-view").classList.remove("hidden");
-                initTeslaApp();
-            }
-        });
-    }
+    firebase.auth().onAuthStateChanged((user) => {
+        currentUser = user;
+        if (user) {
+            document.getElementById("login-view").classList.add("hidden");
+            document.getElementById("main-view").classList.remove("hidden");
+            initTeslaChat();
+        }
+    });
 };
 </script>
 </body>
