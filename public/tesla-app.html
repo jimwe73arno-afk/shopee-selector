@@ -26,11 +26,39 @@
     </script>
 
     <style>
-        body { background-color: #020617; color: #F8FAFC; overscroll-behavior-y: none; }
+        html, body { 
+            background-color: #020617; 
+            color: #F8FAFC; 
+            overscroll-behavior-y: none;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+        }
         ::-webkit-scrollbar { display: none; }
-        .app-shell { min-height: 100vh; min-height: 100dvh; display: flex; justify-content: center; align-items: center; background: #050816; }
-        .app-phone-frame { width: 100%; max-width: 430px; height: 100vh; height: 100dvh; max-height: 932px; border-radius: 40px; overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.5); position: relative; }
-        @media (max-width: 768px) { .app-shell { background: #020617; } .app-phone-frame { max-width: 100%; max-height: 100%; border-radius: 0; box-shadow: none; } }
+        .app-shell { 
+            height: 100%; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            background: #050816; 
+        }
+        .app-phone-frame { 
+            width: 100%; 
+            max-width: 430px; 
+            height: 100%; 
+            max-height: 932px; 
+            border-radius: 40px; 
+            overflow: hidden; 
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5); 
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        @media (max-width: 768px) { 
+            .app-shell { background: #020617; } 
+            .app-phone-frame { max-width: 100%; max-height: 100%; border-radius: 0; box-shadow: none; } 
+        }
         .touch-active:active { transform: scale(0.96); opacity: 0.8; }
         .chat-bubble { max-width: 85%; padding: 12px 16px; font-size: 15px; line-height: 1.6; }
         .chat-bubble.ai { background-color: #1E293B; color: #F1F5F9; border-radius: 20px 20px 20px 4px; }
@@ -38,12 +66,36 @@
         .blue-filter { filter: brightness(0) saturate(100%) invert(55%) sepia(57%) saturate(2000%) hue-rotate(166deg) brightness(96%) contrast(101%); }
         .progress-bar-bg { width: 90%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin: 8px auto; }
         .progress-bar-fill { height: 100%; background: #00A0E9; border-radius: 3px; transition: width 0.3s; }
+        
+        /* 修復 iOS 鍵盤問題 */
+        #app-root {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        #main-view {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        #chat-container {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            min-height: 0;
+        }
+        #input-bar {
+            flex-shrink: 0;
+            position: relative;
+            z-index: 100;
+        }
     </style>
 </head>
 <body>
 <div class="app-shell">
 <div class="app-phone-frame">
-<div id="app-root" class="h-[100dvh] w-full flex flex-col overflow-hidden relative bg-appBg">
+<div id="app-root" class="w-full flex flex-col overflow-hidden relative bg-appBg">
 
     <!-- ===== 登入畫面 ===== -->
     <div id="login-view" class="absolute inset-0 z-50 bg-appBg flex flex-col items-center justify-center p-6">
@@ -61,7 +113,7 @@
     </div>
 
     <!-- ===== 主畫面 ===== -->
-    <div id="main-view" class="hidden flex-1 flex flex-col">
+    <div id="main-view" class="hidden flex-col" style="flex: 1; min-height: 0;">
         
         <!-- Header -->
         <header class="bg-appBg/95 backdrop-blur-xl border-b border-slate-800 z-40" style="padding-top: env(safe-area-inset-top);">
@@ -83,8 +135,8 @@
         </header>
 
         <!-- 聊天區域 -->
-        <div id="chat-container" class="flex-1 overflow-y-auto px-4 py-4">
-            <div id="chat-history" class="flex flex-col gap-4"></div>
+        <div id="chat-container" class="flex-1 overflow-y-auto px-4 py-4" style="min-height: 0;">
+            <div id="chat-history" class="flex flex-col gap-4 pb-4"></div>
         </div>
 
         <!-- 輸入框 -->
@@ -102,7 +154,7 @@
         </div>
     </div>
 
-    <!-- ===== 決策卡 + 付費牆 Modal ===== -->
+    <!-- ===== 決策卡 Modal ===== -->
     <div id="decision-modal" class="hidden fixed inset-0 z-60 bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
         <div class="w-full max-w-md bg-white rounded-2xl p-6 text-gray-900 max-h-[90vh] overflow-y-auto">
             <h2 class="text-xl font-bold mb-4">🎯 你的 Tesla 決策卡</h2>
@@ -112,17 +164,18 @@
                 <!-- 由 JS 動態填入 -->
             </div>
             
-            <!-- 三選一按鈕 -->
+            <!-- 導購碼區塊 -->
+            <div class="bg-blue-50 rounded-xl p-4 mb-4 border border-blue-100">
+                <p class="text-sm text-gray-600 mb-2">如果你決定入手 Tesla，記得使用我的推薦碼：</p>
+                <p class="text-lg font-bold text-primary">ts.la/arno873937</p>
+            </div>
+            
             <button id="btn-referral" class="w-full py-3.5 bg-gray-900 text-white rounded-xl mb-3 touch-active font-medium">
-                🚗 使用我的 Tesla 導購碼（免費）
+                🚗 前往 Tesla 官網下訂
             </button>
             
-            <button id="btn-pay" class="w-full py-3.5 bg-red-500 text-white rounded-xl mb-3 touch-active font-medium">
-                💎 支付 US$1.99，獲得完整 Tesla 決策卡 + 記憶功能
-            </button>
-            
-            <button id="btn-tomorrow" class="w-full py-3.5 bg-gray-200 text-gray-700 rounded-xl touch-active font-medium">
-                ⏰ 先不用，我明天再來免費問 10 題
+            <button id="btn-close" class="w-full py-3.5 bg-gray-200 text-gray-700 rounded-xl touch-active font-medium">
+                關閉
             </button>
         </div>
     </div>
@@ -186,12 +239,8 @@ function initTeslaChat() {
         window.open("https://ts.la/arno873937", "_blank");
     };
     
-    document.getElementById("btn-pay").onclick = async () => {
-        await handlePayment();
-    };
-    
-    document.getElementById("btn-tomorrow").onclick = () => {
-        window.location.href = "/";
+    document.getElementById("btn-close").onclick = () => {
+        document.getElementById("decision-modal").classList.add("hidden");
     };
 }
 
@@ -369,38 +418,6 @@ function escapeHtml(text) {
 }
 
 // ===============================
-// 付款流程
-// ===============================
-async function handlePayment() {
-    const btn = document.getElementById("btn-pay");
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>跳轉 PayPal...';
-    btn.disabled = true;
-
-    try {
-        const res = await fetch('/.netlify/functions/paypal-checkout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                product: 'BROTHERG_PRO',
-                returnUrl: window.location.origin + '/payment/success?product=BROTHERG_PRO&return=/tesla-app&sessionId=' + sessionId,
-                cancelUrl: window.location.origin + '/payment/cancel?product=BROTHERG_PRO&return=/tesla-app'
-            })
-        });
-        const data = await res.json();
-        if (data.ok && data.checkoutUrl) {
-            window.location.href = data.checkoutUrl;
-        } else {
-            throw new Error('PayPal error');
-        }
-    } catch (e) {
-        console.error('[Tesla] Payment error:', e);
-        alert("支付系統暫時不可用，請稍後重試");
-        btn.innerHTML = '💎 支付 US$1.99，獲得完整 Tesla 決策卡 + 記憶功能';
-        btn.disabled = false;
-    }
-}
-
-// ===============================
 // Auth
 // ===============================
 async function handleGoogleLogin() {
@@ -440,9 +457,64 @@ async function handleLogout() {
 }
 
 // ===============================
+// 修復 iOS 鍵盤問題
+// ===============================
+function setupKeyboardHandler() {
+    const inputEl = document.getElementById("user-input");
+    const chatContainer = document.getElementById("chat-container");
+    const appRoot = document.getElementById("app-root");
+    
+    // 使用 visualViewport API 處理鍵盤
+    if (window.visualViewport) {
+        let pendingUpdate = false;
+        
+        const viewportHandler = () => {
+            if (pendingUpdate) return;
+            pendingUpdate = true;
+            
+            requestAnimationFrame(() => {
+                pendingUpdate = false;
+                const height = window.visualViewport.height;
+                appRoot.style.height = `${height}px`;
+                
+                // 確保滾動到底部
+                setTimeout(() => {
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }, 50);
+            });
+        };
+        
+        window.visualViewport.addEventListener('resize', viewportHandler);
+        window.visualViewport.addEventListener('scroll', viewportHandler);
+        
+        // 初始化高度
+        appRoot.style.height = `${window.visualViewport.height}px`;
+    }
+    
+    // 輸入框 focus 時滾動到底部
+    inputEl.addEventListener('focus', () => {
+        setTimeout(() => {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            // iOS Safari 額外處理
+            inputEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }, 300);
+    });
+    
+    // 點擊輸入框時也觸發
+    inputEl.addEventListener('touchstart', () => {
+        setTimeout(() => {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }, 100);
+    });
+}
+
+// ===============================
 // 初始化
 // ===============================
 window.onload = function() {
+    // 設置鍵盤處理
+    setupKeyboardHandler();
+    
     firebase.auth().onAuthStateChanged((user) => {
         currentUser = user;
         if (user) {

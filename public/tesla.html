@@ -165,14 +165,16 @@
         </div>
     </main>
 
-    <!-- Paywall Modal -->
-    <div id="paywall-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center fade-in">
+    <!-- 導購碼 Modal -->
+    <div id="referral-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center fade-in">
         <div class="bg-white p-8 max-w-md w-full border-t-4 border-aiBlue shadow-2xl relative m-4 rounded-lg">
             <div class="text-center">
-                <div class="w-16 h-16 bg-blue-50 text-aiBlue rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-lock text-2xl"></i></div>
-                <h3 class="text-2xl font-bold text-textMain mb-2">解鎖決策卡</h3>
-                <p class="text-textSub text-sm mb-6">獲取你的個人化 Tesla 分析、風險評估，以及最終車型推薦。</p>
-                <button onclick="processPayment()" class="w-full bg-aiBlue text-white font-bold py-3 rounded hover:bg-blue-600 transition-colors shadow-lg">支付 NT$ 99</button>
+                <div class="w-16 h-16 bg-blue-50 text-aiBlue rounded-full flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-car text-2xl"></i></div>
+                <h3 class="text-2xl font-bold text-textMain mb-2">Tesla 導購碼</h3>
+                <p class="text-textSub text-sm mb-4">如果你決定入手 Tesla，記得使用我的推薦碼獲取官方積分：</p>
+                <p class="text-2xl font-bold text-aiBlue mb-6">ts.la/arno873937</p>
+                <button onclick="window.open('https://ts.la/arno873937', '_blank')" class="w-full bg-aiBlue text-white font-bold py-3 rounded hover:bg-blue-600 transition-colors shadow-lg mb-3">前往 Tesla 官網</button>
+                <button onclick="document.getElementById('referral-modal').classList.add('hidden')" class="w-full bg-gray-200 text-gray-700 font-bold py-3 rounded hover:bg-gray-300 transition-colors">關閉</button>
             </div>
         </div>
     </div>
@@ -318,10 +320,10 @@
                     const isSpecialTurn = teslaState.turn === 11 || teslaState.turn >= 15;
                     addBotMessage(data.reply, isSpecialTurn);
                     
-                    // 檢查是否需要付費牆
+                    // 檢查是否需要顯示導購碼
                     if(data.needPaywall) {
                         setTimeout(() => {
-                            document.getElementById('paywall-modal').classList.remove('hidden');
+                            document.getElementById('referral-modal').classList.remove('hidden');
                         }, 1500);
                     }
                 }
@@ -332,41 +334,12 @@
             }
             
             // Cleanup
-            const isPaywallBlocking = !document.getElementById('paywall-modal').classList.contains('hidden');
-            if(!isPaywallBlocking) teslaState.loading = false;
+            teslaState.loading = false;
             updateUI();
         }
 
-        function processPayment() {
-            const btn = document.querySelector('#paywall-modal button');
-            btn.innerHTML = '處理中...';
-            setTimeout(async () => {
-                document.getElementById('paywall-modal').classList.add('hidden');
-                teslaState.paid = true;
-                teslaState.loading = false;
-                
-                addBotMessage("付款成功！正在生成你的專屬最終決策信...");
-                
-                // 重新呼叫 API 取得 Pro 版決策卡
-                teslaState.loading = true;
-                const typingDiv = document.createElement('div');
-                typingDiv.className = 'chat-msg-bot fade-in';
-                typingDiv.id = 'typing-indicator';
-                typingDiv.innerHTML = '<span class="animate-typing">正在為你撰寫決策信...</span>';
-                document.getElementById('tesla-messages').append(typingDiv);
-                
-                try {
-                    const data = await callTeslaAPI(teslaState);
-                    document.getElementById('typing-indicator')?.remove();
-                    if(data.ok) {
-                        addBotMessage(data.reply, true);
-                    }
-                } catch(e) {
-                    document.getElementById('typing-indicator')?.remove();
-                    addBotMessage("生成決策信時發生錯誤，請稍後重試。");
-                }
-                teslaState.loading = false;
-            }, 1500);
+        function showReferral() {
+            document.getElementById('referral-modal').classList.remove('hidden');
         }
 
         // Debug Tool
